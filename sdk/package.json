@@ -1,0 +1,22 @@
+{
+  "name": "sdk",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./global-types": "./src/global-types.d.ts"
+  },
+  "scripts": {
+    "build:types": "bun x tsc -p tsconfig.types.json",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "rolldown": "^1.0.0-beta.53"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

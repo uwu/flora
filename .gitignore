@@ -1,0 +1,6 @@
+/target
+.env
+trash
+node_modules
+dist
+*env
