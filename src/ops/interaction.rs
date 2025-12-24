@@ -106,7 +106,7 @@ pub async fn op_upsert_guild_commands(
     let commands: Vec<CreateCommand> = command_defs
         .into_iter()
         .map(|cmd| {
-            let desc = cmd.description.unwrap_or_else(|| "No description".to_string());
+            let desc = cmd.description.ok_or_else(|| JsErrorBox::generic("Slash command must have a description"))?;
             let mut builder = CreateCommand::new(cmd.name).description(desc);
             if let Some(options) = cmd.options {
                 for opt in options {

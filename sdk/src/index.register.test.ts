@@ -19,6 +19,7 @@ describe("createBot slash registration", () => {
       slashCommands: [
         defineSlashCommand({
           name: "ping",
+          description: "Reply with pong",
           options: [
             { name: "text", description: "say something", required: true },
           ],
@@ -30,7 +31,7 @@ describe("createBot slash registration", () => {
     expect(register).toHaveBeenCalledWith([
       {
         name: "ping",
-        description: undefined,
+        description: "Reply with pong",
         options: [
           {
             name: "text",

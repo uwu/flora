@@ -206,7 +206,7 @@ export function defineCommand(command: Command): Command {
 
 export type SlashCommand = {
   name: string
-  description?: string
+  description: string
   options?: SlashCommandOption[]
   run: (ctx: InteractionContext) => Promise<void> | void
 }
