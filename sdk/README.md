@@ -189,6 +189,61 @@ createBot({ slashCommands: [slashPing, slashEcho] });
 - The first token after the prefix is matched against `command.name`; remaining tokens are passed as `ctx.args`.
 - `ctx.reply` routes through the runtime `op_send_message` to Discord with a message reference when possible.
 
+## KV Store API
+
+Persistent key-value storage for bot data, scoped per guild.
+
+### Creating a store
+
+KV stores must be created via the backend API or CLI before they can be used in bot scripts. Each store is isolated to a specific guild.
+
+### Basic usage
+
+```ts
+import { kv } from '@flora/sdk'
+
+// Get a named store instance
+const userStore = kv.store('users')
+
+// Set a value (max 1MB)
+await userStore.set('alice', JSON.stringify({ name: 'Alice', score: 100 }))
+
+// Get a value
+const data = await userStore.get('alice')
+// Returns string or null if not found
+if (data) {
+  const user = JSON.parse(data)
+  console.log(user.name) // "Alice"
+}
+
+// Delete a key
+await userStore.delete('alice')
+
+// List all keys
+const keys = await userStore.listKeys()
+console.log(keys) // ["alice", "bob", ...]
+
+// List keys with prefix filter
+const userKeys = await userStore.listKeys('user')
+console.log(userKeys) // Only keys starting with "user"
+```
+
+### Store methods
+
+- `kv.store(name: string): KvStore` — Get a named KV store instance
+- `KvStore.get(key: string): Promise<string | null>` — Get value by key
+- `KvStore.set(key: string, value: string): Promise<void>` — Set value (max 1MB)
+- `KvStore.delete(key: string): Promise<void>` — Delete key
+- `KvStore.listKeys(prefix?: string): Promise<string[]>` — List all keys (optionally filtered by prefix)
+
+### Important notes
+
+- **Store creation**: Use the backend API or CLI to create stores before using them
+- **Value size limit**: 1MB per value (enforced by backend)
+- **Guild isolation**: Each guild's KV data is stored separately
+- **Persistence**: Data is persisted to disk and survives bot restarts
+- **List performance**: `listKeys()` is not paginated. It may be slow for stores with millions of keys. Consider using a prefix filter for better performance.
+
 ## Development tips
 
 - Type definitions live in `dist/types` for editor intellisense when consuming the bundled SDK.
