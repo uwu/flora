@@ -59,6 +59,84 @@ enum Commands {
         /// API token from /tokens
         token: String,
     },
+    /// KV store management
+    #[command(subcommand)]
+    Kv(KvCommands),
+}
+
+#[derive(Subcommand, Debug)]
+enum KvCommands {
+    /// Create a new KV store
+    CreateStore {
+        /// Discord guild ID
+        #[arg(long)]
+        guild: String,
+        /// Store name
+        #[arg(long)]
+        name: String,
+    },
+    /// List all KV stores for a guild
+    ListStores {
+        /// Discord guild ID
+        #[arg(long)]
+        guild: String,
+    },
+    /// Delete a KV store
+    DeleteStore {
+        /// Discord guild ID
+        #[arg(long)]
+        guild: String,
+        /// Store name
+        #[arg(long)]
+        name: String,
+    },
+    /// Set a key-value pair
+    Set {
+        /// Discord guild ID
+        #[arg(long)]
+        guild: String,
+        /// Store name
+        #[arg(long)]
+        store: String,
+        /// Key
+        key: String,
+        /// Value
+        value: String,
+    },
+    /// Get a value by key
+    Get {
+        /// Discord guild ID
+        #[arg(long)]
+        guild: String,
+        /// Store name
+        #[arg(long)]
+        store: String,
+        /// Key
+        key: String,
+    },
+    /// Delete a key
+    Delete {
+        /// Discord guild ID
+        #[arg(long)]
+        guild: String,
+        /// Store name
+        #[arg(long)]
+        store: String,
+        /// Key
+        key: String,
+    },
+    /// List all keys in a store
+    ListKeys {
+        /// Discord guild ID
+        #[arg(long)]
+        guild: String,
+        /// Store name
+        #[arg(long)]
+        store: String,
+        /// Optional prefix filter
+        #[arg(long)]
+        prefix: Option<String>,
+    },
 }
 
 #[derive(Serialize)]
@@ -84,6 +162,41 @@ struct DeploymentResponse {
 #[derive(Deserialize, Debug)]
 struct HealthResponse(String);
 
+#[derive(Serialize)]
+struct CreateStoreRequest {
+    guild_id: String,
+    store_name: String,
+}
+
+#[derive(Deserialize)]
+struct CreateStoreResponse {
+    store: KvStore,
+}
+
+#[derive(Deserialize, Debug)]
+struct KvStore {
+    id: String,
+    guild_id: String,
+    store_name: String,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Serialize)]
+struct SetValueRequest {
+    value: String,
+}
+
+#[derive(Deserialize)]
+struct GetValueResponse {
+    value: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ListKeysResponse {
+    keys: Vec<String>,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
@@ -106,6 +219,7 @@ async fn main() -> Result<()> {
             confy::store("flora", "cli", config)?;
             println!("Saved token to config");
         }
+        Commands::Kv(kv_cmd) => handle_kv_command(&client, &config, kv_cmd).await?,
     }
 
     Ok(())
@@ -254,4 +368,115 @@ fn path_to_relative(path: &Path, root: &Path) -> Result<String> {
         return Err(eyre!("Entry path is empty"));
     }
     Ok(rel)
+}
+
+async fn handle_kv_command(client: &Client, config: &CliConfig, cmd: KvCommands) -> Result<()> {
+    match cmd {
+        KvCommands::CreateStore { guild, name } => {
+            let url = format!("{}/kv/stores", config.api_url);
+            let body = CreateStoreRequest {
+                guild_id: guild.clone(),
+                store_name: name.clone(),
+            };
+            let resp: CreateStoreResponse = client
+                .post(url)
+                .maybe_bearer(&config.token)?
+                .json(&body)
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await?;
+            println!("Created KV store '{}' for guild {}", resp.store.store_name, resp.store.guild_id);
+        }
+        KvCommands::ListStores { guild } => {
+            let url = format!("{}/kv/stores?guild_id={}", config.api_url, guild);
+            let stores: Vec<KvStore> = client
+                .get(url)
+                .maybe_bearer(&config.token)?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await?;
+            if stores.is_empty() {
+                println!("No KV stores found for guild {}", guild);
+            } else {
+                println!("KV stores for guild {}:", guild);
+                for store in stores {
+                    println!("  - {}", store.store_name);
+                }
+            }
+        }
+        KvCommands::DeleteStore { guild, name } => {
+            let url = format!("{}/kv/stores/{}/{}", config.api_url, guild, name);
+            client
+                .delete(url)
+                .maybe_bearer(&config.token)?
+                .send()
+                .await?
+                .error_for_status()?;
+            println!("Deleted KV store '{}' for guild {}", name, guild);
+        }
+        KvCommands::Set { guild, store, key, value } => {
+            let url = format!("{}/kv/{}/{}/{}", config.api_url, guild, store, key);
+            let body = SetValueRequest { value: value.clone() };
+            client
+                .put(url)
+                .maybe_bearer(&config.token)?
+                .json(&body)
+                .send()
+                .await?
+                .error_for_status()?;
+            println!("Set {}={} in store '{}' for guild {}", key, value, store, guild);
+        }
+        KvCommands::Get { guild, store, key } => {
+            let url = format!("{}/kv/{}/{}/{}", config.api_url, guild, store, key);
+            let resp: GetValueResponse = client
+                .get(url)
+                .maybe_bearer(&config.token)?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await?;
+            match resp.value {
+                Some(value) => println!("{}", value),
+                None => println!("Key '{}' not found", key),
+            }
+        }
+        KvCommands::Delete { guild, store, key } => {
+            let url = format!("{}/kv/{}/{}/{}", config.api_url, guild, store, key);
+            client
+                .delete(url)
+                .maybe_bearer(&config.token)?
+                .send()
+                .await?
+                .error_for_status()?;
+            println!("Deleted key '{}' from store '{}' for guild {}", key, store, guild);
+        }
+        KvCommands::ListKeys { guild, store, prefix } => {
+            let mut url = format!("{}/kv/{}/{}", config.api_url, guild, store);
+            if let Some(p) = prefix {
+                url = format!("{}?prefix={}", url, p);
+            }
+            let resp: ListKeysResponse = client
+                .get(url)
+                .maybe_bearer(&config.token)?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await?;
+            if resp.keys.is_empty() {
+                println!("No keys found in store '{}'", store);
+            } else {
+                println!("Keys in store '{}':", store);
+                for key in resp.keys {
+                    println!("  - {}", key);
+                }
+            }
+        }
+    }
+    Ok(())
 }

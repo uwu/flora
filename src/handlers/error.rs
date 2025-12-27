@@ -56,6 +56,24 @@ impl ApiError {
     }
 }
 
+impl From<eyre::Report> for ApiError {
+    fn from(err: eyre::Report) -> Self {
+        // Check if the error message contains specific keywords
+        let msg = err.to_string();
+        if msg.contains("not found") {
+            ApiError::NotFound { message: msg }
+        } else if msg.contains("unauthorized") || msg.contains("authentication") {
+            ApiError::Unauthorized { message: msg }
+        } else if msg.contains("forbidden") || msg.contains("permission") {
+            ApiError::Forbidden { message: msg }
+        } else if msg.contains("invalid") || msg.contains("exceeds") {
+            ApiError::BadRequest { message: msg }
+        } else {
+            ApiError::Internal { message: msg }
+        }
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let status = match self {

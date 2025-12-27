@@ -268,3 +268,6 @@ export function createBot(options: CreateOptions) {
     )
   }
 }
+
+// Export KV API
+export { kv } from './kv'
