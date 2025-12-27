@@ -242,10 +242,12 @@ fn set_guild_context(js_state: &mut JsRuntimeState, guild_id: &str) -> Result<()
 }
 
 async fn initialize_runtime(js_state: &mut JsRuntimeState) -> Result<(), AnyError> {
-    let _isolate_guard = enter_isolate(&mut js_state.runtime);
     js_state.runtime.execute_script("flora:bootstrap", RUNTIME_PRELUDE)?;
     js_state.runtime.run_event_loop(PollEventLoopOptions::default()).await?;
-    js_state.dispatch_fn = Some(extract_dispatch_fn(&mut js_state.runtime)?);
+    let context = js_state.runtime.main_context();
+    let isolate = js_state.runtime.v8_isolate();
+    let _isolate_guard = IsolateEnterGuard::new(isolate);
+    js_state.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
     info!("flora JS runtime initialized");
     Ok(())
 }
@@ -378,10 +380,10 @@ async fn dispatch_into_runtime(
         .as_ref()
         .ok_or_else(|| AnyError::msg("dispatch function not initialized"))?;
 
-    let _isolate_guard = enter_isolate(&mut js_state.runtime);
+    let context = js_state.runtime.main_context();
+    let isolate = js_state.runtime.v8_isolate();
+    let _isolate_guard = IsolateEnterGuard::new(isolate);
     {
-        let context = js_state.runtime.main_context();
-        let isolate = js_state.runtime.v8_isolate();
         v8::scope_with_context!(scope, isolate, &context);
         let scope = scope;
         let context = v8::Local::new(scope, &context);
@@ -405,6 +407,23 @@ fn extract_dispatch_fn(runtime: &mut JsRuntime) -> Result<Global<v8::Function>, 
     v8::scope_with_context!(scope, isolate, &context);
     let scope = scope;
     let context = v8::Local::new(scope, &context);
+    let global = context.global(scope);
+    let key = v8::String::new(scope, "__floraDispatch")
+        .ok_or_else(|| AnyError::msg("failed to create dispatch name"))?;
+    let value =
+        global.get(scope, key.into()).ok_or_else(|| AnyError::msg("dispatch function missing"))?;
+    let function = v8::Local::<v8::Function>::try_from(value)
+        .map_err(|_| AnyError::msg("dispatch symbol is not a function"))?;
+    Ok(Global::new(scope, function))
+}
+
+fn extract_dispatch_fn_no_enter_impl(
+    context: &v8::Global<v8::Context>,
+    isolate: &mut v8::OwnedIsolate,
+) -> Result<Global<v8::Function>, AnyError> {
+    v8::scope_with_context!(scope, isolate, context);
+    let scope = scope;
+    let context = v8::Local::new(scope, context);
     let global = context.global(scope);
     let key = v8::String::new(scope, "__floraDispatch")
         .ok_or_else(|| AnyError::msg("failed to create dispatch name"))?;
