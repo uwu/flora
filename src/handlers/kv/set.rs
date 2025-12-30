@@ -1,12 +1,13 @@
 use axum::{
     Json,
     extract::{Path, State},
+    http::HeaderMap,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
-    handlers::{error::ApiError, response::ApiJson},
+    handlers::{auth::{require_identity, ensure_guild_admin}, error::ApiError, response::ApiJson},
     state::AppState,
 };
 
@@ -42,6 +43,8 @@ pub struct SetValueResponse {
     responses(
         (status = 200, description = "Value set successfully", body = SetValueResponse),
         (status = 400, description = "Value exceeds 1MB limit"),
+        (status = 401, description = "Not authenticated"),
+        (status = 403, description = "Not guild admin"),
         (status = 404, description = "Store not found"),
         (status = 500, description = "Internal server error"),
     ),
@@ -49,9 +52,12 @@ pub struct SetValueResponse {
 )]
 pub async fn set_value_handler(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(params): Path<SetValueParams>,
     Json(req): Json<SetValueRequest>,
 ) -> Result<ApiJson<SetValueResponse>, ApiError> {
+    let identity = require_identity(&state, &headers).await?;
+    ensure_guild_admin(&state, &identity, &params.guild_id).await?;
     state.kv.set(&params.guild_id, &params.store_name, &params.key, &req.value).await?;
     Ok(ApiJson(Json(SetValueResponse { success: true })))
 }

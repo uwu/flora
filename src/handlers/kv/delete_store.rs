@@ -1,8 +1,9 @@
 use axum::extract::{Path, State};
+use axum::http::HeaderMap;
 use serde::Deserialize;
 use utoipa::ToSchema;
 
-use crate::{handlers::error::ApiError, state::AppState};
+use crate::{handlers::{auth::{require_identity, ensure_guild_admin}, error::ApiError}, state::AppState};
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct DeleteStoreParams {
@@ -20,6 +21,8 @@ pub struct DeleteStoreParams {
     ),
     responses(
         (status = 200, description = "Store deleted successfully"),
+        (status = 401, description = "Not authenticated"),
+        (status = 403, description = "Not guild admin"),
         (status = 404, description = "Store not found"),
         (status = 500, description = "Internal server error"),
     ),
@@ -27,8 +30,11 @@ pub struct DeleteStoreParams {
 )]
 pub async fn delete_store_handler(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(params): Path<DeleteStoreParams>,
 ) -> Result<(), ApiError> {
+    let identity = require_identity(&state, &headers).await?;
+    ensure_guild_admin(&state, &identity, &params.guild_id).await?;
     state.kv.delete_store(&params.guild_id, &params.store_name).await?;
     Ok(())
 }

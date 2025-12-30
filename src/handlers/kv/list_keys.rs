@@ -1,12 +1,13 @@
 use axum::{
     Json,
     extract::{Path, Query, State},
+    http::HeaderMap,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
 use crate::{
-    handlers::{error::ApiError, response::ApiJson},
+    handlers::{auth::{require_identity, ensure_guild_admin}, error::ApiError, response::ApiJson},
     state::AppState,
 };
 
@@ -41,6 +42,8 @@ pub struct ListKeysResponse {
     ),
     responses(
         (status = 200, description = "List of keys", body = ListKeysResponse),
+        (status = 401, description = "Not authenticated"),
+        (status = 403, description = "Not guild admin"),
         (status = 404, description = "Store not found"),
         (status = 500, description = "Internal server error"),
     ),
@@ -48,9 +51,12 @@ pub struct ListKeysResponse {
 )]
 pub async fn list_keys_handler(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(params): Path<ListKeysParams>,
     Query(query): Query<ListKeysQuery>,
 ) -> Result<ApiJson<ListKeysResponse>, ApiError> {
+    let identity = require_identity(&state, &headers).await?;
+    ensure_guild_admin(&state, &identity, &params.guild_id).await?;
     let keys =
         state.kv.list_keys(&params.guild_id, &params.store_name, query.prefix.as_deref()).await?;
     Ok(ApiJson(Json(ListKeysResponse { keys })))

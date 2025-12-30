@@ -239,7 +239,6 @@ fn new_js_runtime(http: Arc<Http>, kv: KvService, guild_id: Option<String>) -> J
     });
     runtime.op_state().borrow_mut().put(permissions);
 
-    // Store guild_id in OpState if present
     if let Some(ref gid) = guild_id {
         runtime.op_state().borrow_mut().put(gid.clone());
     }

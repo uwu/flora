@@ -77,7 +77,6 @@ pub async fn op_kv_list_keys(
 }
 
 fn get_guild_id(state: &OpState) -> Result<String, JsErrorBox> {
-    // Guild ID is stored in OpState for guild-scoped runtimes
     state
         .try_borrow::<String>()
         .ok_or_else(|| JsErrorBox::generic("guild context not available"))

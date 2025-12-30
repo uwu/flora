@@ -65,7 +65,6 @@ impl KvService {
 
     /// Delete a KV store and its data.
     pub async fn delete_store(&self, guild_id: &str, store_name: &str) -> Result<()> {
-        // Remove from database
         let result = sqlx::query(
             r#"
             DELETE FROM kv_stores
@@ -81,13 +80,11 @@ impl KvService {
             return Err(eyre!("store not found"));
         }
 
-        // Close DB instance if open
         let db_key = db_key(guild_id, store_name);
         if let Ok(mut cache) = self.db_cache.write() {
             cache.remove(&db_key);
         }
 
-        // Remove sled files (best effort)
         let db_path = self.db_path(guild_id, store_name);
         if db_path.exists() {
             if let Err(err) = std::fs::remove_dir_all(&db_path) {
@@ -118,7 +115,6 @@ impl KvService {
 
     /// Get a value from a KV store.
     pub async fn get(&self, guild_id: &str, store_name: &str, key: &str) -> Result<Option<String>> {
-        // Verify store exists
         self.verify_store_exists(guild_id, store_name).await?;
 
         let db = self.get_or_open_db(guild_id, store_name)?;
@@ -139,10 +135,8 @@ impl KvService {
         key: &str,
         value: &str,
     ) -> Result<()> {
-        // Verify store exists
         self.verify_store_exists(guild_id, store_name).await?;
 
-        // Check value size
         if value.len() > MAX_VALUE_SIZE {
             return Err(eyre!("value exceeds maximum size of 1MB"));
         }
@@ -154,7 +148,6 @@ impl KvService {
 
     /// Delete a key from a KV store.
     pub async fn delete(&self, guild_id: &str, store_name: &str, key: &str) -> Result<()> {
-        // Verify store exists
         self.verify_store_exists(guild_id, store_name).await?;
 
         let db = self.get_or_open_db(guild_id, store_name)?;
@@ -169,7 +162,6 @@ impl KvService {
         store_name: &str,
         prefix: Option<&str>,
     ) -> Result<Vec<String>> {
-        // Verify store exists
         self.verify_store_exists(guild_id, store_name).await?;
 
         let db = self.get_or_open_db(guild_id, store_name)?;
@@ -191,27 +183,24 @@ impl KvService {
         Ok(keys)
     }
 
-    /// Export all KV stores for a guild using sled export.
-    pub async fn export_guild(&self, guild_id: &str) -> Result<PathBuf> {
+    /// Export all KV stores for a guild.
+    pub async fn export_guild(&self, guild_id: &str) -> Result<String> {
         let stores = self.list_stores(guild_id).await?;
         if stores.is_empty() {
             return Err(eyre!("no stores found for guild"));
         }
 
-        let backup_dir =
-            self.base_path.join(guild_id).join("backups").join(Utc::now().timestamp().to_string());
+        let backup_id = Utc::now().timestamp().to_string();
+        let backup_dir = self.base_path.join(guild_id).join("backups").join(&backup_id);
         std::fs::create_dir_all(&backup_dir)?;
 
-        // Export each store by copying the database directory
         for store in stores {
             let db_path = self.db_path(guild_id, &store.store_name);
             let store_backup_dir = backup_dir.join(&store.store_name);
 
-            // Open or get existing DB to ensure it's flushed
             let db = self.get_or_open_db(guild_id, &store.store_name)?;
             db.flush()?;
 
-            // Copy the database directory
             if db_path.exists() {
                 copy_dir_all(&db_path, &store_backup_dir)?;
             }
@@ -219,26 +208,23 @@ impl KvService {
             info!(target: "flora:kv", guild_id, store_name = store.store_name, "backed up kv store");
         }
 
-        info!(target: "flora:kv", guild_id, backup_path = ?backup_dir, "exported guild kv stores");
-        Ok(backup_dir)
+        info!(target: "flora:kv", guild_id, backup_id, "exported guild kv stores");
+        Ok(backup_id)
     }
 
     fn get_or_open_db(&self, guild_id: &str, store_name: &str) -> Result<Arc<Db>> {
         let key = db_key(guild_id, store_name);
 
-        // Try to get from cache first
         if let Ok(cache) = self.db_cache.read() {
             if let Some(db) = cache.get(&key) {
                 return Ok(Arc::clone(db));
             }
         }
 
-        // Open new DB instance
         let db_path = self.db_path(guild_id, store_name);
         let db = sled::open(&db_path)?;
         let db_arc = Arc::new(db);
 
-        // Cache it
         if let Ok(mut cache) = self.db_cache.write() {
             cache.insert(key, Arc::clone(&db_arc));
         }

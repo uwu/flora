@@ -1,9 +1,9 @@
-use axum::{Json, extract::State};
+use axum::{Json, extract::State, http::HeaderMap};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
-    handlers::{error::ApiError, response::ApiJson},
+    handlers::{auth::{require_identity, ensure_guild_admin}, error::ApiError, response::ApiJson},
     kv::KvStore,
     state::AppState,
 };
@@ -27,14 +27,19 @@ pub struct CreateStoreResponse {
     responses(
         (status = 200, description = "Store created successfully", body = CreateStoreResponse),
         (status = 400, description = "Bad request"),
+        (status = 401, description = "Not authenticated"),
+        (status = 403, description = "Not guild admin"),
         (status = 500, description = "Internal server error"),
     ),
     tag = "kv"
 )]
 pub async fn create_store_handler(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(req): Json<CreateStoreRequest>,
 ) -> Result<ApiJson<CreateStoreResponse>, ApiError> {
+    let identity = require_identity(&state, &headers).await?;
+    ensure_guild_admin(&state, &identity, &req.guild_id).await?;
     let store = state.kv.create_store(req.guild_id, req.store_name).await?;
     Ok(ApiJson(Json(CreateStoreResponse { store })))
 }
