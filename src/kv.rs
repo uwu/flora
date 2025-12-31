@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     path::PathBuf,
     sync::{Arc, RwLock},
 };
@@ -19,6 +19,7 @@ const METADATA_TREE_NAME: &str = "__metadata";
 const MAX_KEY_SIZE: usize = 512;
 const MAX_STORE_NAME_SIZE: usize = 64;
 const MAX_GUILD_ID_SIZE: usize = 32;
+const MAX_DB_CACHE_SIZE: usize = 64;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct KvStore {
@@ -62,16 +63,53 @@ pub struct ListKeysResult {
     pub cursor: Option<String>,
 }
 
+struct BoundedCache {
+    map: HashMap<String, Arc<Db>>,
+    order: VecDeque<String>,
+    capacity: usize,
+}
+
+impl BoundedCache {
+    fn new(capacity: usize) -> Self {
+        Self {
+            map: HashMap::new(),
+            order: VecDeque::new(),
+            capacity,
+        }
+    }
+
+    fn get(&self, key: &str) -> Option<&Arc<Db>> {
+        self.map.get(key)
+    }
+
+    fn insert(&mut self, key: String, db: Arc<Db>) {
+        if self.map.len() >= self.capacity {
+            if let Some(oldest) = self.order.pop_back() {
+                self.map.remove(&oldest);
+            }
+        }
+        self.order.push_front(key.clone());
+        self.map.insert(key, db);
+    }
+
+    fn remove(&mut self, key: &str) {
+        if let Some(pos) = self.order.iter().position(|k| k == key) {
+            self.order.remove(pos);
+        }
+        self.map.remove(key);
+    }
+}
+
 #[derive(Clone)]
 pub struct KvService {
     db: Pool<Postgres>,
-    db_cache: Arc<RwLock<HashMap<String, Arc<Db>>>>,
+    db_cache: Arc<RwLock<BoundedCache>>,
     base_path: PathBuf,
 }
 
 impl KvService {
     pub fn new(db: Pool<Postgres>, base_path: PathBuf) -> Self {
-        Self { db, db_cache: Arc::new(RwLock::new(HashMap::new())), base_path }
+        Self { db, db_cache: Arc::new(RwLock::new(BoundedCache::new(MAX_DB_CACHE_SIZE))), base_path }
     }
 
     pub async fn create_store(&self, guild_id: String, store_name: String) -> Result<KvStore> {
