@@ -299,7 +299,7 @@ impl KvService {
 
         let db = self.get_or_open_db(guild_id, store_name)?;
         let limit = limit.unwrap_or(DEFAULT_LIST_LIMIT).min(MAX_LIST_LIMIT);
-        let mut keys = Vec::new();
+        let mut keys = Vec::with_capacity(limit as usize);
 
         let start_key = match cursor {
             Some(c) => {
