@@ -136,13 +136,28 @@ export type MessageAuthor = {
   bot: boolean
 }
 
+export type GuildMember = {
+  user: MessageAuthor
+  nick?: string | null
+  avatar?: string | null
+  roles: string[]
+  joined_at?: string | null
+  premium_since?: string | null
+  deaf: boolean
+  mute: boolean
+  flags: number
+  pending: boolean
+  permissions?: string | null
+  communication_disabled_until?: string | null
+}
+
 export type MessagePayload = {
   id: string
   channel_id: string
   guild_id?: string | null
   content: string
   author: MessageAuthor
-  member?: { roles: string[] } | null
+  member?: GuildMember | null
 }
 
 export type MessageContext = BaseContext<MessagePayload>
@@ -183,6 +198,7 @@ export type InteractionPayload = {
   guild_id?: string | null
   channel_id?: string | null
   user: MessageAuthor
+  member?: GuildMember | null
   command_name: string
   data: any
   locale?: string | null
@@ -208,14 +224,23 @@ export type SlashCommand = {
   name: string
   description: string
   options?: SlashCommandOption[]
-  run: (ctx: InteractionContext) => Promise<void> | void
+  subcommands?: SlashSubcommand[]
+  run?: (ctx: InteractionContext) => Promise<void> | void
 }
 
 export type SlashCommandOption = {
   name: string
   description: string
-  type?: 'string' | 'integer' | 'number' | 'boolean'
+  type?: 'string' | 'integer' | 'number' | 'boolean' | 'subcommand' | 'subcommand_group'
   required?: boolean
+  options?: SlashCommandOption[]
+}
+
+export type SlashSubcommand = {
+  name: string
+  description: string
+  options?: SlashCommandOption[]
+  run: (ctx: InteractionContext) => Promise<void> | void
 }
 
 export function defineSlashCommand(command: SlashCommand): SlashCommand {
@@ -254,19 +279,125 @@ export function createBot(options: CreateOptions) {
     const command = slashCommands.find((cmd) => cmd.name === ctx.msg.command_name)
     if (!command) return
 
-    await command.run(ctx)
+    if (command.subcommands && command.subcommands.length > 0) {
+      await handleSubcommand(ctx, command)
+    } else if (command.run) {
+      await command.run(ctx)
+    }
   })
 
   if (slashCommands.length && typeof registerSlashCommands === 'function') {
-    // Fire and forget; runtime op will register for this guild isolate only.
-    registerSlashCommands(
-      slashCommands.map((cmd) => ({
+    const flattenedCommands = flattenCommands(slashCommands)
+    registerSlashCommands(flattenedCommands)
+  }
+}
+
+type FlattenedSlashCommand = {
+  name: string
+  description: string
+  options?: SlashCommandOption[]
+}
+
+type SubcommandMap = Record<string, Record<string, (ctx: InteractionContext) => Promise<void> | void>>
+
+declare global {
+  var __floraSubcommands: SubcommandMap
+}
+
+function flattenCommands(commands: SlashCommand[]): FlattenedSlashCommand[] {
+  globalThis.__floraSubcommands = globalThis.__floraSubcommands || {}
+  return commands.map((cmd) => {
+    if (cmd.subcommands && cmd.subcommands.length > 0) {
+      const submap: Record<string, (ctx: InteractionContext) => Promise<void> | void> = {}
+      cmd.subcommands.forEach((sub) => {
+        submap[sub.name] = sub.run
+      })
+      globalThis.__floraSubcommands[cmd.name] = submap
+
+      return {
         name: cmd.name,
         description: cmd.description,
-        options: cmd.options,
-      }))
-    )
+        options: cmd.subcommands.map((sub) => ({
+          name: sub.name,
+          description: sub.description,
+          type: 'subcommand' as const,
+          options: sub.options
+        }))
+      }
+    }
+
+    return {
+      name: cmd.name,
+      description: cmd.description,
+      options: cmd.options
+    }
+  })
+}
+
+async function handleSubcommand(ctx: InteractionContext, command: SlashCommand) {
+  const rawData = ctx.msg.data as any
+  if (!rawData?.options || !Array.isArray(rawData.options)) {
+    return
   }
+
+  const firstOption = rawData.options[0]
+  if (!firstOption) return
+
+  const subcommandName = firstOption.name
+  const subcommandMap = globalThis.__floraSubcommands?.[command.name]
+  if (!subcommandMap) return
+
+  const subcommandHandler = subcommandMap[subcommandName]
+  if (!subcommandHandler) return
+
+  const subcommandOptions = firstOption.options || []
+  const flatOptions = flattenInteractionOptions(subcommandOptions)
+
+  const enrichedCtx = {
+    ...ctx,
+    options: flatOptions
+  }
+
+  await subcommandHandler(enrichedCtx)
+}
+
+function flattenInteractionOptions(options: any[]): Record<string, any> {
+  const result: Record<string, any> = {}
+
+  for (const opt of options) {
+    if (opt.type === 1 || opt.type === 2) {
+      Object.assign(result, flattenInteractionOptions(opt.options || []))
+    } else {
+      result[opt.name] = opt.value
+    }
+  }
+
+  return result
+}
+
+export function hasRole(ctx: InteractionContext, roleId: string): boolean {
+  return ctx.msg.member?.roles?.includes(roleId) ?? false
+}
+
+export function getSubcommand(ctx: InteractionContext): string | undefined {
+  const rawData = ctx.msg.data as any
+  if (!rawData?.options || !Array.isArray(rawData.options)) return undefined
+  return rawData.options[0]?.name
+}
+
+export function getSubcommandGroup(ctx: InteractionContext): string | undefined {
+  const rawData = ctx.msg.data as any
+  if (!rawData?.options || !Array.isArray(rawData.options)) return undefined
+
+  const firstOption = rawData.options[0]
+  if (!firstOption) return undefined
+
+  const type = firstOption.type
+  if (type === 2) {
+    return firstOption.name
+  }
+
+  return undefined
 }
 
 // Export KV API

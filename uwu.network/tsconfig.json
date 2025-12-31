@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": [
+      "sdk/global-types"
+    ],
+    "noEmit": true
+  },
+  "include": [
+    "./main.ts"
+  ]
+}

@@ -3,7 +3,7 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
-  "workspaces": ["sdk", "example"],
+  "workspaces": ["sdk", "example", "uwu.network"],
   "scripts": {
     "format": "dprint fmt",
     "typecheck": "bun x tsc --noEmit -p example/tsconfig.json"
@@ -15,9 +15,5 @@
   },
   "peerDependencies": {
     "typescript": "^5"
-  },
-  "dependencies": {
-    "discord.js": "^14.25.1",
-    "dotenv": "^17.2.3"
   }
 }

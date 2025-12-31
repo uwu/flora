@@ -213,7 +213,18 @@ impl From<&User> for UserPayload {
 
 #[derive(Serialize)]
 struct MemberPayload {
+    user: UserPayload,
+    nick: Option<String>,
+    avatar: Option<String>,
     roles: Vec<String>,
+    joined_at: Option<String>,
+    premium_since: Option<String>,
+    deaf: bool,
+    mute: bool,
+    flags: u32,
+    pending: bool,
+    permissions: Option<String>,
+    communication_disabled_until: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -229,7 +240,23 @@ struct MessagePayload {
 impl From<&Message> for MessagePayload {
     fn from(msg: &Message) -> Self {
         let member = msg.member.as_ref().map(|member| MemberPayload {
+            user: UserPayload {
+                id: msg.author.id.get().to_string(),
+                username: msg.author.name.clone(),
+                discriminator: msg.author.discriminator.map(|d| d.get()),
+                bot: msg.author.bot,
+            },
+            nick: member.nick.clone(),
+            avatar: None,
             roles: member.roles.iter().map(|role| role.get().to_string()).collect(),
+            joined_at: member.joined_at.and_then(|ts| ts.to_rfc3339()),
+            premium_since: None,
+            deaf: member.deaf,
+            mute: member.mute,
+            flags: 0,
+            pending: member.pending,
+            permissions: None,
+            communication_disabled_until: None,
         });
         Self {
             id: msg.id.get().to_string(),
@@ -321,6 +348,7 @@ struct InteractionCreatePayload {
     guild_id: Option<String>,
     channel_id: Option<String>,
     user: UserPayload,
+    member: Option<MemberPayload>,
     command_name: String,
     data: serde_json::Value,
     locale: Option<String>,
@@ -337,6 +365,20 @@ impl From<&CommandInteraction> for InteractionCreatePayload {
             guild_id: interaction.guild_id.map(|g| g.get().to_string()),
             channel_id: Some(interaction.channel_id.get().to_string()),
             user: UserPayload::from(&interaction.user),
+            member: interaction.member.as_ref().map(|m| MemberPayload {
+                user: UserPayload::from(&interaction.user),
+                nick: m.nick.clone(),
+                avatar: m.avatar.map(|h| h.to_string()),
+                roles: m.roles.iter().map(|r| r.get().to_string()).collect(),
+                joined_at: m.joined_at.and_then(|ts| ts.to_rfc3339()),
+                premium_since: m.premium_since.and_then(|ts| ts.to_rfc3339()),
+                deaf: m.deaf,
+                mute: m.mute,
+                flags: m.flags.bits(),
+                pending: m.pending,
+                permissions: m.permissions.map(|p| format!("{:?}", p)),
+                communication_disabled_until: m.communication_disabled_until.and_then(|ts| ts.to_rfc3339()),
+            }),
             command_name: interaction.data.name.clone(),
             data,
             locale: Some(interaction.locale.clone()),

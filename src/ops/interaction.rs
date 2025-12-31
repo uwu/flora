@@ -56,6 +56,8 @@ pub(crate) struct SlashCommandOptionDef {
     pub kind: Option<String>,
     #[serde(default)]
     pub required: Option<bool>,
+    #[serde(default)]
+    pub options: Option<Vec<SlashCommandOptionDef>>,
 }
 
 #[op2(async)]
@@ -148,12 +150,19 @@ fn build_option(opt: SlashCommandOptionDef) -> Result<CreateCommandOption, JsErr
         Some("integer") => CommandOptionType::Integer,
         Some("number") => CommandOptionType::Number,
         Some("boolean") => CommandOptionType::Boolean,
+        Some("subcommand") => CommandOptionType::SubCommand,
+        Some("subcommand_group") => CommandOptionType::SubCommandGroup,
         _ => CommandOptionType::String,
     };
 
     let mut builder = CreateCommandOption::new(opt_type, opt.name, opt.description);
     if let Some(required) = opt.required {
         builder = builder.required(required);
+    }
+    if let Some(options) = opt.options {
+        for nested_opt in options {
+            builder = builder.add_sub_option(build_option(nested_opt)?);
+        }
     }
     Ok(builder)
 }

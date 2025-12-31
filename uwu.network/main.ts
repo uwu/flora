@@ -1,3 +1,5 @@
+const TAG_ALLOWED_ROLE = "880150867792232609";
+
 const regex =
   /(?:github\.com\/)?(?<owner>[A-Za-z\d-]+)\/(?<repo>[\w.-]+)(?:(?:#|\/(?:issues|pull)\/)(?<issue>\d+)(?:#issuecomment-(?<comment>\d+))?)?/g;
 
@@ -86,33 +88,164 @@ on("messageCreate", async (ctx) => {
     suppress = true;
   }
 
-  // shelter plugins
-  /**
-  const spMatches = msg.content.matchAll(shelterPluginRegex);
-  for (const [, query] of spMatches) {
-    console.log("query", query);
-    const req = await fetch(
-      `https://shindex.uwu.network/search?q=${encodeURIComponent(query)}`,
-    );
-
-    if (!req.ok) {
-      console.log({ request: req, err: req.statusText });
-      continue;
-    }
-    const results = (await req.json()) as PluginManifest[];
-
-    console.log({ results });
-    await ctx.reply({
-      content: results
-        .map(
-          (r) => `**[${r.name}](${r.url})** | ${r.description} (${r.author})`,
-        )
-        .join("\n"),
-    });
-  }
-  **/
-
   if (suppress) {
     await ctx.edit({ flags: SUPPRESS_EMBEDS });
   }
+});
+
+const tagCommand = defineSlashCommand({
+  name: "tag",
+  description: "Manage server tags",
+  subcommands: [
+    {
+      name: "create",
+      description: "Create a new tag",
+      options: [
+        {
+          name: "name",
+          description: "The tag name",
+          type: "string",
+          required: true,
+        },
+        {
+          name: "content",
+          description: "The tag content",
+          type: "string",
+          required: true,
+        },
+      ],
+      async run(ctx) {
+        if (!hasRole(ctx, TAG_ALLOWED_ROLE)) {
+          return await ctx.reply({
+            content: "You do not have permission to create tags.",
+            ephemeral: true,
+          });
+        }
+
+        const name = ctx.options.getString("name");
+        const content = ctx.options.getString("content");
+
+        const tagStore = kv.store("tags");
+        const existing = await tagStore.get(name);
+
+        if (existing) {
+          return await ctx.reply({
+            content: `A tag with the name "**${name}**" already exists.`,
+            ephemeral: true,
+          });
+        }
+
+        await tagStore.set(name, content);
+        return await ctx.reply(`Created tag "**${name}**"!`);
+      },
+    },
+    {
+      name: "view",
+      description: "View a tag",
+      options: [
+        {
+          name: "name",
+          description: "The tag name",
+          type: "string",
+          required: true,
+        },
+      ],
+      async run(ctx) {
+        const name = ctx.options.getString("name");
+
+        const tagStore = kv.store("tags");
+        const content = await tagStore.get(name);
+
+        if (!content) {
+          return await ctx.reply({
+            content: `Tag "**${name}**" not found.`,
+            ephemeral: true,
+          });
+        }
+
+        return await ctx.reply(content);
+      },
+    },
+    {
+      name: "edit",
+      description: "Edit an existing tag",
+      options: [
+        {
+          name: "name",
+          description: "The tag name",
+          type: "string",
+          required: true,
+        },
+        {
+          name: "content",
+          description: "The new tag content",
+          type: "string",
+          required: true,
+        },
+      ],
+      async run(ctx) {
+        if (!hasRole(ctx, TAG_ALLOWED_ROLE)) {
+          return await ctx.reply({
+            content: "You do not have permission to edit tags.",
+            ephemeral: true,
+          });
+        }
+
+        const name = ctx.options.getString("name");
+        const content = ctx.options.getString("content");
+
+        const tagStore = kv.store("tags");
+        const existing = await tagStore.get(name);
+
+        if (!existing) {
+          return await ctx.reply({
+            content: `Tag "**${name}**" not found.`,
+            ephemeral: true,
+          });
+        }
+
+        await tagStore.set(name, content);
+        return await ctx.reply(`Updated tag "**${name}**"!`);
+      },
+    },
+    {
+      name: "delete",
+      description: "Delete a tag",
+      options: [
+        {
+          name: "name",
+          description: "The tag name",
+          type: "string",
+          required: true,
+        },
+      ],
+      async run(ctx) {
+        if (!hasRole(ctx, TAG_ALLOWED_ROLE)) {
+          return await ctx.reply({
+            content: "You do not have permission to delete tags.",
+            ephemeral: true,
+          });
+        }
+
+        const name = ctx.options.getString("name");
+
+        const tagStore = kv.store("tags");
+        const existing = await tagStore.get(name);
+
+        if (!existing) {
+          return await ctx.reply({
+            content: `Tag "**${name}**" not found.`,
+            ephemeral: true,
+          });
+        }
+
+        await tagStore.delete(name);
+        return await ctx.reply(`Deleted tag "**${name}**"!`);
+      },
+    },
+  ],
+});
+
+createBot({
+  slashCommands: [tagCommand],
 });
