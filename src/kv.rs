@@ -12,9 +12,11 @@ use sqlx::{FromRow, Pool, Postgres};
 use tracing::{info, warn};
 use utoipa::ToSchema;
 
-const MAX_VALUE_SIZE: usize = 1024 * 1024; // 1MB
+const MAX_VALUE_SIZE: usize = 1024 * 1024;
+const DEFAULT_LIST_LIMIT: u32 = 100;
+const MAX_LIST_LIMIT: u32 = 1000;
+const METADATA_TREE_NAME: &str = "__metadata";
 
-/// Metadata for a KV store.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct KvStore {
     pub id: String,
@@ -33,6 +35,30 @@ struct KvStoreRow {
     updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct KvKeyMetadata {
+    pub expiration: Option<i64>,
+    #[serde(default)]
+    pub metadata: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct KvKeyInfo {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expiration: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ListKeysResult {
+    pub keys: Vec<KvKeyInfo>,
+    pub list_complete: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+}
+
 #[derive(Clone)]
 pub struct KvService {
     db: Pool<Postgres>,
@@ -45,7 +71,6 @@ impl KvService {
         Self { db, db_cache: Arc::new(RwLock::new(HashMap::new())), base_path }
     }
 
-    /// Create a new KV store for a guild.
     pub async fn create_store(&self, guild_id: String, store_name: String) -> Result<KvStore> {
         let row = sqlx::query_as::<_, KvStoreRow>(
             r#"
@@ -63,7 +88,6 @@ impl KvService {
         Ok(to_kv_store(row))
     }
 
-    /// Delete a KV store and its data.
     pub async fn delete_store(&self, guild_id: &str, store_name: &str) -> Result<()> {
         let result = sqlx::query(
             r#"
@@ -96,7 +120,6 @@ impl KvService {
         Ok(())
     }
 
-    /// List all KV stores for a guild.
     pub async fn list_stores(&self, guild_id: &str) -> Result<Vec<KvStore>> {
         let rows = sqlx::query_as::<_, KvStoreRow>(
             r#"
@@ -113,7 +136,6 @@ impl KvService {
         Ok(rows.into_iter().map(to_kv_store).collect())
     }
 
-    /// Get a value from a KV store.
     pub async fn get(&self, guild_id: &str, store_name: &str, key: &str) -> Result<Option<String>> {
         self.verify_store_exists(guild_id, store_name).await?;
 
@@ -127,13 +149,33 @@ impl KvService {
         }
     }
 
-    /// Set a value in a KV store.
+    pub async fn get_with_metadata(
+        &self,
+        guild_id: &str,
+        store_name: &str,
+        key: &str,
+    ) -> Result<Option<(String, Option<KvKeyMetadata>)>> {
+        self.verify_store_exists(guild_id, store_name).await?;
+
+        let db = self.get_or_open_db(guild_id, store_name)?;
+
+        let value = match db.get(key.as_bytes())? {
+            Some(bytes) => String::from_utf8(bytes.to_vec())?,
+            None => return Ok(None),
+        };
+
+        let metadata = self.get_metadata(&db, key)?;
+        Ok(Some((value, metadata)))
+    }
+
     pub async fn set(
         &self,
         guild_id: &str,
         store_name: &str,
         key: &str,
         value: &str,
+        expiration: Option<i64>,
+        metadata: Option<serde_json::Value>,
     ) -> Result<()> {
         self.verify_store_exists(guild_id, store_name).await?;
 
@@ -143,47 +185,123 @@ impl KvService {
 
         let db = self.get_or_open_db(guild_id, store_name)?;
         db.insert(key.as_bytes(), value.as_bytes())?;
+
+        if expiration.is_some() || metadata.is_some() {
+            let key_metadata = KvKeyMetadata { expiration, metadata };
+            let metadata_bytes = serde_json::to_vec(&key_metadata)?;
+            self.get_metadata_tree(&db)?
+                .insert(key.as_bytes(), metadata_bytes)?;
+        } else {
+            self.get_metadata_tree(&db)?.remove(key.as_bytes())?;
+        }
+
         Ok(())
     }
 
-    /// Delete a key from a KV store.
+    pub async fn update_metadata(
+        &self,
+        guild_id: &str,
+        store_name: &str,
+        key: &str,
+        metadata: Option<serde_json::Value>,
+    ) -> Result<()> {
+        self.verify_store_exists(guild_id, store_name).await?;
+
+        let db = self.get_or_open_db(guild_id, store_name)?;
+
+        let existing = self.get_metadata(&db, key)?;
+        let new_expiration = existing.map(|m| m.expiration).flatten();
+
+        if metadata.is_some() || new_expiration.is_some() {
+            let key_metadata = KvKeyMetadata { expiration: new_expiration, metadata };
+            let metadata_bytes = serde_json::to_vec(&key_metadata)?;
+            self.get_metadata_tree(&db)?
+                .insert(key.as_bytes(), metadata_bytes)?;
+        } else {
+            self.get_metadata_tree(&db)?.remove(key.as_bytes())?;
+        }
+
+        Ok(())
+    }
+
     pub async fn delete(&self, guild_id: &str, store_name: &str, key: &str) -> Result<()> {
         self.verify_store_exists(guild_id, store_name).await?;
 
         let db = self.get_or_open_db(guild_id, store_name)?;
         db.remove(key.as_bytes())?;
+        self.get_metadata_tree(&db)?.remove(key.as_bytes())?;
         Ok(())
     }
 
-    /// List all keys in a KV store, optionally filtered by prefix.
     pub async fn list_keys(
         &self,
         guild_id: &str,
         store_name: &str,
         prefix: Option<&str>,
-    ) -> Result<Vec<String>> {
+        limit: Option<u32>,
+        cursor: Option<&str>,
+    ) -> Result<ListKeysResult> {
         self.verify_store_exists(guild_id, store_name).await?;
 
         let db = self.get_or_open_db(guild_id, store_name)?;
+        let limit = limit.unwrap_or(DEFAULT_LIST_LIMIT).min(MAX_LIST_LIMIT);
         let mut keys = Vec::new();
 
-        for item in db.iter() {
-            let (key_bytes, _) = item?;
-            if let Ok(key) = String::from_utf8(key_bytes.to_vec()) {
-                if let Some(p) = prefix {
-                    if key.starts_with(p) {
-                        keys.push(key);
-                    }
+        let start_key = match cursor {
+            Some(c) => {
+                if prefix.is_some() {
+                    format!("{}{}", prefix.unwrap(), c)
                 } else {
-                    keys.push(key);
+                    c.to_string()
                 }
+            }
+            None => prefix.unwrap_or("").to_string(),
+        };
+
+        let start_bytes = start_key.as_bytes();
+        let iter = db.range(start_bytes..);
+
+        for item in iter {
+            let (key_bytes, _) = item?;
+            let key = match String::from_utf8(key_bytes.to_vec()) {
+                Ok(k) => k,
+                Err(_) => continue,
+            };
+
+            if let Some(p) = prefix {
+                if !key.starts_with(p) {
+                    break;
+                }
+                if let Some(c) = cursor {
+                    if key == format!("{}{}", p, c) {
+                        continue;
+                    }
+                }
+            }
+
+            let metadata = self.get_metadata(&db, &key)?;
+            let key_info = KvKeyInfo {
+                name: key.clone(),
+                expiration: metadata.as_ref().and_then(|m| m.expiration),
+                metadata: metadata.as_ref().and_then(|m| m.metadata.clone()),
+            };
+            keys.push(key_info);
+
+            if keys.len() >= limit as usize {
+                break;
             }
         }
 
-        Ok(keys)
+        let list_complete = keys.len() < limit as usize;
+        let cursor = if list_complete {
+            None
+        } else {
+            keys.last().map(|k| k.name.clone())
+        };
+
+        Ok(ListKeysResult { keys, list_complete, cursor })
     }
 
-    /// Export all KV stores for a guild.
     pub async fn export_guild(&self, guild_id: &str) -> Result<String> {
         let stores = self.list_stores(guild_id).await?;
         if stores.is_empty() {
@@ -231,6 +349,21 @@ impl KvService {
 
         info!(target: "flora:kv", guild_id, store_name, "opened sled instance");
         Ok(db_arc)
+    }
+
+    fn get_metadata_tree(&self, db: &Db) -> Result<sled::Tree> {
+        Ok(db.open_tree(METADATA_TREE_NAME)?)
+    }
+
+    fn get_metadata(&self, db: &Db, key: &str) -> Result<Option<KvKeyMetadata>> {
+        let tree = self.get_metadata_tree(db)?;
+        match tree.get(key.as_bytes())? {
+            Some(bytes) => {
+                let metadata: KvKeyMetadata = serde_json::from_slice(&bytes)?;
+                Ok(Some(metadata))
+            }
+            None => Ok(None),
+        }
     }
 
     async fn verify_store_exists(&self, guild_id: &str, store_name: &str) -> Result<()> {

@@ -21,6 +21,8 @@ pub struct SetValueParams {
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct SetValueRequest {
     pub value: String,
+    pub expiration: Option<i64>,
+    pub metadata: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -28,9 +30,6 @@ pub struct SetValueResponse {
     pub success: bool,
 }
 
-/// Set a value in a KV store
-///
-/// The value size is limited to 1MB.
 #[utoipa::path(
     put,
     path = "/api/kv/{guild_id}/{store_name}/{key}",
@@ -58,6 +57,16 @@ pub async fn set_value_handler(
 ) -> Result<ApiJson<SetValueResponse>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
     ensure_guild_admin(&state, &identity, &params.guild_id).await?;
-    state.kv.set(&params.guild_id, &params.store_name, &params.key, &req.value).await?;
+    state
+        .kv
+        .set(
+            &params.guild_id,
+            &params.store_name,
+            &params.key,
+            &req.value,
+            req.expiration,
+            req.metadata,
+        )
+        .await?;
     Ok(ApiJson(Json(SetValueResponse { success: true })))
 }

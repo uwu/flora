@@ -219,22 +219,61 @@ if (data) {
 // Delete a key
 await userStore.delete('alice')
 
-// List all keys
-const keys = await userStore.listKeys()
-console.log(keys) // ["alice", "bob", ...]
+// List keys with pagination
+const result = await userStore.list({ limit: 100 })
+console.log(result.keys) // [{ name: "alice", ... }, { name: "bob", ... }]
+console.log(result.list_complete) // false if more keys available
+console.log(result.cursor) // use for next page: list({ cursor: result.cursor })
+
+// Continue pagination
+if (!result.list_complete) {
+  const next = await userStore.list({ cursor: result.cursor })
+  // ...
+}
 
 // List keys with prefix filter
-const userKeys = await userStore.listKeys('user')
-console.log(userKeys) // Only keys starting with "user"
+const userKeys = await userStore.list({ prefix: 'user:' })
+console.log(userKeys.keys)
+
+// Get value with metadata
+const { value, metadata } = await userStore.getWithMetadata('alice')
+console.log(metadata) // { some: "metadata" } or undefined
 ```
 
 ### Store methods
 
 - `kv.store(name: string): KvStore` — Get a named KV store instance
 - `KvStore.get(key: string): Promise<string | null>` — Get value by key
-- `KvStore.set(key: string, value: string): Promise<void>` — Set value (max 1MB)
-- `KvStore.delete(key: string): Promise<void>` — Delete key
-- `KvStore.listKeys(prefix?: string): Promise<string[]>` — List all keys (optionally filtered by prefix)
+- `KvStore.getWithMetadata(key: string): Promise<{ value: string | null; metadata?: object }>` — Get value and metadata
+- `KvStore.set(key: string, value: string, options?: { expiration?: number; metadata?: object }): Promise<void>` — Set value with optional metadata and expiration (Unix timestamp in seconds)
+- `KvStore.updateMetadata(key: string, metadata: object | null): Promise<void>` — Update just the metadata for a key
+- `KvStore.delete(key: string): Promise<void>` — Delete key and its metadata
+- `KvStore.list(options?: { prefix?: string; limit?: number; cursor?: string }): Promise<{ keys: { name: string; expiration?: number; metadata?: object }[]; list_complete: boolean; cursor: string | null }>` — List keys with cursor-based pagination
+
+### List pagination
+
+The `list()` method returns a paginated result:
+
+```ts
+{
+  keys: [{ name: "key1", expiration?: number, metadata?: object }, ...],
+  list_complete: boolean,  // false means more keys available
+  cursor: string | null    // use for next page
+}
+```
+
+To list all keys, iterate until `list_complete` is true:
+
+```ts
+let cursor: string | null = null
+const allKeys: KvKeyInfo[] = []
+
+do {
+  const result = await store.list({ limit: 100, cursor })
+  allKeys.push(...result.keys)
+  cursor = result.cursor
+} while (!result.list_complete)
+```
 
 ### Important notes
 
@@ -242,7 +281,7 @@ console.log(userKeys) // Only keys starting with "user"
 - **Value size limit**: 1MB per value (enforced by backend)
 - **Guild isolation**: Each guild's KV data is stored separately
 - **Persistence**: Data is persisted to disk and survives bot restarts
-- **List performance**: `listKeys()` is not paginated. It may be slow for stores with millions of keys. Consider using a prefix filter for better performance.
+- **List performance**: `list()` returns max 1000 keys per call. Use pagination for large datasets.
 
 ## Development tips
 

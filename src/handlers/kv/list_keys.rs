@@ -8,6 +8,7 @@ use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     handlers::{auth::{require_identity, ensure_guild_admin}, error::ApiError, response::ApiJson},
+    kv::{ListKeysResult, KvKeyInfo},
     state::AppState,
 };
 
@@ -19,19 +20,19 @@ pub struct ListKeysParams {
 
 #[derive(Debug, Deserialize, IntoParams, ToSchema)]
 pub struct ListKeysQuery {
-    /// Optional prefix to filter keys
     pub prefix: Option<String>,
+    pub limit: Option<u32>,
+    pub cursor: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ListKeysResponse {
-    pub keys: Vec<String>,
+    pub keys: Vec<KvKeyInfo>,
+    pub list_complete: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
 }
 
-/// List all keys in a KV store
-///
-/// WARNING: This endpoint is not paginated. It may be slow for stores with millions of keys.
-/// Consider using a prefix filter to narrow results.
 #[utoipa::path(
     get,
     path = "/api/kv/{guild_id}/{store_name}",
@@ -54,10 +55,18 @@ pub async fn list_keys_handler(
     headers: HeaderMap,
     Path(params): Path<ListKeysParams>,
     Query(query): Query<ListKeysQuery>,
-) -> Result<ApiJson<ListKeysResponse>, ApiError> {
+) -> Result<ApiJson<ListKeysResult>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
     ensure_guild_admin(&state, &identity, &params.guild_id).await?;
-    let keys =
-        state.kv.list_keys(&params.guild_id, &params.store_name, query.prefix.as_deref()).await?;
-    Ok(ApiJson(Json(ListKeysResponse { keys })))
+    let result = state
+        .kv
+        .list_keys(
+            &params.guild_id,
+            &params.store_name,
+            query.prefix.as_deref(),
+            query.limit,
+            query.cursor.as_deref(),
+        )
+        .await?;
+    Ok(ApiJson(Json(result)))
 }
