@@ -16,6 +16,9 @@ const MAX_VALUE_SIZE: usize = 1024 * 1024;
 const DEFAULT_LIST_LIMIT: u32 = 100;
 const MAX_LIST_LIMIT: u32 = 1000;
 const METADATA_TREE_NAME: &str = "__metadata";
+const MAX_KEY_SIZE: usize = 512;
+const MAX_STORE_NAME_SIZE: usize = 64;
+const MAX_GUILD_ID_SIZE: usize = 32;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct KvStore {
@@ -72,6 +75,9 @@ impl KvService {
     }
 
     pub async fn create_store(&self, guild_id: String, store_name: String) -> Result<KvStore> {
+        validate_guild_id(&guild_id)?;
+        validate_store_name(&store_name)?;
+
         let row = sqlx::query_as::<_, KvStoreRow>(
             r#"
             INSERT INTO kv_stores (guild_id, store_name)
@@ -137,6 +143,7 @@ impl KvService {
     }
 
     pub async fn get(&self, guild_id: &str, store_name: &str, key: &str) -> Result<Option<String>> {
+        validate_key(key)?;
         self.verify_store_exists(guild_id, store_name).await?;
 
         let db = self.get_or_open_db(guild_id, store_name)?;
@@ -177,6 +184,7 @@ impl KvService {
         expiration: Option<i64>,
         metadata: Option<serde_json::Value>,
     ) -> Result<()> {
+        validate_key(key)?;
         self.verify_store_exists(guild_id, store_name).await?;
 
         if value.len() > MAX_VALUE_SIZE {
@@ -205,6 +213,7 @@ impl KvService {
         key: &str,
         metadata: Option<serde_json::Value>,
     ) -> Result<()> {
+        validate_key(key)?;
         self.verify_store_exists(guild_id, store_name).await?;
 
         let db = self.get_or_open_db(guild_id, store_name)?;
@@ -225,6 +234,7 @@ impl KvService {
     }
 
     pub async fn delete(&self, guild_id: &str, store_name: &str, key: &str) -> Result<()> {
+        validate_key(key)?;
         self.verify_store_exists(guild_id, store_name).await?;
 
         let db = self.get_or_open_db(guild_id, store_name)?;
@@ -241,6 +251,12 @@ impl KvService {
         limit: Option<u32>,
         cursor: Option<&str>,
     ) -> Result<ListKeysResult> {
+        if let Some(p) = prefix {
+            validate_prefix(p)?;
+        }
+        if let Some(c) = cursor {
+            validate_key(c)?;
+        }
         self.verify_store_exists(guild_id, store_name).await?;
 
         let db = self.get_or_open_db(guild_id, store_name)?;
@@ -390,6 +406,52 @@ impl KvService {
     fn db_path(&self, guild_id: &str, store_name: &str) -> PathBuf {
         self.base_path.join(guild_id).join(store_name)
     }
+}
+
+fn validate_guild_id(guild_id: &str) -> Result<()> {
+    if guild_id.is_empty() {
+        return Err(eyre!("guild_id cannot be empty"));
+    }
+    if guild_id.len() > MAX_GUILD_ID_SIZE {
+        return Err(eyre!("guild_id exceeds maximum size of {} characters", MAX_GUILD_ID_SIZE));
+    }
+    if guild_id.contains('/') || guild_id.contains('.') || guild_id.contains("..") {
+        return Err(eyre!("guild_id contains invalid characters"));
+    }
+    Ok(())
+}
+
+fn validate_store_name(store_name: &str) -> Result<()> {
+    if store_name.is_empty() {
+        return Err(eyre!("store_name cannot be empty"));
+    }
+    if store_name.len() > MAX_STORE_NAME_SIZE {
+        return Err(eyre!("store_name exceeds maximum size of {} characters", MAX_STORE_NAME_SIZE));
+    }
+    if store_name.contains('/') || store_name.contains('.') || store_name.contains("..") {
+        return Err(eyre!("store_name contains invalid characters"));
+    }
+    Ok(())
+}
+
+fn validate_key(key: &str) -> Result<()> {
+    if key.is_empty() {
+        return Err(eyre!("key cannot be empty"));
+    }
+    if key.len() > MAX_KEY_SIZE {
+        return Err(eyre!("key exceeds maximum size of {} characters", MAX_KEY_SIZE));
+    }
+    if key.contains('\0') {
+        return Err(eyre!("key contains null character"));
+    }
+    Ok(())
+}
+
+fn validate_prefix(prefix: &str) -> Result<()> {
+    if prefix.contains('\0') {
+        return Err(eyre!("prefix contains null character"));
+    }
+    Ok(())
 }
 
 fn db_key(guild_id: &str, store_name: &str) -> String {
