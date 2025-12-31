@@ -15,7 +15,7 @@ use tokio::runtime::Builder;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{error, info};
 
-use crate::{deployments::Deployment, ops};
+use crate::{deployments::Deployment, kv::KvService, ops};
 
 pub struct BotRuntime {
     sender: mpsc::UnboundedSender<RuntimeCommand>,
@@ -24,6 +24,7 @@ pub struct BotRuntime {
 struct JsRuntimeState {
     runtime: JsRuntime,
     dispatch_fn: Option<Global<v8::Function>>,
+    guild_id: Option<String>,
 }
 
 const BOOTSTRAP_SPECIFIER: &str = "ext:flora_bootstrap/bootstrap.js";
@@ -107,12 +108,13 @@ struct RuntimeThreadState {
     default_runtime: JsRuntimeState,
     guild_runtimes: HashMap<String, JsRuntimeState>,
     http: Arc<Http>,
+    kv: KvService,
 }
 
 impl BotRuntime {
-    pub fn new(http: Arc<Http>) -> Self {
+    pub fn new(http: Arc<Http>, kv: KvService) -> Self {
         let (sender, receiver) = mpsc::unbounded_channel();
-        thread::spawn(move || runtime_thread(receiver, http));
+        thread::spawn(move || runtime_thread(receiver, http, kv));
         Self { sender }
     }
 
@@ -156,7 +158,11 @@ impl BotRuntime {
     }
 }
 
-fn runtime_thread(mut receiver: mpsc::UnboundedReceiver<RuntimeCommand>, http: Arc<Http>) {
+fn runtime_thread(
+    mut receiver: mpsc::UnboundedReceiver<RuntimeCommand>,
+    http: Arc<Http>,
+    kv: KvService,
+) {
     let runtime = Builder::new_current_thread()
         .enable_all()
         .build()
@@ -164,9 +170,10 @@ fn runtime_thread(mut receiver: mpsc::UnboundedReceiver<RuntimeCommand>, http: A
 
     runtime.block_on(async move {
         let mut state = RuntimeThreadState {
-            default_runtime: new_js_runtime(http.clone()),
+            default_runtime: new_js_runtime(http.clone(), kv.clone(), None),
             guild_runtimes: HashMap::new(),
             http,
+            kv,
         };
 
         info!("flora JS runtime thread started");
@@ -205,7 +212,7 @@ fn runtime_thread(mut receiver: mpsc::UnboundedReceiver<RuntimeCommand>, http: A
     });
 }
 
-fn new_js_runtime(http: Arc<Http>) -> JsRuntimeState {
+fn new_js_runtime(http: Arc<Http>, kv: KvService, guild_id: Option<String>) -> JsRuntimeState {
     let blob_store = Arc::new(deno_web::BlobStore::default());
     let broadcast_channel = deno_web::InMemoryBroadcastChannel::default();
     let permissions =
@@ -219,7 +226,7 @@ fn new_js_runtime(http: Arc<Http>) -> JsRuntimeState {
             deno_net::deno_net::init(None, None),
             deno_tls::deno_tls::init(),
             bootstrap_extension(),
-            ops::extension(http),
+            ops::extension(http, kv.clone()),
         ],
         extension_transpiler: Some(Rc::new(|specifier, source| {
             match crate::transpile::transpile_if_typescript(&specifier, source.as_str())? {
@@ -231,7 +238,12 @@ fn new_js_runtime(http: Arc<Http>) -> JsRuntimeState {
         ..Default::default()
     });
     runtime.op_state().borrow_mut().put(permissions);
-    JsRuntimeState { runtime, dispatch_fn: None }
+
+    if let Some(ref gid) = guild_id {
+        runtime.op_state().borrow_mut().put(gid.clone());
+    }
+
+    JsRuntimeState { runtime, dispatch_fn: None, guild_id }
 }
 
 fn set_guild_context(js_state: &mut JsRuntimeState, guild_id: &str) -> Result<(), AnyError> {
@@ -294,7 +306,8 @@ async fn load_guild_deployment(
         guild_id = deployment.guild_id,
         "creating guild runtime"
     );
-    let mut runtime = new_js_runtime(state.http.clone());
+    let mut runtime =
+        new_js_runtime(state.http.clone(), state.kv.clone(), Some(deployment.guild_id.clone()));
     set_guild_context(&mut runtime, &deployment.guild_id)?;
     info!(
         target: "flora:runtime",

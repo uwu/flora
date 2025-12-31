@@ -9,6 +9,7 @@ pub mod deployments;
 pub mod error;
 pub mod guilds;
 pub mod health;
+pub mod kv;
 pub mod response;
 pub mod tokens;
 
@@ -21,6 +22,7 @@ pub fn create_router() -> Router<AppState> {
             (path = "/guilds", api = guilds::GuildApi),
             (path = "/tokens", api = tokens::TokenApi),
             (path = "/deployments", api = deployments::DeploymentApi),
+            (path = "/kv", api = kv::KvApi),
             (path = "/health", api = health::HealthApi)
         ),
         tags(
@@ -36,6 +38,7 @@ pub fn create_router() -> Router<AppState> {
         .nest("/guilds", guilds::router())
         .nest("/tokens", tokens::router())
         .nest("/deployments", deployments::router())
+        .nest("/kv", kv::router())
         .route("/health", get(health::health_check));
 
     let oapi_router = Router::new()

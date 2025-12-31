@@ -56,6 +56,12 @@ impl ApiError {
     }
 }
 
+impl From<eyre::Report> for ApiError {
+    fn from(err: eyre::Report) -> Self {
+        ApiError::internal(err)
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let status = match self {

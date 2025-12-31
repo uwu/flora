@@ -189,6 +189,100 @@ createBot({ slashCommands: [slashPing, slashEcho] });
 - The first token after the prefix is matched against `command.name`; remaining tokens are passed as `ctx.args`.
 - `ctx.reply` routes through the runtime `op_send_message` to Discord with a message reference when possible.
 
+## KV Store API
+
+Persistent key-value storage for bot data, scoped per guild.
+
+### Creating a store
+
+KV stores must be created via the backend API or CLI before they can be used in bot scripts. Each store is isolated to a specific guild.
+
+### Basic usage
+
+```ts
+import { kv } from '@flora/sdk'
+
+// Get a named store instance
+const userStore = kv.store('users')
+
+// Set a value (max 1MB)
+await userStore.set('alice', JSON.stringify({ name: 'Alice', score: 100 }))
+
+// Get a value
+const data = await userStore.get('alice')
+// Returns string or null if not found
+if (data) {
+  const user = JSON.parse(data)
+  console.log(user.name) // "Alice"
+}
+
+// Delete a key
+await userStore.delete('alice')
+
+// List keys with pagination
+const result = await userStore.list({ limit: 100 })
+console.log(result.keys) // [{ name: "alice", ... }, { name: "bob", ... }]
+console.log(result.list_complete) // false if more keys available
+console.log(result.cursor) // use for next page: list({ cursor: result.cursor })
+
+// Continue pagination
+if (!result.list_complete) {
+  const next = await userStore.list({ cursor: result.cursor })
+  // ...
+}
+
+// List keys with prefix filter
+const userKeys = await userStore.list({ prefix: 'user:' })
+console.log(userKeys.keys)
+
+// Get value with metadata
+const { value, metadata } = await userStore.getWithMetadata('alice')
+console.log(metadata) // { some: "metadata" } or undefined
+```
+
+### Store methods
+
+- `kv.store(name: string): KvStore` — Get a named KV store instance
+- `KvStore.get(key: string): Promise<string | null>` — Get value by key
+- `KvStore.getWithMetadata(key: string): Promise<{ value: string | null; metadata?: object }>` — Get value and metadata
+- `KvStore.set(key: string, value: string, options?: { expiration?: number; metadata?: object }): Promise<void>` — Set value with optional metadata and expiration (Unix timestamp in seconds)
+- `KvStore.updateMetadata(key: string, metadata: object | null): Promise<void>` — Update just the metadata for a key
+- `KvStore.delete(key: string): Promise<void>` — Delete key and its metadata
+- `KvStore.list(options?: { prefix?: string; limit?: number; cursor?: string }): Promise<{ keys: { name: string; expiration?: number; metadata?: object }[]; list_complete: boolean; cursor: string | null }>` — List keys with cursor-based pagination
+
+### List pagination
+
+The `list()` method returns a paginated result:
+
+```ts
+{
+  keys: [{ name: "key1", expiration?: number, metadata?: object }, ...],
+  list_complete: boolean,  // false means more keys available
+  cursor: string | null    // use for next page
+}
+```
+
+To list all keys, iterate until `list_complete` is true:
+
+```ts
+let cursor: string | null = null
+const allKeys: KvKeyInfo[] = []
+
+do {
+  const result = await store.list({ limit: 100, cursor })
+  allKeys.push(...result.keys)
+  cursor = result.cursor
+} while (!result.list_complete)
+```
+
+### Important notes
+
+- **Store creation**: Use the backend API or CLI to create stores before using them
+- **Value size limit**: 1MB per value (enforced by backend)
+- **Guild isolation**: Each guild's KV data is stored separately
+- **Persistence**: Data is persisted to disk and survives bot restarts
+- **List performance**: `list()` returns max 1000 keys per call. Use pagination for large datasets.
+
 ## Development tips
 
 - Type definitions live in `dist/types` for editor intellisense when consuming the bundled SDK.

@@ -3,6 +3,7 @@ mod bundler;
 mod deployments;
 mod discord_handler;
 mod handlers;
+mod kv;
 mod ops;
 mod runtime;
 mod state;
@@ -19,6 +20,7 @@ use discord_handler::DiscordHandler;
 use eyre::eyre;
 use fred::prelude::*;
 use handlers::create_router;
+use kv::KvService;
 use runtime::BotRuntime;
 use serenity::all::{Client, GatewayIntents};
 use sqlx::migrate::Migrator;
@@ -73,6 +75,7 @@ async fn main() -> Result<()> {
     let deployment_service =
         DeploymentService::new(pool.clone(), valkey_client.clone(), valkey_task);
     let token_service = TokenService::new(pool.clone());
+    let kv_service = KvService::new(pool.clone(), "./data/kv".into());
     let auth_task = valkey_client.clone().init().await?;
     let auth_service = AuthService::new(
         AuthConfig {
@@ -95,7 +98,7 @@ async fn main() -> Result<()> {
     let app_info = http.get_current_application_info().await?;
     http.set_application_id(app_info.id);
 
-    let runtime = Arc::new(BotRuntime::new(http.clone()));
+    let runtime = Arc::new(BotRuntime::new(http.clone(), kv_service.clone()));
     runtime.initialize().await.map_err(|err| eyre!(err))?;
 
     if let Err(err) = runtime.load_user_script("dist/sdk-bundle.js").await {
@@ -132,6 +135,7 @@ async fn main() -> Result<()> {
         deployments: deployment_service.clone(),
         auth: auth_service.clone(),
         tokens: token_service.clone(),
+        kv: kv_service.clone(),
         http: http.clone(),
     };
 

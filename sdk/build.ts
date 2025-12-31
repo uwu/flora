@@ -30,6 +30,7 @@ code += `
   global.createBot = global.flora.createBot;
   global.defineCommand = global.flora.defineCommand;
   global.defineSlashCommand = global.flora.defineSlashCommand;
+  global.kv = global.flora.kv;
 })(globalThis);
 `;
 
