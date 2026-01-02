@@ -1,13 +1,15 @@
 use axum::{Json, extract::State, http::HeaderMap};
 use tracing::error;
 
+use super::DeploymentResponse;
 use crate::{
-    handlers::auth::{ensure_guild_admin, require_identity},
-    handlers::{error::ApiError, response::ApiJson},
+    handlers::{
+        auth::{ensure_guild_admin, require_identity},
+        error::ApiError,
+        response::ApiJson,
+    },
     state::AppState,
 };
-
-use super::DeploymentResponse;
 
 /// List every stored deployment.
 #[utoipa::path(

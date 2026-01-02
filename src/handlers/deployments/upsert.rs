@@ -10,8 +10,11 @@ use utoipa::ToSchema;
 use crate::{
     bundler::{DeploymentFile, bundle_files},
     deployments::Deployment,
-    handlers::auth::{ensure_guild_admin, require_identity},
-    handlers::{error::ApiError, response::ApiJson},
+    handlers::{
+        auth::{ensure_guild_admin, require_identity},
+        error::ApiError,
+        response::ApiJson,
+    },
     state::AppState,
 };
 

@@ -5,8 +5,10 @@ use axum::{
 };
 use serde::Serialize;
 use tracing::error;
-use utoipa::openapi::{RefOr, content::ContentBuilder, response::ResponseBuilder};
-use utoipa::{PartialSchema, ToSchema};
+use utoipa::{
+    PartialSchema, ToSchema,
+    openapi::{RefOr, content::ContentBuilder, response::ResponseBuilder},
+};
 
 /// Canonical error envelope returned by the HTTP API.
 #[derive(Debug, Serialize, ToSchema)]

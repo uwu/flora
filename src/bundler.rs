@@ -1,5 +1,7 @@
-use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 
 use deno_core::ModuleName;
 use oxc::{

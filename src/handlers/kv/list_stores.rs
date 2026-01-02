@@ -7,7 +7,11 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
 use crate::{
-    handlers::{auth::{require_identity, ensure_guild_admin}, error::ApiError, response::ApiJson},
+    handlers::{
+        auth::{ensure_guild_admin, require_identity},
+        error::ApiError,
+        response::ApiJson,
+    },
     kv::KvStore,
     state::AppState,
 };

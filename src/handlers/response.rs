@@ -6,8 +6,10 @@ use axum::{
 };
 use cookie::Cookie;
 use serde::Serialize;
-use utoipa::openapi::{RefOr, content::ContentBuilder, response::ResponseBuilder};
-use utoipa::{IntoResponses, ToSchema};
+use utoipa::{
+    IntoResponses, ToSchema,
+    openapi::{RefOr, content::ContentBuilder, response::ResponseBuilder},
+};
 
 /// JSON wrapper that also carries utoipa response metadata.
 #[derive(Debug)]

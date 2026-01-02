@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
+use serenity::http::Http;
+
 use crate::{
     auth::AuthService, deployments::DeploymentService, kv::KvService, runtime::BotRuntime,
     tokens::TokenService,
 };
-use serenity::http::Http;
 
 /// Shared application state injected into all HTTP handlers.
 #[derive(Clone)]

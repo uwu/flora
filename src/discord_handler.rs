@@ -377,7 +377,9 @@ impl From<&CommandInteraction> for InteractionCreatePayload {
                 flags: m.flags.bits(),
                 pending: m.pending,
                 permissions: m.permissions.map(|p| format!("{:?}", p)),
-                communication_disabled_until: m.communication_disabled_until.and_then(|ts| ts.to_rfc3339()),
+                communication_disabled_until: m
+                    .communication_disabled_until
+                    .and_then(|ts| ts.to_rfc3339()),
             }),
             command_name: interaction.data.name.clone(),
             data,

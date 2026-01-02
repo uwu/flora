@@ -11,8 +11,10 @@ use deno_permissions::{PermissionsContainer, RuntimePermissionDescriptorParser};
 use serde_json::Value;
 use serenity::http::Http;
 use sys_traits::impls::RealSys;
-use tokio::runtime::Builder;
-use tokio::sync::{mpsc, oneshot};
+use tokio::{
+    runtime::Builder,
+    sync::{mpsc, oneshot},
+};
 use tracing::{error, info};
 
 use crate::{deployments::Deployment, kv::KvService, ops};

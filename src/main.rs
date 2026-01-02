@@ -11,10 +11,11 @@ mod tokens;
 mod transpile;
 mod v8_init;
 
+use std::{future::IntoFuture, net::SocketAddr, path::Path, sync::Arc};
+
 use auth::{AuthConfig, AuthService};
 use color_eyre::eyre::Result;
-use deno_tls::rustls;
-use deno_tls::rustls::crypto::CryptoProvider;
+use deno_tls::{rustls, rustls::crypto::CryptoProvider};
 use deployments::DeploymentService;
 use discord_handler::DiscordHandler;
 use eyre::eyre;
@@ -23,10 +24,8 @@ use handlers::create_router;
 use kv::KvService;
 use runtime::BotRuntime;
 use serenity::all::{Client, GatewayIntents};
-use sqlx::migrate::Migrator;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{migrate::Migrator, postgres::PgPoolOptions};
 use state::AppState;
-use std::{future::IntoFuture, net::SocketAddr, path::Path, sync::Arc};
 use tokens::TokenService;
 use tokio::net::TcpListener;
 use tracing::error;

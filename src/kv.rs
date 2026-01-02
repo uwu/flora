@@ -71,11 +71,7 @@ struct BoundedCache {
 
 impl BoundedCache {
     fn new(capacity: usize) -> Self {
-        Self {
-            map: HashMap::new(),
-            order: VecDeque::new(),
-            capacity,
-        }
+        Self { map: HashMap::new(), order: VecDeque::new(), capacity }
     }
 
     fn get(&self, key: &str) -> Option<&Arc<Db>> {
@@ -109,7 +105,11 @@ pub struct KvService {
 
 impl KvService {
     pub fn new(db: Pool<Postgres>, base_path: PathBuf) -> Self {
-        Self { db, db_cache: Arc::new(RwLock::new(BoundedCache::new(MAX_DB_CACHE_SIZE))), base_path }
+        Self {
+            db,
+            db_cache: Arc::new(RwLock::new(BoundedCache::new(MAX_DB_CACHE_SIZE))),
+            base_path,
+        }
     }
 
     pub async fn create_store(&self, guild_id: String, store_name: String) -> Result<KvStore> {
@@ -235,8 +235,7 @@ impl KvService {
         if expiration.is_some() || metadata.is_some() {
             let key_metadata = KvKeyMetadata { expiration, metadata };
             let metadata_bytes = serde_json::to_vec(&key_metadata)?;
-            self.get_metadata_tree(&db)?
-                .insert(key.as_bytes(), metadata_bytes)?;
+            self.get_metadata_tree(&db)?.insert(key.as_bytes(), metadata_bytes)?;
         } else {
             self.get_metadata_tree(&db)?.remove(key.as_bytes())?;
         }
@@ -262,8 +261,7 @@ impl KvService {
         if metadata.is_some() || new_expiration.is_some() {
             let key_metadata = KvKeyMetadata { expiration: new_expiration, metadata };
             let metadata_bytes = serde_json::to_vec(&key_metadata)?;
-            self.get_metadata_tree(&db)?
-                .insert(key.as_bytes(), metadata_bytes)?;
+            self.get_metadata_tree(&db)?.insert(key.as_bytes(), metadata_bytes)?;
         } else {
             self.get_metadata_tree(&db)?.remove(key.as_bytes())?;
         }
@@ -347,11 +345,7 @@ impl KvService {
         }
 
         let list_complete = keys.len() < limit as usize;
-        let cursor = if list_complete {
-            None
-        } else {
-            keys.last().map(|k| k.name.clone())
-        };
+        let cursor = if list_complete { None } else { keys.last().map(|k| k.name.clone()) };
 
         Ok(ListKeysResult { keys, list_complete, cursor })
     }

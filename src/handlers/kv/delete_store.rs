@@ -1,9 +1,17 @@
-use axum::extract::{Path, State};
-use axum::http::HeaderMap;
+use axum::{
+    extract::{Path, State},
+    http::HeaderMap,
+};
 use serde::Deserialize;
 use utoipa::ToSchema;
 
-use crate::{handlers::{auth::{require_identity, ensure_guild_admin}, error::ApiError}, state::AppState};
+use crate::{
+    handlers::{
+        auth::{ensure_guild_admin, require_identity},
+        error::ApiError,
+    },
+    state::AppState,
+};
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct DeleteStoreParams {

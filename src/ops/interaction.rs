@@ -3,9 +3,8 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use serde::Deserialize;
-use serenity::all::CommandOptionType;
 use serenity::{
-    all::CreateAttachment,
+    all::{CommandOptionType, CreateAttachment},
     builder::{
         CreateCommand, CreateCommandOption, CreateInteractionResponse,
         CreateInteractionResponseMessage,
@@ -228,8 +227,9 @@ pub(crate) async fn build_interaction_response(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use base64::{Engine, engine::general_purpose::STANDARD};
+
+    use super::*;
 
     fn http() -> Arc<Http> {
         Arc::new(Http::new("test"))

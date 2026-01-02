@@ -53,9 +53,11 @@ fn is_typescript_specifier(specifier: &str) -> bool {
 
 /// Detect whether source code contains TypeScript-specific syntax.
 pub fn detect_typescript(source: &str) -> bool {
-    use oxc::allocator::Allocator;
-    use oxc::ast_visit::Visit;
-    use oxc::parser::{Parser, ParserReturn};
+    use oxc::{
+        allocator::Allocator,
+        ast_visit::Visit,
+        parser::{Parser, ParserReturn},
+    };
 
     let allocator = Allocator::default();
     let source_type = SourceType::default().with_typescript(true).with_module(true);

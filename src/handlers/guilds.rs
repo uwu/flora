@@ -3,8 +3,11 @@ use serde::Serialize;
 use utoipa::{OpenApi, ToSchema};
 
 use crate::{
-    handlers::auth::{has_admin_permissions, require_identity},
-    handlers::{error::ApiError, response::ApiJson},
+    handlers::{
+        auth::{has_admin_permissions, require_identity},
+        error::ApiError,
+        response::ApiJson,
+    },
     state::AppState,
 };
 
