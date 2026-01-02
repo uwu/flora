@@ -344,33 +344,52 @@ impl AuthRequestBuilder for reqwest::RequestBuilder {
 }
 
 fn collect_files(root: &Path) -> Result<Vec<DeploymentFile>> {
+    use ignore::WalkBuilder;
+
+    let walker = WalkBuilder::new(root)
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true)
+        .ignore(true)
+        .hidden(true)
+        .follow_links(false)
+        .filter_entry(|entry| {
+            let dominated_directory =
+                |name| entry.file_type().is_some_and(|ft| ft.is_dir()) && entry.file_name() == name;
+            !dominated_directory("node_modules")
+                && !dominated_directory("target")
+                && !dominated_directory("dist")
+                && !dominated_directory(".output")
+                && !dominated_directory(".next")
+                && !dominated_directory(".nuxt")
+                && !dominated_directory(".svelte-kit")
+                && !dominated_directory("build")
+                && !dominated_directory("out")
+                && !dominated_directory(".turbo")
+                && !dominated_directory(".cache")
+                && !dominated_directory("coverage")
+                && !dominated_directory(".parcel-cache")
+                && !dominated_directory(".vite")
+        })
+        .build();
+
     let mut files = Vec::new();
-    collect_files_recursive(root, root, &mut files)?;
+    for result in walker {
+        let entry = result.map_err(|err| eyre!("Failed to walk directory: {err}"))?;
+        let path = entry.path();
+        if path.is_dir() || !is_allowed_extension(path) {
+            continue;
+        }
+        let contents = fs::read_to_string(path)
+            .map_err(|err| eyre!("Failed to read {}: {err}", path.display()))?;
+        let rel = path_to_relative(path, root)?;
+        files.push(DeploymentFile { path: rel, contents });
+    }
+
     if files.is_empty() {
         return Err(eyre!("No files found under {}", root.display()));
     }
     Ok(files)
-}
-
-fn collect_files_recursive(root: &Path, dir: &Path, files: &mut Vec<DeploymentFile>) -> Result<()> {
-    for entry in
-        fs::read_dir(dir).map_err(|err| eyre!("Failed to read {}: {err}", dir.display()))?
-    {
-        let entry = entry?;
-        let path = entry.path();
-        if path.is_dir() {
-            collect_files_recursive(root, &path, files)?;
-            continue;
-        }
-        if !is_allowed_extension(&path) {
-            continue;
-        }
-        let contents = fs::read_to_string(&path)
-            .map_err(|err| eyre!("Failed to read {}: {err}", path.display()))?;
-        let rel = path_to_relative(&path, root)?;
-        files.push(DeploymentFile { path: rel, contents });
-    }
-    Ok(())
 }
 
 fn is_allowed_extension(path: &Path) -> bool {
@@ -395,10 +414,7 @@ async fn handle_kv_command(client: &Client, config: &CliConfig, cmd: KvCommands)
     match cmd {
         KvCommands::CreateStore { guild, name } => {
             let url = format!("{}/kv/stores", config.api_url);
-            let body = CreateStoreRequest {
-                guild_id: guild.clone(),
-                store_name: name.clone(),
-            };
+            let body = CreateStoreRequest { guild_id: guild.clone(), store_name: name.clone() };
             let resp: CreateStoreResponse = client
                 .post(url)
                 .maybe_bearer(&config.token)?
@@ -408,7 +424,10 @@ async fn handle_kv_command(client: &Client, config: &CliConfig, cmd: KvCommands)
                 .error_for_status()?
                 .json()
                 .await?;
-            println!("Created KV store '{}' for guild {}", resp.store.store_name, resp.store.guild_id);
+            println!(
+                "Created KV store '{}' for guild {}",
+                resp.store.store_name, resp.store.guild_id
+            );
         }
         KvCommands::ListStores { guild } => {
             let url = format!("{}/kv/stores?guild_id={}", config.api_url, guild);
@@ -431,25 +450,19 @@ async fn handle_kv_command(client: &Client, config: &CliConfig, cmd: KvCommands)
         }
         KvCommands::DeleteStore { guild, name } => {
             let url = format!("{}/kv/stores/{}/{}", config.api_url, guild, name);
-            client
-                .delete(url)
-                .maybe_bearer(&config.token)?
-                .send()
-                .await?
-                .error_for_status()?;
+            client.delete(url).maybe_bearer(&config.token)?.send().await?.error_for_status()?;
             println!("Deleted KV store '{}' for guild {}", name, guild);
         }
         KvCommands::Set { guild, store, key, value, expiration, metadata } => {
             let url = format!("{}/kv/{}/{}/{}", config.api_url, guild, store, key);
             let metadata_json: Option<serde_json::Value> = match metadata {
-                Some(ref m) => Some(serde_json::from_str(m).map_err(|e| eyre!("Invalid JSON metadata: {}", e))?),
+                Some(ref m) => Some(
+                    serde_json::from_str(m).map_err(|e| eyre!("Invalid JSON metadata: {}", e))?,
+                ),
                 None => None,
             };
-            let body = SetValueRequest {
-                value: value.clone(),
-                expiration,
-                metadata: metadata_json,
-            };
+            let body =
+                SetValueRequest { value: value.clone(), expiration, metadata: metadata_json };
             client
                 .put(url)
                 .maybe_bearer(&config.token)?
@@ -480,12 +493,7 @@ async fn handle_kv_command(client: &Client, config: &CliConfig, cmd: KvCommands)
         }
         KvCommands::Delete { guild, store, key } => {
             let url = format!("{}/kv/{}/{}/{}", config.api_url, guild, store, key);
-            client
-                .delete(url)
-                .maybe_bearer(&config.token)?
-                .send()
-                .await?
-                .error_for_status()?;
+            client.delete(url).maybe_bearer(&config.token)?.send().await?.error_for_status()?;
             println!("Deleted key '{}' from store '{}' for guild {}", key, store, guild);
         }
         KvCommands::ListKeys { guild, store, prefix, limit } => {
@@ -511,7 +519,12 @@ async fn handle_kv_command(client: &Client, config: &CliConfig, cmd: KvCommands)
             if resp.keys.is_empty() {
                 println!("No keys found in store '{}'", store);
             } else {
-                println!("Keys in store '{}' ({} of {} shown):", store, resp.keys.len(), if resp.list_complete { "all" } else { "partial" });
+                println!(
+                    "Keys in store '{}' ({} of {} shown):",
+                    store,
+                    resp.keys.len(),
+                    if resp.list_complete { "all" } else { "partial" }
+                );
                 for key in &resp.keys {
                     let mut line = format!("  - {}", key.name);
                     if let Some(exp) = key.expiration {
@@ -523,7 +536,11 @@ async fn handle_kv_command(client: &Client, config: &CliConfig, cmd: KvCommands)
                     println!("{}", line);
                 }
                 if !resp.list_complete {
-                    println!("\nMore keys available. Use --limit {} to get more, or --cursor {} for next page.", limit.unwrap_or(100), resp.cursor.clone().unwrap_or_default());
+                    println!(
+                        "\nMore keys available. Use --limit {} to get more, or --cursor {} for next page.",
+                        limit.unwrap_or(100),
+                        resp.cursor.clone().unwrap_or_default()
+                    );
                 }
             }
         }

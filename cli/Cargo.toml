@@ -7,6 +7,7 @@ edition = "2024"
 clap = { workspace = true, features = ["derive", "env"] }
 color-eyre = { workspace = true }
 confy = "0.6"
+ignore = "0.4"
 openssl = { workspace = true }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["derive"] }
