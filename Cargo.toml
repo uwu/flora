@@ -36,6 +36,7 @@ deno_webidl = "0.225.0"
 dotenvy = "0.15"
 eyre = "0.6.12"
 fred = "10.1.0"
+futures = "0.3"
 hex = "0.4"
 hmac = "0.12"
 openssl = { version = "0.10.75", features = ["vendored"] }
@@ -46,13 +47,14 @@ oxc = { version = "0.101.0", features = [
   "transformer"
 ] }
 oxc_sourcemap = "6"
+parking_lot = "0.12"
 rand = "0.8"
 reqwest = { version = "0.12.25", features = ["json"] }
-sled = "0.34"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serenity = "0.12.4"
 sha2 = "0.10"
+sled = "0.34"
 sqlx = { version = "0.8.6", features = [
   "chrono",
   "macros",
@@ -60,10 +62,11 @@ sqlx = { version = "0.8.6", features = [
   "runtime-tokio-rustls",
   "uuid"
 ] }
-sys_traits = { version = "0.1.17", features = ["real", "libc"] }
+sys_traits = { version = "0.1.17", features = ["libc", "real"] }
 thiserror = "2.0.17"
 time = "0.3"
 tokio = { version = "1", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
 tracing = "0.1.43"
 tracing-subscriber = { version = "0.3.22", features = [
   "chrono",
@@ -71,8 +74,8 @@ tracing-subscriber = { version = "0.3.22", features = [
   "serde",
   "time"
 ] }
-urlencoding = "2.1"
 url = "2"
+urlencoding = "2.1"
 utoipa = { version = "5.4.0", features = [
   "auto_into_responses",
   "axum_extras",
@@ -83,3 +86,6 @@ utoipa = { version = "5.4.0", features = [
   "uuid"
 ] }
 utoipa-scalar = { version = "0.3.0", features = ["axum"] }
+
+[dev-dependencies]
+tempfile = "3"

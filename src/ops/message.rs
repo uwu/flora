@@ -111,7 +111,9 @@ pub struct EditMessageArgs {
 }
 
 #[op2]
-pub fn op_log(_state: &mut OpState, #[serde] args: Vec<serde_json::Value>) {
+pub fn op_log(state: &mut OpState, #[serde] args: Vec<serde_json::Value>) {
+    let guild_id = state.try_borrow::<String>().cloned();
+
     let text = args
         .into_iter()
         .map(|v| match v {
@@ -121,7 +123,15 @@ pub fn op_log(_state: &mut OpState, #[serde] args: Vec<serde_json::Value>) {
         .collect::<Vec<_>>()
         .join(" ");
 
-    info!(target = "flora:js", "{}", text);
+    // Send to log sink for SSE streaming
+    crate::log_sink::log_js(tracing::Level::INFO, guild_id.clone(), text.clone());
+
+    info!(
+        target: "flora:js",
+        guild_id = guild_id.as_deref().unwrap_or("default"),
+        "{}",
+        text
+    );
 }
 
 #[op2(async)]

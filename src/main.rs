@@ -4,6 +4,8 @@ mod deployments;
 mod discord_handler;
 mod handlers;
 mod kv;
+mod log_sink;
+mod metrics;
 mod ops;
 mod runtime;
 mod state;

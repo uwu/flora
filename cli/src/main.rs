@@ -1,10 +1,15 @@
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::{Result, eyre};
+use futures_util::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
@@ -58,6 +63,18 @@ enum Commands {
     Login {
         /// API token from /tokens
         token: String,
+    },
+    /// View runtime logs
+    Logs {
+        /// Discord guild ID to filter logs (optional)
+        #[arg(long)]
+        guild: Option<String>,
+        /// Follow logs in real-time (stream via SSE)
+        #[arg(short, long)]
+        follow: bool,
+        /// Maximum number of log entries to fetch (default 100, max 1000)
+        #[arg(short = 'n', long, default_value = "100")]
+        limit: usize,
     },
     /// KV store management
     #[command(subcommand)]
@@ -170,6 +187,7 @@ struct DeploymentResponse {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 struct HealthResponse(String);
 
 #[derive(Serialize)]
@@ -184,6 +202,7 @@ struct CreateStoreResponse {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 struct KvStore {
     id: String,
     guild_id: String,
@@ -218,6 +237,21 @@ struct KvKeyInfo {
     metadata: Option<serde_json::Value>,
 }
 
+/// A log entry from the runtime.
+#[derive(Deserialize, Debug, Clone)]
+struct LogEntry {
+    /// Timestamp in milliseconds since Unix epoch.
+    timestamp: i64,
+    /// Log level (trace, debug, info, warn, error).
+    level: String,
+    /// Target/module that produced the log.
+    target: String,
+    /// Guild ID if applicable.
+    guild_id: Option<String>,
+    /// Log message.
+    message: String,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
@@ -241,9 +275,133 @@ async fn main() -> Result<()> {
             println!("Saved token to config");
         }
         Commands::Kv(kv_cmd) => handle_kv_command(&client, &config, kv_cmd).await?,
+        Commands::Logs { guild, follow, limit } => {
+            if follow {
+                stream_logs(&client, &config, guild).await?
+            } else {
+                logs(&client, &config, guild, limit).await?
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn logs(
+    client: &Client,
+    config: &CliConfig,
+    guild: Option<String>,
+    limit: usize,
+) -> Result<()> {
+    let url = match &guild {
+        Some(guild_id) => format!("{}/logs/{}?limit={}", config.api_url, guild_id, limit),
+        None => format!("{}/logs?limit={}", config.api_url, limit),
+    };
+
+    let logs: Vec<LogEntry> = client
+        .get(&url)
+        .maybe_bearer(&config.token)?
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+
+    if logs.is_empty() {
+        println!("No logs found");
+    } else {
+        for entry in logs {
+            print_log_entry(&entry);
+        }
     }
 
     Ok(())
+}
+
+async fn stream_logs(client: &Client, config: &CliConfig, guild: Option<String>) -> Result<()> {
+    let url = match &guild {
+        Some(guild_id) => format!("{}/logs/{}/stream", config.api_url, guild_id),
+        None => format!("{}/logs/stream", config.api_url),
+    };
+
+    // Set up Ctrl+C handler
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
+    ctrlc::set_handler(move || {
+        r.store(false, Ordering::SeqCst);
+    })?;
+
+    println!("Streaming logs... (press Ctrl+C to stop)");
+
+    let response =
+        client.get(&url).maybe_bearer(&config.token)?.send().await?.error_for_status()?;
+
+    let mut stream = response.bytes_stream();
+    let mut buffer = String::new();
+
+    while running.load(Ordering::SeqCst) {
+        // Use tokio::select to check for shutdown while waiting for data
+        let chunk = tokio::select! {
+            chunk = stream.next() => chunk,
+            _ = tokio::time::sleep(std::time::Duration::from_millis(100)) => {
+                continue;
+            }
+        };
+
+        match chunk {
+            Some(Ok(bytes)) => {
+                buffer.push_str(&String::from_utf8_lossy(&bytes));
+
+                // Process complete SSE events from buffer
+                while let Some(event_end) = buffer.find("\n\n") {
+                    let event = buffer[..event_end].to_string();
+                    buffer = buffer[event_end + 2..].to_string();
+
+                    // Parse SSE event
+                    for line in event.lines() {
+                        if let Some(data) = line.strip_prefix("data: ")
+                            && let Ok(entry) = serde_json::from_str::<LogEntry>(data)
+                        {
+                            print_log_entry(&entry);
+                        }
+                    }
+                }
+            }
+            Some(Err(e)) => {
+                eprintln!("Stream error: {}", e);
+                break;
+            }
+            None => {
+                println!("Stream ended");
+                break;
+            }
+        }
+    }
+
+    println!("\nStopped streaming logs");
+    Ok(())
+}
+
+fn print_log_entry(entry: &LogEntry) {
+    use chrono::{TimeZone, Utc};
+
+    let timestamp = Utc
+        .timestamp_millis_opt(entry.timestamp)
+        .single()
+        .map(|dt| dt.format("%Y-%m-%d %H:%M:%S%.3f").to_string())
+        .unwrap_or_else(|| entry.timestamp.to_string());
+
+    let level = match entry.level.as_str() {
+        "error" => "\x1b[31mERROR\x1b[0m",
+        "warn" => "\x1b[33mWARN\x1b[0m",
+        "info" => "\x1b[32mINFO\x1b[0m",
+        "debug" => "\x1b[34mDEBUG\x1b[0m",
+        "trace" => "\x1b[90mTRACE\x1b[0m",
+        other => other,
+    };
+
+    let guild = entry.guild_id.as_deref().unwrap_or("-");
+
+    println!("{} {} [{}] {}: {}", timestamp, level, guild, entry.target, entry.message);
 }
 
 async fn deploy(

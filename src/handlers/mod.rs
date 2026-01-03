@@ -10,6 +10,8 @@ pub mod error;
 pub mod guilds;
 pub mod health;
 pub mod kv;
+pub mod logs;
+pub mod metrics;
 pub mod response;
 pub mod tokens;
 
@@ -23,7 +25,9 @@ pub fn create_router() -> Router<AppState> {
             (path = "/tokens", api = tokens::TokenApi),
             (path = "/deployments", api = deployments::DeploymentApi),
             (path = "/kv", api = kv::KvApi),
-            (path = "/health", api = health::HealthApi)
+            (path = "/health", api = health::HealthApi),
+            (path = "/metrics", api = metrics::MetricsApi),
+            (path = "/logs", api = logs::LogsApi)
         ),
         tags(
             (name = "flora", description = "Flora bot runtime API")
@@ -39,7 +43,13 @@ pub fn create_router() -> Router<AppState> {
         .nest("/tokens", tokens::router())
         .nest("/deployments", deployments::router())
         .nest("/kv", kv::router())
-        .route("/health", get(health::health_check));
+        .route("/health", get(health::health_check))
+        .route("/metrics", get(metrics::get_metrics))
+        .route("/metrics/json", get(metrics::get_metrics_json))
+        .route("/logs", get(logs::get_logs))
+        .route("/logs/stream", get(logs::stream_logs))
+        .route("/logs/{guild_id}", get(logs::get_guild_logs))
+        .route("/logs/{guild_id}/stream", get(logs::stream_guild_logs));
 
     let oapi_router = Router::new()
         .merge(Scalar::with_url("/scalar", ApiDoc::openapi()))
