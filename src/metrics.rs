@@ -35,6 +35,7 @@ pub struct Metrics {
 }
 
 /// Tracks latency samples for percentile calculations.
+#[allow(dead_code)]
 struct LatencyTracker {
     samples: Vec<u64>,
     index: usize,
@@ -46,6 +47,7 @@ impl LatencyTracker {
         Self { samples: Vec::new(), index: 0, capacity: 1000 }
     }
 
+    #[allow(dead_code)]
     fn record(&mut self, latency_us: u64) {
         if self.samples.len() < self.capacity {
             self.samples.push(latency_us);
@@ -89,16 +91,19 @@ impl Metrics {
     }
 
     /// Increments the isolate count.
+    #[allow(dead_code)]
     pub fn isolate_created(&self) {
         self.isolate_count.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Decrements the isolate count.
+    #[allow(dead_code)]
     pub fn isolate_destroyed(&self) {
         self.isolate_count.fetch_sub(1, Ordering::Relaxed);
     }
 
     /// Records a successful dispatch with latency.
+    #[allow(dead_code)]
     pub fn dispatch_success(&self, latency: std::time::Duration) {
         self.dispatch_total.fetch_add(1, Ordering::Relaxed);
         if let Ok(mut tracker) = self.dispatch_latencies.write() {
@@ -107,27 +112,32 @@ impl Metrics {
     }
 
     /// Records a failed dispatch.
+    #[allow(dead_code)]
     pub fn dispatch_error(&self) {
         self.dispatch_total.fetch_add(1, Ordering::Relaxed);
         self.dispatch_errors.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Records a timeout error.
+    #[allow(dead_code)]
     pub fn timeout_error(&self) {
         self.timeout_errors.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Records an OOM error.
+    #[allow(dead_code)]
     pub fn oom_error(&self) {
         self.oom_errors.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Records an isolate restart.
+    #[allow(dead_code)]
     pub fn isolate_restarted(&self) {
         self.isolate_restarts.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Records a runtime thread restart.
+    #[allow(dead_code)]
     pub fn runtime_restarted(&self) {
         self.runtime_restarts.fetch_add(1, Ordering::Relaxed);
     }
@@ -246,10 +256,12 @@ pub fn metrics() -> &'static Metrics {
 }
 
 /// RAII guard for timing dispatch operations.
+#[allow(dead_code)]
 pub struct DispatchTimer {
     start: Instant,
 }
 
+#[allow(dead_code)]
 impl DispatchTimer {
     pub fn new() -> Self {
         Self { start: Instant::now() }
