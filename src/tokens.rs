@@ -22,7 +22,6 @@ struct TokenRow {
     label: Option<String>,
     created_at: DateTime<Utc>,
     last_used_at: Option<DateTime<Utc>>,
-    token_hash: String,
 }
 
 #[derive(Clone)]
@@ -61,7 +60,7 @@ impl TokenService {
     pub async fn list_tokens(&self, user_id: &str) -> Result<Vec<UserToken>> {
         let rows = sqlx::query_as::<_, TokenRow>(
             r#"
-            SELECT token_id, user_id, label, created_at, last_used_at, token_hash
+            SELECT token_id, user_id, label, created_at, last_used_at
             FROM user_tokens
             WHERE user_id = $1
             ORDER BY created_at DESC
