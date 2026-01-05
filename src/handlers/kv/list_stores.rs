@@ -3,7 +3,7 @@ use axum::{
     extract::{Query, State},
     http::HeaderMap,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::{
@@ -19,11 +19,6 @@ use crate::{
 #[derive(Debug, Deserialize, IntoParams, ToSchema)]
 pub struct ListStoresQuery {
     pub guild_id: String,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct ListStoresResponse {
-    pub stores: Vec<KvStore>,
 }
 
 /// List all KV stores for a guild
