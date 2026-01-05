@@ -186,11 +186,6 @@ pub fn log_js(level: Level, guild_id: Option<String>, message: String) {
     log_sink().log(level, "flora:js", guild_id, message);
 }
 
-/// Convenience function to log from the runtime itself.
-pub fn log_runtime(level: Level, guild_id: Option<String>, message: String) {
-    log_sink().log(level, "flora:runtime", guild_id, message);
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
