@@ -1,170 +1,134 @@
-type MessageAuthor = {
-  id: string
-  username: string
-  discriminator?: number | null
-  bot: boolean
+// Global type declarations for Flora SDK
+// These types are available globally in user scripts without imports
+
+import type {
+  MessagePayload,
+  MessageUpdatePayload,
+  MessageDeletePayload,
+  MessageDeleteBulkPayload,
+  InteractionCreatePayload,
+  UserPayload,
+  MemberPayload,
+  ListKeysResult,
+  KvKeyInfo,
+} from './generated'
+
+import type {
+  Embed,
+  EmbedField,
+  Attachment,
+  AllowedMentions,
+  MessageReplyOptions,
+  MessageEditOptions,
+  Command,
+  SlashCommand,
+  SlashCommandOption,
+  SlashSubcommand,
+  EmbedBuilder as EmbedBuilderClass,
+} from './index'
+
+// Base context type
+type BaseContext<TPayload> = {
+  msg: TPayload
+  reply: (content: string | MessageReplyOptions) => Promise<void>
+  edit: (content: string | MessageEditOptions) => Promise<void>
 }
 
-type GuildMember = {
-  user: MessageAuthor
-  nick?: string | null
-  avatar?: string | null
-  roles: string[]
-  joined_at?: string | null
-  premium_since?: string | null
-  deaf: boolean
-  mute: boolean
-  flags: number
-  pending: boolean
-  permissions?: string | null
-  communication_disabled_until?: string | null
+// Context types
+type MessageContext = BaseContext<MessagePayload>
+type MessageUpdateContext = BaseContext<MessageUpdatePayload>
+type MessageDeleteContext = BaseContext<MessageDeletePayload>
+type MessageDeleteBulkContext = BaseContext<MessageDeleteBulkPayload>
+
+type SlashCommandOptions = Record<string, string | number | boolean | undefined>
+type InteractionContext = BaseContext<InteractionCreatePayload> & {
+  options: SlashCommandOptions
 }
 
-type EmbedField = {
-  name: string
-  value: string
-  inline?: boolean
+// KV Store types
+interface KvStore {
+  get(key: string): Promise<string | null>
+  getWithMetadata(key: string): Promise<{ value: string | null; metadata?: Record<string, unknown> }>
+  set(key: string, value: string, options?: {
+    expiration?: number
+    metadata?: Record<string, unknown>
+  }): Promise<void>
+  updateMetadata(key: string, metadata: Record<string, unknown> | null): Promise<void>
+  delete(key: string): Promise<void>
+  list(options?: {
+    prefix?: string
+    limit?: number
+    cursor?: string
+  }): Promise<ListKeysResult>
 }
-
-type Embed = {
-  title?: string
-  description?: string
-  url?: string
-  color?: number
-  timestamp?: string
-  footer?: { text: string; iconUrl?: string }
-  image?: { url: string }
-  thumbnail?: { url: string }
-  author?: { name?: string; url?: string; iconUrl?: string }
-  fields?: EmbedField[]
-}
-
-type Attachment =
-  | { url: string; filename?: string; description?: string }
-  | { data: string; filename: string; description?: string }
-
-type AllowedMentions = {
-  parse?: Array<'everyone' | 'roles' | 'users'>
-  users?: string[]
-  roles?: string[]
-  repliedUser?: boolean
-}
-
-type MessageReplyOptions = {
-  content?: string
-  embeds?: Embed[]
-  attachments?: Attachment[]
-  tts?: boolean
-  allowedMentions?: AllowedMentions
-  replyTo?: string | null
-  ephemeral?: boolean
-  flags?: number
-}
-
-type MessageEditOptions = {
-  content?: string
-  embeds?: Embed[]
-  allowedMentions?: AllowedMentions
-  flags?: number
-}
-
-type SlashCommandOptions = Record<string, string | number | boolean | SlashCommandOptions>
 
 declare global {
-  type EmbedBuilder
-  type MessageAuthor
-  type GuildMember
-  type Embed
-  type EmbedField
-  type Attachment
-  type AllowedMentions
-  type MessageReplyOptions
-  type MessageEditOptions
-  type SlashCommandOptions
+  // Type aliases available globally
+  type MessageAuthor = UserPayload
+  type GuildMember = MemberPayload
+  type InteractionPayload = InteractionCreatePayload
 
-  type MessageContext
-  type MessageUpdateContext
-  type MessageDeleteContext
-  type MessageDeleteBulkContext
-  type InteractionContext
-  type Command
-  type SlashCommand
-  type SlashCommandOption
+  // SDK types
+  type EmbedBuilder = EmbedBuilderClass
 
-  const EmbedBuilder: new (initial?: Embed) => EmbedBuilder
-  const embed: (initial?: Embed) => EmbedBuilder
-  const on: (
+  // Event handlers
+  function on(
     event: 'messageCreate',
     handler: (ctx: MessageContext) => void | Promise<void>
-  ) => void
-  const on: (
+  ): void
+  function on(
     event: 'messageUpdate',
     handler: (ctx: MessageUpdateContext) => void | Promise<void>
-  ) => void
-  const on: (
+  ): void
+  function on(
     event: 'messageDelete',
     handler: (ctx: MessageDeleteContext) => void | Promise<void>
-  ) => void
-  const on: (
+  ): void
+  function on(
     event: 'messageDeleteBulk',
     handler: (ctx: MessageDeleteBulkContext) => void | Promise<void>
-  ) => void
-  const on: (
+  ): void
+  function on(
     event: 'interactionCreate',
     handler: (ctx: InteractionContext) => void | Promise<void>
-  ) => void
+  ): void
 
-  const createBot: (options: {
+  // Bot creation
+  function createBot(options: {
     prefix?: string
     commands?: Command[]
     prefixCommands?: Command[]
     slashCommands?: SlashCommand[]
-  }) => void
-  const defineCommand: (command: {
+  }): void
+
+  // Command definition helpers
+  function defineCommand(command: {
     name: string
     description?: string
     run: (ctx: MessageContext & { args: string[] }) => Promise<void> | void
-  }) => Command
-  const defineSlashCommand: (command: {
+  }): Command
+
+  function defineSlashCommand(command: {
     name: string
     description: string
     options?: SlashCommandOption[]
-    subcommands?: Array<{
-      name: string
-      description: string
-      options?: SlashCommandOption[]
-      run: (ctx: InteractionContext) => Promise<void> | void
-    }>
+    subcommands?: SlashSubcommand[]
     run?: (ctx: InteractionContext) => Promise<void> | void
-  }) => SlashCommand
-  const hasRole: (ctx: InteractionContext, roleId: string) => boolean
-  const getSubcommand: (ctx: InteractionContext) => string | undefined
-  const getSubcommandGroup: (ctx: InteractionContext) => string | undefined
-  const kv: {
-    store: (name: string) => {
-      get: (key: string) => Promise<string | null>
-      set: (key: string, value: string, options?: {
-        expiration?: number
-        metadata?: Record<string, unknown>
-      }) => Promise<void>
-      delete: (key: string) => Promise<void>
-      list: (options?: {
-        prefix?: string
-        limit?: number
-        cursor?: string
-      }) => Promise<{
-        keys: Array<{
-          name: string
-          expiration?: number
-          metadata?: Record<string, unknown>
-        }>
-        list_complete: boolean
-        cursor: string | null
-      }>
-    }
-  }
+  }): SlashCommand
 
-  export {}
+  // Utility functions
+  function hasRole(ctx: InteractionContext, roleId: string): boolean
+  function getSubcommand(ctx: InteractionContext): string | undefined
+  function getSubcommandGroup(ctx: InteractionContext): string | undefined
+
+  // Embed builder
+  const EmbedBuilder: new (initial?: Embed) => EmbedBuilderClass
+  function embed(initial?: Embed): EmbedBuilderClass
+
+  // KV store
+  const kv: {
+    store(name: string): KvStore
+  }
 }
 
 export {}

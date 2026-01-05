@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use color_eyre::{Report, eyre::eyre};
 use serde::Serialize;
+use ts_rs::TS;
 use serenity::all::{
     ApplicationId, ChannelId, CommandInteraction, Context, EventHandler, Guild, GuildId,
     Interaction, Message, MessageId, MessageUpdateEvent, Ready, User, async_trait,
@@ -192,7 +193,8 @@ impl EventHandler for DiscordHandler {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 struct UserPayload {
     id: String,
     username: String,
@@ -211,7 +213,8 @@ impl From<&User> for UserPayload {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 struct MemberPayload {
     user: UserPayload,
     nick: Option<String>,
@@ -227,7 +230,8 @@ struct MemberPayload {
     communication_disabled_until: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 struct MessagePayload {
     id: String,
     channel_id: String,
@@ -274,7 +278,8 @@ impl From<&Message> for MessagePayload {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 struct MessageUpdatePayload {
     id: String,
     channel_id: String,
@@ -320,27 +325,31 @@ impl MessageUpdatePayload {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 struct MessageDeletePayload {
     id: String,
     channel_id: String,
     guild_id: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 struct MessageDeleteBulkPayload {
     ids: Vec<String>,
     channel_id: String,
     guild_id: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 struct ReadyPayload {
     user: UserPayload,
     guild_ids: Vec<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 struct InteractionCreatePayload {
     interaction_id: String,
     interaction_token: String,

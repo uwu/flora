@@ -3,6 +3,7 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use serde::Deserialize;
+use ts_rs::TS;
 use serenity::{
     all::{CommandOptionType, CreateAttachment},
     builder::{
@@ -19,7 +20,8 @@ use super::message::{
     build_embed,
 };
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub(crate) struct InteractionResponseArgs {
     #[serde(alias = "interactionId")]
     pub interaction_id: String,
@@ -33,21 +35,24 @@ pub(crate) struct InteractionResponseArgs {
     pub ephemeral: Option<bool>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub(crate) struct UpsertGuildCommandsArgs {
     #[serde(alias = "guildId")]
     pub guild_id: String,
     pub commands: Vec<SlashCommandDef>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub(crate) struct SlashCommandDef {
     pub name: String,
     pub description: Option<String>,
     pub options: Option<Vec<SlashCommandOptionDef>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub(crate) struct SlashCommandOptionDef {
     pub name: String,
     pub description: String,

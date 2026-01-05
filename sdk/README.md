@@ -1,309 +1,281 @@
-# Runtime & SDK API
+# Flora SDK
 
-Reference documentation fo flora.
+TypeScript SDK for building Discord bots with Flora.
 
-## Runtime API (global, always available)
+## Overview
 
-- `on(event: string, handler: (ctx) => void | Promise<void>)`: register a handler for a Discord event. Multiple handlers per event are allowed.
-- `ctx.msg`: the raw event payload passed from the Rust runtime.
-- `ctx.reply(message: string | MessageReplyOptions): Promise<void>`: send a message back to the same channel. Strings reply inline to the triggering message when an ID is present; pass an object to use embeds, attachments, allowed mentions, or to opt out of replying.
-- `console.log(...args)`: forwarded to Rust tracing (`flora:js`) for structured logs. This is temporary.
+The SDK provides a type-safe API for building Discord bots. Types are auto-generated from the Rust runtime using `ts-rs`, ensuring they stay in sync with the backend.
 
-### Event names and payload shapes
-
-Events mirror Serenity events bridged in `src/discord_handler.rs`.
+## Quick Start
 
 ```ts
-type MessageAuthor = {
-  id: string;
-  username: string;
-  discriminator?: number | null;
-  bot: boolean;
-};
+// All SDK functions are available globally - no imports needed!
 
-type MessagePayload = {
-  id: string;
-  channel_id: string;
-  guild_id?: string | null;
-  content: string;
-  author: MessageAuthor;
-};
-
-type MessageUpdatePayload = {
-  id: string;
-  channel_id: string;
-  guild_id?: string | null;
-  content?: string | null;
-  author?: MessageAuthor | null;
-  edited_timestamp?: string | null;
-  old?: MessagePayload | null;
-  new?: MessagePayload | null;
-};
-
-// Events you can subscribe to
-on("ready", (ctx) => {
-  /* ctx.msg: { user, guild_ids } */
-});
-on("messageCreate", (ctx: { msg: MessagePayload; reply: Function }) => {
-  /* … */
-});
-on("messageUpdate", (ctx: { msg: MessageUpdatePayload; reply: Function }) => {
-  /* … */
-});
-on("messageDelete", (ctx) => {
-  /* ctx.msg: { id, channel_id, guild_id? } */
-});
-on("messageDeleteBulk", (ctx) => {
-  /* ctx.msg: { ids: string[], channel_id, guild_id? } */
-});
-```
-
-Notes:
-
-- Handlers run inside a single-threaded V8 isolate per guild; avoid blocking work.
-- `reply` accepts either a string or a `MessageReplyOptions` object (see below). Strings are replied inline; set `replyTo: null` in the options to send without referencing the original message.
-- If no guild-specific isolate exists, events fall back to the default runtime.
-
-`MessageReplyOptions` shape:
-
-```ts
-type MessageReplyOptions = {
-  content?: string;
-  embeds?: Array<{
-    title?: string;
-    description?: string;
-    url?: string;
-    color?: number; // hex RGB, e.g. 0x5865f2
-    footer?: { text: string; iconUrl?: string };
-    image?: { url: string };
-    thumbnail?: { url: string };
-    author?: { name?: string; url?: string; iconUrl?: string };
-    fields?: Array<{ name: string; value: string; inline?: boolean }>;
-  }>;
-  attachments?: Array<
-    | { url: string; filename?: string; description?: string }
-    | { data: string; filename: string; description?: string }
-  >; // data expects base64
-  tts?: boolean;
-  allowedMentions?: {
-    parse?: ("everyone" | "roles" | "users")[];
-    users?: string[];
-    roles?: string[];
-    repliedUser?: boolean;
-  };
-  replyTo?: string | null; // override or disable auto-reply
-  ephemeral?: boolean; // only for interaction replies
-};
-```
-
-## SDK API (imported from `dist/sdk-bundle.js`)
-
-The SDK builds on the runtime helpers to simplify prefix-style commands.
-
-```ts
-/// defineCommand, createBot are globally available, see example/ dir
 const ping = defineCommand({
   name: "ping",
   description: "Respond with pong",
   run: async (ctx) => {
-    await ctx.reply(`pong (${ctx.args.join(" ") || "no args"})`);
-
-    // Rich reply with embeds, attachment, and mention controls
-    await ctx.reply({
-      content: "Here is your data",
-      embeds: [
-        {
-          title: "Daily Status",
-          description: "All systems nominal",
-          color: 0x00ff99,
-          fields: [
-            { name: "Shard", value: "east-1" },
-            { name: "Latency", value: "42ms", inline: true },
-          ],
-        },
-      ],
-      attachments: [
-        { url: "https://example.com/report.csv", filename: "report.csv" },
-      ],
-      allowedMentions: { parse: ["users"], repliedUser: false },
-    });
+    await ctx.reply(`pong! args: ${ctx.args.join(" ") || "none"}`);
   },
 });
 
 createBot({
-  prefix: "!", // optional; defaults to "!"
-  commands: [ping], // or use prefixCommands for legacy naming
+  prefix: "!",
+  commands: [ping],
 });
 ```
 
-### Exports
+## Runtime API (Always Available)
 
-- `defineCommand(command: { name: string; description?: string; run(ctx): void | Promise<void> })`: returns the command unchanged; use it for type safety and clarity.
-- `createBot(options)`: wires message handlers for prefix commands.
-- `options.prefix?: string` — command prefix (default `"!"`).
-- `options.commands?: Command[]` — commands to register (preferred).
-- `options.prefixCommands?: Command[]` — alias of `commands` for compatibility.
-- `options.slashCommands?: SlashCommand[]` — handlers invoked for `interactionCreate` slash events.
-- Types re-exported for consumers: `MessageAuthor`, `MessagePayload`, `MessageContext`, `MessageUpdatePayload`, `MessageUpdateContext`, `MessageDeletePayload`, `MessageDeleteContext`, `MessageDeleteBulkPayload`, `MessageDeleteBulkContext`, `Command`.
-- Types re-exported for slash commands: `SlashCommand`, `SlashCommandOption`, `InteractionContext`, `InteractionPayload`.
+These globals are injected by the Flora runtime:
 
-Slash commands
+### Event Handlers
 
 ```ts
-const slashPing = defineSlashCommand({
-  name: "ping",
-  description: "Replies with pong",
+// Register event handlers
+on("messageCreate", async (ctx) => {
+  console.log(`Message from ${ctx.msg.author.username}: ${ctx.msg.content}`);
+});
+
+on("messageUpdate", async (ctx) => {
+  console.log(`Message ${ctx.msg.id} was edited`);
+});
+
+on("messageDelete", async (ctx) => {
+  console.log(`Message ${ctx.msg.id} was deleted`);
+});
+
+on("interactionCreate", async (ctx) => {
+  console.log(`Slash command: ${ctx.msg.command_name}`);
+});
+```
+
+### Context Methods
+
+Every event handler receives a context object with:
+
+- `ctx.msg` - The raw event payload
+- `ctx.reply(message)` - Send a reply (string or options object)
+- `ctx.edit(options)` - Edit the original message
+
+## SDK API
+
+### Prefix Commands
+
+```ts
+const greet = defineCommand({
+  name: "greet",
+  description: "Greet someone",
   run: async (ctx) => {
-    await ctx.reply({ content: "pong", ephemeral: true });
+    const name = ctx.args[0] || "world";
+    await ctx.reply(`Hello, ${name}!`);
   },
 });
 
-const slashEcho = defineSlashCommand({
+createBot({
+  prefix: "!",  // Default: "!"
+  commands: [greet],
+});
+```
+
+### Slash Commands
+
+```ts
+const echo = defineSlashCommand({
   name: "echo",
-  description: "Echo back your input",
+  description: "Echo your input",
   options: [
     {
       name: "text",
-      description: "What should I repeat?",
+      description: "Text to echo",
       type: "string",
       required: true,
     },
   ],
-  async run(ctx) {
-    const content = ctx.msg?.data?.options?.[0]?.value ?? "(nothing)";
-    await ctx.reply({ content });
+  run: async (ctx) => {
+    const text = ctx.options.text as string;
+    await ctx.reply({ content: text, ephemeral: true });
   },
 });
 
-createBot({ slashCommands: [slashPing, slashEcho] });
+createBot({
+  slashCommands: [echo],
+});
 ```
 
-- `ctx.msg` matches the `InteractionPayload` shape (ids, token, user, locale, command name, raw `data`).
-- `ctx.reply` routes through interaction responses; pass `ephemeral: true` for private replies.
-- Slash command options support types: `string` (default), `integer`, `number`, `boolean`; set `required: true` as needed.
+### Slash Command Subcommands
 
-### How command dispatch works
+```ts
+const settings = defineSlashCommand({
+  name: "settings",
+  description: "Manage settings",
+  subcommands: [
+    {
+      name: "get",
+      description: "Get a setting",
+      options: [{ name: "key", description: "Setting key", type: "string", required: true }],
+      run: async (ctx) => {
+        const key = ctx.options.key as string;
+        await ctx.reply(`Setting ${key}: ...`);
+      },
+    },
+    {
+      name: "set",
+      description: "Set a setting",
+      options: [
+        { name: "key", description: "Setting key", type: "string", required: true },
+        { name: "value", description: "Setting value", type: "string", required: true },
+      ],
+      run: async (ctx) => {
+        const { key, value } = ctx.options as { key: string; value: string };
+        await ctx.reply(`Set ${key} = ${value}`);
+      },
+    },
+  ],
+});
 
-- The SDK registers an internal `on("messageCreate")` handler.
-- Incoming messages are ignored if authored by bots or if the content does not start with the configured prefix.
-- The first token after the prefix is matched against `command.name`; remaining tokens are passed as `ctx.args`.
-- `ctx.reply` routes through the runtime `op_send_message` to Discord with a message reference when possible.
+createBot({ slashCommands: [settings] });
+```
+
+### Rich Replies
+
+```ts
+await ctx.reply({
+  content: "Here's some info",
+  embeds: [
+    {
+      title: "Status Report",
+      description: "All systems operational",
+      color: 0x00ff00,
+      fields: [
+        { name: "Uptime", value: "99.9%", inline: true },
+        { name: "Latency", value: "42ms", inline: true },
+      ],
+      footer: { text: "Last updated" },
+      timestamp: new Date().toISOString(),
+    },
+  ],
+  attachments: [
+    { url: "https://example.com/report.csv", filename: "report.csv" },
+  ],
+  allowedMentions: { parse: ["users"], repliedUser: false },
+  ephemeral: true, // Only for slash commands
+});
+```
+
+### Embed Builder
+
+```ts
+const myEmbed = embed()
+  .setTitle("Hello!")
+  .setDescription("This is a rich embed")
+  .setColor(0x5865f2)
+  .addField("Field 1", "Value 1", true)
+  .addField("Field 2", "Value 2", true)
+  .setFooter("Powered by Flora")
+  .toJSON();
+
+await ctx.reply({ embeds: [myEmbed] });
+```
 
 ## KV Store API
 
-Persistent key-value storage for bot data, scoped per guild.
-
-### Creating a store
-
-KV stores must be created via the backend API or CLI before they can be used in bot scripts. Each store is isolated to a specific guild.
-
-### Basic usage
+Persistent key-value storage scoped per guild.
 
 ```ts
-import { kv } from '@flora/sdk'
+// Get a named store
+const store = kv.store("mydata");
 
-// Get a named store instance
-const userStore = kv.store('users')
+// Basic operations
+await store.set("key", "value");
+const value = await store.get("key");  // string | null
+await store.delete("key");
 
-// Set a value (max 1MB)
-await userStore.set('alice', JSON.stringify({ name: 'Alice', score: 100 }))
+// With metadata and expiration
+await store.set("session", JSON.stringify(data), {
+  expiration: Math.floor(Date.now() / 1000) + 3600,  // 1 hour
+  metadata: { userId: "123" },
+});
 
-// Get a value
-const data = await userStore.get('alice')
-// Returns string or null if not found
-if (data) {
-  const user = JSON.parse(data)
-  console.log(user.name) // "Alice"
-}
-
-// Delete a key
-await userStore.delete('alice')
+// Get with metadata
+const { value, metadata } = await store.getWithMetadata("session");
 
 // List keys with pagination
-const result = await userStore.list({ limit: 100 })
-console.log(result.keys) // [{ name: "alice", ... }, { name: "bob", ... }]
-console.log(result.list_complete) // false if more keys available
-console.log(result.cursor) // use for next page: list({ cursor: result.cursor })
-
-// Continue pagination
+const result = await store.list({ prefix: "user:", limit: 100 });
+for (const key of result.keys) {
+  console.log(key.name, key.metadata);
+}
 if (!result.list_complete) {
-  const next = await userStore.list({ cursor: result.cursor })
+  const nextPage = await store.list({ cursor: result.cursor });
+}
+```
+
+## Utility Functions
+
+```ts
+// Check if user has a role
+if (hasRole(ctx, "123456789")) {
   // ...
 }
 
-// List keys with prefix filter
-const userKeys = await userStore.list({ prefix: 'user:' })
-console.log(userKeys.keys)
+// Get subcommand name
+const sub = getSubcommand(ctx);  // "get" | "set" | undefined
 
-// Get value with metadata
-const { value, metadata } = await userStore.getWithMetadata('alice')
-console.log(metadata) // { some: "metadata" } or undefined
+// Get subcommand group
+const group = getSubcommandGroup(ctx);
 ```
 
-### Store methods
+## Types
 
-- `kv.store(name: string): KvStore` — Get a named KV store instance
-- `KvStore.get(key: string): Promise<string | null>` — Get value by key
-- `KvStore.getWithMetadata(key: string): Promise<{ value: string | null; metadata?: object }>` — Get value and metadata
-- `KvStore.set(key: string, value: string, options?: { expiration?: number; metadata?: object }): Promise<void>` — Set value with optional metadata and expiration (Unix timestamp in seconds)
-- `KvStore.updateMetadata(key: string, metadata: object | null): Promise<void>` — Update just the metadata for a key
-- `KvStore.delete(key: string): Promise<void>` — Delete key and its metadata
-- `KvStore.list(options?: { prefix?: string; limit?: number; cursor?: string }): Promise<{ keys: { name: string; expiration?: number; metadata?: object }[]; list_complete: boolean; cursor: string | null }>` — List keys with cursor-based pagination
+The SDK exports types auto-generated from Rust:
 
-### List pagination
+### Event Payloads
+- `UserPayload` - Discord user data
+- `MemberPayload` - Guild member data
+- `MessagePayload` - Message event data
+- `MessageUpdatePayload` - Message update event data
+- `MessageDeletePayload` - Message delete event data
+- `InteractionCreatePayload` - Slash command interaction data
+- `ReadyPayload` - Bot ready event data
 
-The `list()` method returns a paginated result:
+### Context Types
+- `MessageContext` - Context for message events
+- `MessageUpdateContext` - Context for message update events
+- `InteractionContext` - Context for slash command interactions
 
-```ts
-{
-  keys: [{ name: "key1", expiration?: number, metadata?: object }, ...],
-  list_complete: boolean,  // false means more keys available
-  cursor: string | null    // use for next page
-}
+### Command Types
+- `Command` - Prefix command definition
+- `SlashCommand` - Slash command definition
+- `SlashCommandOption` - Slash command option
+- `SlashSubcommand` - Slash command subcommand
+
+### KV Types
+- `ListKeysResult` - Result from `kv.store().list()`
+- `KvKeyInfo` - Key information including metadata
+
+## Development
+
+```bash
+# Generate TypeScript types from Rust
+./scripts/generate-types.sh
+
+# Build the SDK bundle
+bun run sdk/build.ts
+
+# Run tests
+cd sdk && bun test
 ```
 
-To list all keys, iterate until `list_complete` is true:
+## Architecture
 
-```ts
-let cursor: string | null = null
-const allKeys: KvKeyInfo[] = []
-
-do {
-  const result = await store.list({ limit: 100, cursor })
-  allKeys.push(...result.keys)
-  cursor = result.cursor
-} while (!result.list_complete)
+```
+Rust Structs (src/)
+    ↓ ts-rs derives
+sdk/src/generated/*.ts (wire format types)
+    ↓ imported by
+sdk/src/index.ts (SDK runtime + type aliases)
+    ↓ bundled by rolldown
+dist/sdk-bundle.js (IIFE for V8 runtime)
 ```
 
-### Important notes
-
-- **Store creation**: Use the backend API or CLI to create stores before using them
-- **Value size limit**: 1MB per value (enforced by backend)
-- **Guild isolation**: Each guild's KV data is stored separately
-- **Persistence**: Data is persisted to disk and survives bot restarts
-- **List performance**: `list()` returns max 1000 keys per call. Use pagination for large datasets.
-
-## Development tips
-
-- Type definitions live in `dist/types` for editor intellisense when consuming the bundled SDK.
-- Rebuild the bundle after SDK edits: `bun run sdk/build.ts` (run from repo root).
-- For custom scripts outside the SDK, rely on the runtime globals (`on`, `console.log`, `ctx.reply`) and keep the event payload shapes above handy.
-
-## Deploy API payloads
-
-Deployments are uploaded as a multi-file bundle. The request body is:
-
-```json
-{
-  "entry": "src/main.ts",
-  "files": [
-    { "path": "src/main.ts", "contents": "..." },
-    { "path": "src/utils/reply.ts", "contents": "..." }
-  ]
-}
-```
-
-Notes:
-
-- Only relative module imports (`./` and `../`) are supported today.
-- The server bundles and runs the result as `guild:<id>.bundle.js` with an inline source map.
+Types are automatically generated when running `cargo test`. The generated files in `sdk/src/generated/` should be committed to version control.

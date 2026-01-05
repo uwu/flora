@@ -4,6 +4,7 @@ use base64::Engine;
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use serde::Deserialize;
+use ts_rs::TS;
 use serenity::{
     builder::{
         CreateAllowedMentions, CreateAttachment, CreateEmbed, CreateEmbedAuthor, CreateEmbedFooter,
@@ -18,36 +19,41 @@ use serenity::{
 };
 use tracing::info;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, TS)]
 #[serde(rename_all = "camelCase", untagged)]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub(crate) enum AttachmentInput {
     Url { url: String, filename: Option<String>, description: Option<String> },
     Base64 { data: String, filename: String, description: Option<String> },
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub(crate) struct EmbedMediaInput {
     url: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub(crate) struct EmbedFooterInput {
     text: Option<String>,
     icon_url: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub(crate) struct EmbedAuthorInput {
     name: Option<String>,
     url: Option<String>,
     icon_url: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub(crate) struct EmbedFieldInput {
     name: String,
     value: String,
@@ -55,8 +61,9 @@ pub(crate) struct EmbedFieldInput {
     inline: bool,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub(crate) struct EmbedInput {
     title: Option<String>,
     description: Option<String>,
@@ -70,8 +77,9 @@ pub(crate) struct EmbedInput {
     fields: Option<Vec<EmbedFieldInput>>,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub(crate) struct AllowedMentionsInput {
     parse: Option<Vec<String>>,
     users: Option<Vec<String>>,
@@ -80,7 +88,8 @@ pub(crate) struct AllowedMentionsInput {
     replied_user: Option<bool>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub struct SendMessageArgs {
     #[serde(alias = "channelId")]
     pub channel_id: String,
@@ -97,7 +106,8 @@ pub struct SendMessageArgs {
     pub reply_to: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub struct EditMessageArgs {
     #[serde(alias = "channelId")]
     pub channel_id: String,

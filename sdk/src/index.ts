@@ -1,3 +1,41 @@
+// Re-export generated types from Rust
+// These reflect the exact wire format used by the runtime
+export type {
+  // Event Payloads
+  UserPayload,
+  MemberPayload,
+  MessagePayload,
+  MessageUpdatePayload,
+  MessageDeletePayload,
+  MessageDeleteBulkPayload,
+  InteractionCreatePayload,
+  ReadyPayload,
+  // Op Input Types - Interaction
+  InteractionResponseArgs,
+  UpsertGuildCommandsArgs,
+  SlashCommandDef,
+  SlashCommandOptionDef,
+  // Op Input/Output Types - KV
+  SetOptions,
+  ListKeysOptions,
+  ListKeysResult,
+  KvKeyInfo,
+  KvKeyMetadata,
+} from './generated'
+
+import type {
+  MessagePayload,
+  MessageUpdatePayload,
+  MessageDeletePayload,
+  MessageDeleteBulkPayload,
+  InteractionCreatePayload,
+  UserPayload,
+  MemberPayload,
+} from './generated'
+
+// SDK-specific types with ergonomic optional fields
+// These are more user-friendly than the wire format types
+
 export type EmbedField = {
   name: string
   value: string
@@ -17,6 +55,23 @@ export type Embed = {
   fields?: EmbedField[]
 }
 
+export type Attachment =
+  | { url: string; filename?: string; description?: string }
+  | { data: string; filename: string; description?: string }
+
+export type AllowedMentions = {
+  parse?: Array<'everyone' | 'roles' | 'users'>
+  users?: string[]
+  roles?: string[]
+  repliedUser?: boolean
+}
+
+// Type aliases for convenience - match generated payload types
+export type MessageAuthor = UserPayload
+export type GuildMember = MemberPayload
+export type InteractionPayload = InteractionCreatePayload
+
+// EmbedBuilder class for fluent embed construction
 export class EmbedBuilder {
   #embed: Embed
 
@@ -94,17 +149,7 @@ export function embed(initial?: Embed) {
   return new EmbedBuilder(initial)
 }
 
-export type Attachment =
-  | { url: string; filename?: string; description?: string }
-  | { data: string; filename: string; description?: string }
-
-export type AllowedMentions = {
-  parse?: Array<'everyone' | 'roles' | 'users'>
-  users?: string[]
-  roles?: string[]
-  repliedUser?: boolean
-}
-
+// SDK-specific types for reply/edit options
 export type MessageReplyOptions = {
   content?: string
   embeds?: Embed[]
@@ -123,93 +168,26 @@ export type MessageEditOptions = {
   flags?: number
 }
 
+// Base context type that adds reply/edit methods to payloads
 type BaseContext<TPayload> = {
   msg: TPayload
   reply: (content: string | MessageReplyOptions) => Promise<void>
   edit: (content: string | MessageEditOptions) => Promise<void>
 }
 
-export type MessageAuthor = {
-  id: string
-  username: string
-  discriminator?: number | null
-  bot: boolean
-}
-
-export type GuildMember = {
-  user: MessageAuthor
-  nick?: string | null
-  avatar?: string | null
-  roles: string[]
-  joined_at?: string | null
-  premium_since?: string | null
-  deaf: boolean
-  mute: boolean
-  flags: number
-  pending: boolean
-  permissions?: string | null
-  communication_disabled_until?: string | null
-}
-
-export type MessagePayload = {
-  id: string
-  channel_id: string
-  guild_id?: string | null
-  content: string
-  author: MessageAuthor
-  member?: GuildMember | null
-}
-
+// Context types for each event
 export type MessageContext = BaseContext<MessagePayload>
-
-export type MessageUpdatePayload = {
-  id: string
-  channel_id: string
-  guild_id?: string | null
-  content?: string | null
-  author?: MessageAuthor | null
-  edited_timestamp?: string | null
-  old?: MessagePayload | null
-  new?: MessagePayload | null
-}
-
 export type MessageUpdateContext = BaseContext<MessageUpdatePayload>
-
-export type MessageDeletePayload = {
-  id: string
-  channel_id: string
-  guild_id?: string | null
-}
-
 export type MessageDeleteContext = BaseContext<MessageDeletePayload>
-
-export type MessageDeleteBulkPayload = {
-  ids: string[]
-  channel_id: string
-  guild_id?: string | null
-}
-
 export type MessageDeleteBulkContext = BaseContext<MessageDeleteBulkPayload>
 
-export type InteractionPayload = {
-  interaction_id: string
-  interaction_token: string
-  application_id: string
-  guild_id?: string | null
-  channel_id?: string | null
-  user: MessageAuthor
-  member?: GuildMember | null
-  command_name: string
-  data: any
-  locale?: string | null
-  guild_locale?: string | null
-}
-export type SlashCommandOptions = Record<string, string | number | boolean | SlashCommandOptions>
+export type SlashCommandOptions = Record<string, string | number | boolean | undefined>
 
 export type InteractionContext = BaseContext<InteractionPayload> & {
   options: SlashCommandOptions
 }
 
+// Command definition types
 export type Command = {
   name: string
   description?: string
@@ -218,14 +196,6 @@ export type Command = {
 
 export function defineCommand(command: Command): Command {
   return command
-}
-
-export type SlashCommand = {
-  name: string
-  description: string
-  options?: SlashCommandOption[]
-  subcommands?: SlashSubcommand[]
-  run?: (ctx: InteractionContext) => Promise<void> | void
 }
 
 export type SlashCommandOption = {
@@ -241,6 +211,14 @@ export type SlashSubcommand = {
   description: string
   options?: SlashCommandOption[]
   run: (ctx: InteractionContext) => Promise<void> | void
+}
+
+export type SlashCommand = {
+  name: string
+  description: string
+  options?: SlashCommandOption[]
+  subcommands?: SlashSubcommand[]
+  run?: (ctx: InteractionContext) => Promise<void> | void
 }
 
 export function defineSlashCommand(command: SlashCommand): SlashCommand {
@@ -282,7 +260,10 @@ export function createBot(options: CreateOptions) {
     if (command.subcommands && command.subcommands.length > 0) {
       await handleSubcommand(ctx, command)
     } else if (command.run) {
-      await command.run(ctx)
+      // Flatten options for non-subcommand slash commands
+      const rawData = ctx.msg.data as any
+      const options = flattenInteractionOptions(rawData?.options || [])
+      await command.run({ ...ctx, options })
     }
   })
 
@@ -302,6 +283,8 @@ type SubcommandMap = Record<string, Record<string, (ctx: InteractionContext) => 
 
 declare global {
   var __floraSubcommands: SubcommandMap
+  function on(event: string, handler: (ctx: any) => void | Promise<void>): void
+  function registerSlashCommands(commands: FlattenedSlashCommand[]): void
 }
 
 function flattenCommands(commands: SlashCommand[]): FlattenedSlashCommand[] {

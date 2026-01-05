@@ -5,34 +5,49 @@
  * Supports cursor-based pagination and optional metadata on keys.
  */
 
+// SDK-friendly types (use number instead of bigint for convenience)
 export interface ListKeysOptions {
-  prefix?: string;
-  limit?: number;
-  cursor?: string;
+  prefix?: string
+  limit?: number
+  cursor?: string
 }
 
 export interface KvKeyInfo {
-  name: string;
-  expiration?: number;
-  metadata?: Record<string, unknown>;
+  name: string
+  expiration?: number
+  metadata?: Record<string, unknown>
 }
 
 export interface ListKeysResult {
-  keys: KvKeyInfo[];
-  list_complete: boolean;
-  cursor: string | null;
+  keys: KvKeyInfo[]
+  list_complete: boolean
+  cursor: string | null
 }
 
 export interface GetResult {
-  value: string | null;
-  metadata?: Record<string, unknown>;
+  value: string | null
+  metadata?: Record<string, unknown>
+}
+
+// Declare Deno.core.ops for the runtime environment
+declare const Deno: {
+  core: {
+    ops: {
+      op_kv_get(storeName: string, key: string): Promise<string | null>
+      op_kv_get_with_metadata(storeName: string, key: string): Promise<[string, { expiration?: number | null; metadata?: unknown } | null] | null>
+      op_kv_set(storeName: string, key: string, value: string, options: { expiration: number | null; metadata: unknown }): Promise<void>
+      op_kv_update_metadata(storeName: string, key: string, metadata: unknown): Promise<void>
+      op_kv_delete(storeName: string, key: string): Promise<void>
+      op_kv_list_keys(options: { prefix: string | null; limit: number | null; cursor: string | null }, storeName: string): Promise<ListKeysResult>
+    }
+  }
 }
 
 export class KvStore {
-  #storeName: string;
+  #storeName: string
 
   constructor(storeName: string) {
-    this.#storeName = storeName;
+    this.#storeName = storeName
   }
 
   /**
@@ -42,7 +57,7 @@ export class KvStore {
    * @returns The value, or null if not found
    */
   async get(key: string): Promise<string | null> {
-    return await Deno.core.ops.op_kv_get(this.#storeName, key);
+    return await Deno.core.ops.op_kv_get(this.#storeName, key)
   }
 
   /**
@@ -52,12 +67,15 @@ export class KvStore {
    * @returns Object with value and optional metadata
    */
   async getWithMetadata(key: string): Promise<GetResult> {
-    const result = await Deno.core.ops.op_kv_get_with_metadata(this.#storeName, key);
+    const result = await Deno.core.ops.op_kv_get_with_metadata(this.#storeName, key)
     if (result === null) {
-      return { value: null };
+      return { value: null }
     }
-    const [value, metadata] = result;
-    return { value, metadata: metadata ?? undefined };
+    const [value, metadata] = result
+    return { 
+      value, 
+      metadata: metadata?.metadata as Record<string, unknown> | undefined 
+    }
   }
 
   /**
@@ -75,9 +93,9 @@ export class KvStore {
     options?: { expiration?: number; metadata?: Record<string, unknown> }
   ): Promise<void> {
     await Deno.core.ops.op_kv_set(this.#storeName, key, value, {
-      expiration: options?.expiration,
-      metadata: options?.metadata,
-    });
+      expiration: options?.expiration ?? null,
+      metadata: options?.metadata ?? null,
+    })
   }
 
   /**
@@ -90,7 +108,7 @@ export class KvStore {
     key: string,
     metadata: Record<string, unknown> | null
   ): Promise<void> {
-    await Deno.core.ops.op_kv_update_metadata(this.#storeName, key, metadata ?? null);
+    await Deno.core.ops.op_kv_update_metadata(this.#storeName, key, metadata ?? null)
   }
 
   /**
@@ -99,7 +117,7 @@ export class KvStore {
    * @param key - The key to delete
    */
   async delete(key: string): Promise<void> {
-    await Deno.core.ops.op_kv_delete(this.#storeName, key);
+    await Deno.core.ops.op_kv_delete(this.#storeName, key)
   }
 
   /**
@@ -116,14 +134,14 @@ export class KvStore {
         cursor: options?.cursor ?? null,
       },
       this.#storeName
-    );
+    )
   }
 }
 
 export function store(name: string): KvStore {
-  return new KvStore(name);
+  return new KvStore(name)
 }
 
 export const kv = {
   store,
-};
+}

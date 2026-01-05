@@ -1,16 +1,15 @@
 import { describe, expect, it, mock } from "bun:test";
-import { createBot, defineSlashCommand, InteractionContext } from "./index";
+import type { InteractionContext } from "./index";
+import { createBot, defineSlashCommand } from "./index";
 
 describe("createBot slash registration", () => {
   it("registers slash commands when guild id is present", () => {
     const onHandlers: Record<string, (ctx: any) => any> = {};
-    // @ts-expect-error
     globalThis.on = (event: string, handler: (ctx: any) => any) => {
       onHandlers[event] = handler;
     };
 
     const register = mock(() => Promise.resolve());
-    // @ts-expect-error
     globalThis.registerSlashCommands = register;
     // @ts-expect-error
     globalThis.__floraGuildId = "123";

@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use sled::Db;
 use sqlx::{FromRow, Pool, Postgres};
 use tracing::{info, warn};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
 const MAX_VALUE_SIZE: usize = 1024 * 1024;
@@ -39,14 +40,16 @@ struct KvStoreRow {
     updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub struct KvKeyMetadata {
     pub expiration: Option<i64>,
     #[serde(default)]
     pub metadata: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub struct KvKeyInfo {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -55,7 +58,8 @@ pub struct KvKeyInfo {
     pub metadata: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub struct ListKeysResult {
     pub keys: Vec<KvKeyInfo>,
     pub list_complete: bool,

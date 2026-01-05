@@ -3,6 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use serde::Deserialize;
+use ts_rs::TS;
 
 use crate::kv::{KvKeyMetadata, KvService};
 
@@ -23,8 +24,9 @@ pub async fn op_kv_get(
     kv.get(&guild_id, &store_name, &key).await.map_err(|e| JsErrorBox::generic(e.to_string()))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub struct SetOptions {
     expiration: Option<i64>,
     metadata: Option<serde_json::Value>,
@@ -69,8 +71,9 @@ pub async fn op_kv_delete(
     kv.delete(&guild_id, &store_name, &key).await.map_err(|e| JsErrorBox::generic(e.to_string()))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "sdk/src/generated/")]
 pub struct ListKeysOptions {
     prefix: Option<String>,
     limit: Option<i64>,

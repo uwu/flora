@@ -16,7 +16,7 @@ const SUPPRESS_EMBEDS = 1 << 2;
 
 on("messageCreate", async (ctx) => {
   const msg = ctx.msg;
-  if (!msg.member?.roles?.some((r) => allowed.includes(r))) return;
+  if (!msg.member?.roles?.some((r: string) => allowed.includes(r))) return;
 
   let suppress = false;
   const matches = msg.content.matchAll(regex);
@@ -122,8 +122,8 @@ const tagCommand = defineSlashCommand({
           });
         }
 
-        const name = ctx.options.getString("name");
-        const content = ctx.options.getString("content");
+        const name = ctx.options.name as string;
+        const content = ctx.options.content as string;
 
         const tagStore = kv.store("tags");
         const existing = await tagStore.get(name);
@@ -151,7 +151,7 @@ const tagCommand = defineSlashCommand({
         },
       ],
       async run(ctx) {
-        const name = ctx.options.getString("name");
+        const name = ctx.options.name as string;
 
         const tagStore = kv.store("tags");
         const content = await tagStore.get(name);
@@ -191,8 +191,8 @@ const tagCommand = defineSlashCommand({
           });
         }
 
-        const name = ctx.options.getString("name");
-        const content = ctx.options.getString("content");
+        const name = ctx.options.name as string;
+        const content = ctx.options.content as string;
 
         const tagStore = kv.store("tags");
         const existing = await tagStore.get(name);
@@ -227,7 +227,7 @@ const tagCommand = defineSlashCommand({
           });
         }
 
-        const name = ctx.options.getString("name");
+        const name = ctx.options.name as string;
 
         const tagStore = kv.store("tags");
         const existing = await tagStore.get(name);
