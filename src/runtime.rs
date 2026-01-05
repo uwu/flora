@@ -27,7 +27,6 @@ use tracing::{error, info};
 
 use crate::{deployments::Deployment, kv::KvService, ops};
 
-
 const DEFAULT_MAX_WORKERS: usize = 4;
 const MAX_WORKERS_LIMIT: usize = 64;
 
@@ -244,7 +243,7 @@ impl Drop for BotRuntime {
 
 fn spawn_worker(id: usize, http: Arc<Http>, kv: KvService) -> Worker {
     let (tx, rx) = mpsc::unbounded_channel();
-    
+
     // Use a barrier to ensure all workers start together after V8 is ready
     let handle = thread::Builder::new()
         .name(format!("flora-worker-{}", id))
@@ -480,7 +479,14 @@ async fn deploy_guild_to_worker(
     let module_name = ModuleName::from(deployment.module_name());
     let script_name = module_name.as_str().to_string();
     info!(target: "flora:runtime", worker_id, guild_id, script = script_name, "loading guild script");
-    load_script_source(&mut runtime.runtime, module_name, deployment.bundle.clone(), script_name, worker_id).await?;
+    load_script_source(
+        &mut runtime.runtime,
+        module_name,
+        deployment.bundle.clone(),
+        script_name,
+        worker_id,
+    )
+    .await?;
 
     {
         let context = runtime.runtime.main_context();
@@ -580,7 +586,14 @@ async fn load_script_from_path(
 ) -> Result<(), AnyError> {
     let source = tokio::fs::read_to_string(&path).await?;
     let name = path.to_string_lossy().to_string();
-    load_script_source(&mut js_state.runtime, ModuleName::from(name.clone()), source, name, worker_id).await
+    load_script_source(
+        &mut js_state.runtime,
+        ModuleName::from(name.clone()),
+        source,
+        name,
+        worker_id,
+    )
+    .await
 }
 
 async fn load_script_source(

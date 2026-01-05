@@ -51,61 +51,6 @@ fn is_typescript_specifier(specifier: &str) -> bool {
         .is_some_and(|ext| matches!(ext, "ts" | "mts" | "cts" | "tsx"))
 }
 
-/// Detect whether source code contains TypeScript-specific syntax.
-pub fn detect_typescript(source: &str) -> bool {
-    use oxc::{
-        allocator::Allocator,
-        ast_visit::Visit,
-        parser::{Parser, ParserReturn},
-    };
-
-    let allocator = Allocator::default();
-    let source_type = SourceType::default().with_typescript(true).with_module(true);
-    let parser = Parser::new(&allocator, source, source_type);
-    let ParserReturn { errors, program, .. } = parser.parse();
-
-    if !errors.is_empty() {
-        return true;
-    }
-
-    struct TypeScriptDetector {
-        has_typescript: bool,
-    }
-
-    impl<'a> Visit<'a> for TypeScriptDetector {
-        fn visit_ts_type(&mut self, _ty: &oxc::ast::ast::TSType<'a>) {
-            self.has_typescript = true;
-        }
-
-        fn visit_ts_interface_declaration(
-            &mut self,
-            _decl: &oxc::ast::ast::TSInterfaceDeclaration<'a>,
-        ) {
-            self.has_typescript = true;
-        }
-
-        fn visit_ts_type_alias_declaration(
-            &mut self,
-            _decl: &oxc::ast::ast::TSTypeAliasDeclaration<'a>,
-        ) {
-            self.has_typescript = true;
-        }
-
-        fn visit_ts_enum_declaration(&mut self, _decl: &oxc::ast::ast::TSEnumDeclaration<'a>) {
-            self.has_typescript = true;
-        }
-
-        fn visit_ts_module_declaration(&mut self, _decl: &oxc::ast::ast::TSModuleDeclaration<'a>) {
-            self.has_typescript = true;
-        }
-    }
-
-    let mut detector = TypeScriptDetector { has_typescript: false };
-    detector.visit_program(&program);
-
-    detector.has_typescript
-}
-
 #[derive(Default)]
 struct TsCompiler {
     output: String,
