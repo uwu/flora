@@ -45,36 +45,6 @@ where
     }
 }
 
-/// JSON response with attached Set-Cookie headers.
-pub struct ApiJsonWithCookies<T> {
-    pub payload: ApiJson<T>,
-    pub cookies: Vec<Cookie<'static>>,
-}
-
-impl<T> IntoResponse for ApiJsonWithCookies<T>
-where
-    T: Serialize,
-{
-    fn into_response(self) -> Response {
-        let mut response = self.payload.into_response();
-        for cookie in self.cookies {
-            if let Ok(value) = http::HeaderValue::from_str(&cookie.to_string()) {
-                response.headers_mut().append(http::header::SET_COOKIE, value);
-            }
-        }
-        response
-    }
-}
-
-impl<T> IntoResponses for ApiJsonWithCookies<T>
-where
-    T: ToSchema + Serialize,
-{
-    fn responses() -> BTreeMap<String, RefOr<utoipa::openapi::response::Response>> {
-        ApiJson::<T>::responses()
-    }
-}
-
 /// Simple redirect wrapper that documents a 302.
 pub struct ApiRedirect {
     pub response: Response,
