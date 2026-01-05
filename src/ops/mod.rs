@@ -22,6 +22,8 @@ deno_core::extension!(
         kv::op_kv_set,
         kv::op_kv_delete,
         kv::op_kv_list_keys,
+        kv::op_kv_get_with_metadata,
+        kv::op_kv_update_metadata,
     ],
     options = {
         http: Arc<Http>,
