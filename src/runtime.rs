@@ -6,6 +6,7 @@ use std::{
     rc::Rc,
     sync::Arc,
     thread,
+    time::Instant,
 };
 
 use deno_core::{
@@ -25,7 +26,7 @@ use tokio::{
 };
 use tracing::{error, info};
 
-use crate::{deployments::Deployment, kv::KvService, ops};
+use crate::{deployments::Deployment, kv::KvService, metrics::metrics, ops};
 
 const DEFAULT_MAX_WORKERS: usize = 4;
 const MAX_WORKERS_LIMIT: usize = 64;
@@ -376,6 +377,7 @@ struct JsRuntimeState {
 
 impl Drop for JsRuntimeState {
     fn drop(&mut self) {
+        metrics().isolate_destroyed();
         // V8 requires the isolate to be entered before resetting persistent handles.
         if let Some(dispatch_fn) = self.dispatch_fn.take() {
             let isolate = self.runtime.v8_isolate();
@@ -550,6 +552,7 @@ async fn dispatch_into_runtime(
     payload: Value,
     _worker_id: usize,
 ) -> Result<(), AnyError> {
+    let start = Instant::now();
     let dispatch_fn = js_state
         .dispatch_fn
         .as_ref()
@@ -573,10 +576,18 @@ async fn dispatch_into_runtime(
             .ok_or_else(|| AnyError::msg("dispatch call failed"))?;
     }
 
-    js_state.runtime.run_event_loop(PollEventLoopOptions::default()).await.map_err(|err| {
-        error!(target: "flora:runtime", ?err, "event loop error");
-        AnyError::from(err)
-    })
+    let result =
+        js_state.runtime.run_event_loop(PollEventLoopOptions::default()).await.map_err(|err| {
+            error!(target: "flora:runtime", ?err, "event loop error");
+            AnyError::from(err)
+        });
+
+    match &result {
+        Ok(()) => metrics().dispatch_success(start.elapsed()),
+        Err(_) => metrics().dispatch_error(),
+    }
+
+    result
 }
 
 async fn load_script_from_path(
@@ -661,6 +672,7 @@ fn bootstrap_extension() -> Extension {
 }
 
 fn new_js_runtime(http: Arc<Http>, kv: KvService, guild_id: Option<String>) -> JsRuntimeState {
+    metrics().isolate_created();
     let blob_store = Arc::new(deno_web::BlobStore::default());
     let broadcast_channel = deno_web::InMemoryBroadcastChannel::default();
     let permissions =
