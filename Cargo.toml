@@ -22,7 +22,7 @@ base64 = { version = "0.22", default-features = false, features = ["alloc"] }
 chrono = { version = "0.4", features = ["serde"] }
 color-eyre = "0.6.5"
 cookie = "0.18"
-deno_core = { version = "0.376.0", default-features = false, features = [
+deno_core = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat", default-features = false, features = [
   "v8_use_custom_libcxx"
 ] }
 deno_error = "0.7.1"
@@ -39,6 +39,7 @@ fred = "10.1.0"
 futures = "0.3"
 hex = "0.4"
 hmac = "0.12"
+num_cpus = "1.16"
 openssl = { version = "0.10.75", features = ["vendored"] }
 oxc = { version = "0.101.0", features = [
   "full",
@@ -89,3 +90,11 @@ utoipa-scalar = { version = "0.3.0", features = ["axum"] }
 
 [dev-dependencies]
 tempfile = "3"
+
+[patch.crates-io]
+# Use our deno_core fork compatible with rusty_v8 locker API
+deno_core = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat" }
+deno_ops = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat" }
+serde_v8 = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat" }
+# Use our local rusty_v8 fork with Locker/Unlocker support
+v8 = { path = "rusty_v8" }

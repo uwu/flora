@@ -24,13 +24,13 @@ use eyre::eyre;
 use fred::prelude::*;
 use handlers::create_router;
 use kv::KvService;
-use runtime::BotRuntime;
+use runtime::{BotRuntime, RuntimeConfig};
 use serenity::all::{Client, GatewayIntents};
 use sqlx::{migrate::Migrator, postgres::PgPoolOptions};
 use state::AppState;
 use tokens::TokenService;
 use tokio::net::TcpListener;
-use tracing::error;
+use tracing::{error, info};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -93,13 +93,20 @@ async fn main() -> Result<()> {
 
     v8_init::init();
 
+    let max_workers = std::env::var("FLORA_MAX_WORKERS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or_else(|| num_cpus::get().min(4));
+    let runtime_config = RuntimeConfig { max_workers };
+    info!(max_workers, "configured runtime worker pool");
+
     let http = Arc::new(serenity::http::Http::new(&token));
 
     // Set application id early so guild command registration works before the READY event fires.
     let app_info = http.get_current_application_info().await?;
     http.set_application_id(app_info.id);
 
-    let runtime = Arc::new(BotRuntime::new(http.clone(), kv_service.clone()));
+    let runtime = Arc::new(BotRuntime::new(http.clone(), kv_service.clone(), runtime_config));
     runtime.initialize().await.map_err(|err| eyre!(err))?;
 
     if let Err(err) = runtime.load_user_script("dist/sdk-bundle.js").await {
@@ -108,7 +115,7 @@ async fn main() -> Result<()> {
 
     // Optionally load a default script for local development when present.
     if Path::new("scripts/bot.ts").exists() {
-        if let Err(err) = runtime.load_user_script("scripts/bot.ts").await {
+        if let Err(err) = runtime.load_local_script("scripts/bot.ts").await {
             error!("Failed to load user script: {:?}", err);
         }
     }
