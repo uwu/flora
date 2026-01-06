@@ -281,6 +281,7 @@ var flora = (function(exports) {
 
 //#endregion
 exports.EmbedBuilder = EmbedBuilder;
+exports.KvStore = KvStore;
 exports.createBot = createBot;
 exports.defineCommand = defineCommand;
 exports.defineSlashCommand = defineSlashCommand;
@@ -297,5 +298,10 @@ return exports;
   global.createBot = global.flora.createBot;
   global.defineCommand = global.flora.defineCommand;
   global.defineSlashCommand = global.flora.defineSlashCommand;
+  global.hasRole = global.flora.hasRole;
+  global.getSubcommand = global.flora.getSubcommand;
+  global.getSubcommandGroup = global.flora.getSubcommandGroup;
   global.kv = global.flora.kv;
+  global.EmbedBuilder = global.flora.EmbedBuilder;
+  global.embed = global.flora.embed;
 })(globalThis);

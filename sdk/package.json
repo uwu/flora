@@ -5,7 +5,7 @@
   "private": true,
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "rolldown -c ./rolldown.config.ts",
+    "build": "rolldown -c ./rolldown.config.ts && bun run scripts/generate-globals.ts",
     "test": "bun test"
   },
   "devDependencies": {

@@ -1,8 +1,4 @@
 {
-  "extends": "../tsconfig.json",
-  "compilerOptions": {
-    "noEmit": true,
-    "skipLibCheck": true
-  },
-  "include": ["src/**/*.ts", "flora.d.ts"]
+  "extends": "../sdk/tsconfig.flora.json",
+  "include": ["src/**/*.ts", "../sdk/dist/flora-globals.d.ts"]
 }

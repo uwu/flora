@@ -1,20 +1,4 @@
 {
-  "compilerOptions": {
-    "lib": [
-      "ESNext"
-    ],
-    "target": "ESNext",
-    "module": "Preserve",
-    "moduleDetection": "force",
-    "types": [
-      "sdk"
-    ],
-    "noEmit": true
-  },
-  "include": [
-    "./main.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "extends": "../sdk/tsconfig.flora.json",
+  "include": ["main.ts", "../sdk/dist/flora-globals.d.ts"]
 }
