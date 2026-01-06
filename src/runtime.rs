@@ -1,14 +1,4 @@
-use std::{
-    borrow::Cow,
-    collections::{HashMap, hash_map::DefaultHasher},
-    hash::{Hash, Hasher},
-    path::PathBuf,
-    rc::Rc,
-    sync::Arc,
-    thread,
-    time::Instant,
-};
-
+use crate::{deployments::Deployment, kv::KvService, metrics::metrics, ops};
 use deno_core::{
     Extension, ExtensionFileSource, FastString, FsModuleLoader, JsRuntime, ModuleName,
     PollEventLoopOptions, RuntimeOptions, ascii_str_include,
@@ -19,6 +9,16 @@ use deno_core::{
 use deno_permissions::{PermissionsContainer, RuntimePermissionDescriptorParser};
 use serde_json::Value;
 use serenity::http::Http;
+use std::{
+    borrow::Cow,
+    collections::{HashMap, hash_map::DefaultHasher},
+    hash::{Hash, Hasher},
+    path::PathBuf,
+    rc::Rc,
+    sync::Arc,
+    thread,
+    time::Instant,
+};
 use sys_traits::impls::RealSys;
 use tokio::{
     runtime::Builder,
@@ -26,10 +26,11 @@ use tokio::{
 };
 use tracing::{error, info};
 
-use crate::{deployments::Deployment, kv::KvService, metrics::metrics, ops};
-
 const DEFAULT_MAX_WORKERS: usize = 4;
 const MAX_WORKERS_LIMIT: usize = 64;
+
+const RUNTIME_PRELUDE: &str = include_str!("../scripts/runtime_prelude.js");
+const SDK_BUNDLE_PATH: &str = "scripts/runtime_sdk_bundle.js";
 
 /// Configuration for the runtime thread pool.
 #[derive(Debug, Clone)]
@@ -705,6 +706,3 @@ fn new_js_runtime(http: Arc<Http>, kv: KvService, guild_id: Option<String>) -> J
 
     JsRuntimeState { runtime, dispatch_fn: None, guild_id }
 }
-
-const RUNTIME_PRELUDE: &str = include_str!("../scripts/runtime_prelude.js");
-const SDK_BUNDLE_PATH: &str = "dist/sdk-bundle.js";

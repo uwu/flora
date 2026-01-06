@@ -1,12 +1,20 @@
 {
-  "extends": "../tsconfig.json",
   "compilerOptions": {
+    "lib": [
+      "ESNext"
+    ],
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleDetection": "force",
     "types": [
-      "sdk/global-types"
+      "sdk"
     ],
     "noEmit": true
   },
   "include": [
     "./main.ts"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }
