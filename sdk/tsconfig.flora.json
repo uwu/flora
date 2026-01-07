@@ -20,5 +20,9 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  }
+  },
+    "include": [
+    "src/**/*.ts",
+    "./dist/flora-globals.d.ts"
+  ]
 }

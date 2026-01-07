@@ -1,7 +1,3 @@
 {
-  "extends": "../sdk/tsconfig.flora.json",
-  "include": [
-    "src/**/*.ts",
-    "../sdk/dist/flora-globals.d.ts"
-  ]
+  "extends": "sdk/tsconfig",
 }

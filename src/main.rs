@@ -13,8 +13,6 @@ mod tokens;
 mod transpile;
 mod v8_init;
 
-use std::{future::IntoFuture, net::SocketAddr, path::Path, sync::Arc};
-
 use auth::{AuthConfig, AuthService};
 use color_eyre::eyre::Result;
 use deno_tls::{rustls, rustls::crypto::CryptoProvider};
@@ -28,6 +26,7 @@ use runtime::{BotRuntime, RuntimeConfig};
 use serenity::all::{Client, GatewayIntents};
 use sqlx::{migrate::Migrator, postgres::PgPoolOptions};
 use state::AppState;
+use std::{future::IntoFuture, net::SocketAddr, path::Path, sync::Arc};
 use tokens::TokenService;
 use tokio::net::TcpListener;
 use tracing::{error, info};

@@ -93,7 +93,7 @@ on("messageCreate", async (ctx) => {
   }
 });
 
-const tagCommand = defineSlashCommand({
+const tagCommand = slash({
   name: "tag",
   description: "Manage server tags",
   subcommands: [

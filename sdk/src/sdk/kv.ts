@@ -5,24 +5,10 @@
  * Supports cursor-based pagination and optional metadata on keys.
  */
 
-// SDK-friendly types (use number instead of bigint for convenience)
-export interface ListKeysOptions {
-  prefix?: string
-  limit?: number
-  cursor?: string
-}
-
-export interface KvKeyInfo {
-  name: string
-  expiration?: number
-  metadata?: Record<string, unknown>
-}
-
-export interface ListKeysResult {
-  keys: KvKeyInfo[]
-  list_complete: boolean
-  cursor: string | null
-}
+import type { KvKeyMetadata } from '../generated/KvKeyMetadata'
+import type { ListKeysOptions } from '../generated/ListKeysOptions'
+import type { ListKeysResult } from '../generated/ListKeysResult'
+import type { JsonValue } from '../generated/serde_json/JsonValue'
 
 export interface GetResult {
   value: string | null
@@ -34,11 +20,29 @@ declare const Deno: {
   core: {
     ops: {
       op_kv_get(storeName: string, key: string): Promise<string | null>
-      op_kv_get_with_metadata(storeName: string, key: string): Promise<[string, { expiration?: number | null; metadata?: unknown } | null] | null>
-      op_kv_set(storeName: string, key: string, value: string, options: { expiration: number | null; metadata: unknown }): Promise<void>
-      op_kv_update_metadata(storeName: string, key: string, metadata: unknown): Promise<void>
+      op_kv_get_with_metadata(
+        storeName: string,
+        key: string
+      ): Promise<
+        | [string, KvKeyMetadata | null]
+        | null
+      >
+      op_kv_set(
+        storeName: string,
+        key: string,
+        value: string,
+        options: KvKeyMetadata
+      ): Promise<void>
+      op_kv_update_metadata(
+        storeName: string,
+        key: string,
+        metadata: JsonValue | undefined
+      ): Promise<void>
       op_kv_delete(storeName: string, key: string): Promise<void>
-      op_kv_list_keys(options: { prefix: string | null; limit: number | null; cursor: string | null }, storeName: string): Promise<ListKeysResult>
+      op_kv_list_keys(
+        options: ListKeysOptions,
+        storeName: string
+      ): Promise<ListKeysResult>
     }
   }
 }
@@ -67,14 +71,17 @@ export class KvStore {
    * @returns Object with value and optional metadata
    */
   async getWithMetadata(key: string): Promise<GetResult> {
-    const result = await Deno.core.ops.op_kv_get_with_metadata(this.#storeName, key)
+    const result = await Deno.core.ops.op_kv_get_with_metadata(
+      this.#storeName,
+      key
+    )
     if (result === null) {
       return { value: null }
     }
     const [value, metadata] = result
-    return { 
-      value, 
-      metadata: metadata?.metadata as Record<string, unknown> | undefined 
+    return {
+      value,
+      metadata: metadata?.metadata as Record<string, unknown> | undefined
     }
   }
 
@@ -90,11 +97,11 @@ export class KvStore {
   async set(
     key: string,
     value: string,
-    options?: { expiration?: number; metadata?: Record<string, unknown> }
+    options?: KvKeyMetadata
   ): Promise<void> {
     await Deno.core.ops.op_kv_set(this.#storeName, key, value, {
-      expiration: options?.expiration ?? null,
-      metadata: options?.metadata ?? null,
+      expiration: options?.expiration ?? undefined,
+      metadata: options?.metadata ?? undefined
     })
   }
 
@@ -106,9 +113,13 @@ export class KvStore {
    */
   async updateMetadata(
     key: string,
-    metadata: Record<string, unknown> | null
+    metadata: JsonValue | undefined
   ): Promise<void> {
-    await Deno.core.ops.op_kv_update_metadata(this.#storeName, key, metadata ?? null)
+    await Deno.core.ops.op_kv_update_metadata(
+      this.#storeName,
+      key,
+      metadata ?? undefined
+    )
   }
 
   /**
@@ -129,9 +140,9 @@ export class KvStore {
   async list(options?: ListKeysOptions): Promise<ListKeysResult> {
     return await Deno.core.ops.op_kv_list_keys(
       {
-        prefix: options?.prefix ?? null,
-        limit: options?.limit ?? null,
-        cursor: options?.cursor ?? null,
+        prefix: options?.prefix ?? undefined,
+        limit: options?.limit ?? undefined,
+        cursor: options?.cursor ?? undefined
       },
       this.#storeName
     )
@@ -143,5 +154,5 @@ export function store(name: string): KvStore {
 }
 
 export const kv = {
-  store,
+  store
 }

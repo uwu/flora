@@ -99,4 +99,4 @@ deno_core = { git = "https://github.com/taskylizard/deno_core.git", branch = "fl
 deno_ops = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat" }
 serde_v8 = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat" }
 # Use our local rusty_v8 fork with Locker/Unlocker support
-v8 = { path = "rusty_v8" }
+v8 = { path = "submodules/rusty_v8" }

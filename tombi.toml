@@ -1,0 +1,5 @@
+toml-version = "v1.0.0"
+
+[files]
+include = ["**/*.toml"]
+exclude = ["submodules/**", "target/**", "node_modules/**", ".git/**", "dist/**", "out/**"]

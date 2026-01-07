@@ -1,7 +1,7 @@
 use crate::{deployments::Deployment, kv::KvService, metrics::metrics, ops};
 use deno_core::{
-    Extension, ExtensionFileSource, FastString, FsModuleLoader, JsRuntime, ModuleName,
-    PollEventLoopOptions, RuntimeOptions, ascii_str_include,
+    Extension, ExtensionFileSource, FastStaticString, FastString, FsModuleLoader, JsRuntime,
+    ModuleName, PollEventLoopOptions, RuntimeOptions, ascii_str_include,
     error::AnyError,
     serde_v8,
     v8::{self, Global},
@@ -31,6 +31,10 @@ const MAX_WORKERS_LIMIT: usize = 64;
 
 const RUNTIME_PRELUDE: &str = include_str!("../scripts/runtime_prelude.js");
 const SDK_BUNDLE_PATH: &str = "scripts/runtime_sdk_bundle.js";
+const BOOTSTRAP_SPECIFIER: &str = "ext:flora_bootstrap/bootstrap.js";
+const BOOTSTRAP_DEPS: &[&str] =
+    &["deno_webidl", "deno_web", "deno_fetch", "deno_net", "deno_telemetry"];
+const RUNTIME_BOOSTRAP: FastStaticString = ascii_str_include!("../scripts/runtime_bootstrap.js");
 
 /// Configuration for the runtime thread pool.
 #[derive(Debug, Clone)]
@@ -437,7 +441,7 @@ async fn initialize_worker_default(
     let _isolate_guard = IsolateEnterGuard::new(isolate);
     runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
 
-    info!(target: "flora:runtime", worker_id, "default runtime initialized");
+    info!(target: "flora:runtime", worker_id, "Default runtime initialized");
     *default_runtime = Some(runtime);
     Ok(())
 }
@@ -453,10 +457,10 @@ async fn deploy_guild_to_worker(
 
     if let Some(old) = guild_runtimes.remove(&guild_id) {
         drop(old);
-        info!(target: "flora:runtime", worker_id, guild_id, "dropped old guild runtime");
+        info!(target: "flora:runtime", worker_id, guild_id, "Dropped old guild runtime");
     }
 
-    info!(target: "flora:runtime", worker_id, guild_id, "creating guild runtime");
+    info!(target: "flora:runtime", worker_id, guild_id, "Creating guild runtime");
 
     let mut runtime = new_js_runtime(http.clone(), kv.clone(), Some(guild_id.clone()));
 
@@ -476,12 +480,12 @@ async fn deploy_guild_to_worker(
         runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
     }
 
-    info!(target: "flora:runtime", worker_id, guild_id, path = SDK_BUNDLE_PATH, "loading SDK bundle");
+    info!(target: "flora:runtime", worker_id, guild_id, path = SDK_BUNDLE_PATH, "Loading SDK bundle");
     load_script_from_path(&mut runtime, PathBuf::from(SDK_BUNDLE_PATH), worker_id).await?;
 
     let module_name = ModuleName::from(deployment.module_name());
     let script_name = module_name.as_str().to_string();
-    info!(target: "flora:runtime", worker_id, guild_id, script = script_name, "loading guild script");
+    info!(target: "flora:runtime", worker_id, guild_id, script = script_name, "Loading guild script");
     load_script_source(
         &mut runtime.runtime,
         module_name,
@@ -499,7 +503,7 @@ async fn deploy_guild_to_worker(
     }
 
     guild_runtimes.insert(guild_id.clone(), runtime);
-    info!(target: "flora:runtime", worker_id, guild_id, "guild deployment loaded");
+    info!(target: "flora:runtime", worker_id, guild_id, "Guild deployment loaded");
     Ok(())
 }
 
@@ -516,7 +520,7 @@ async fn dispatch_to_worker(
         None => None,
     }
     .or(default_runtime.as_mut())
-    .ok_or_else(|| AnyError::msg("no runtime available"))?;
+    .ok_or_else(|| AnyError::msg("No runtime available"))?;
 
     dispatch_into_runtime(runtime, event, payload, worker_id).await
 }
@@ -532,7 +536,7 @@ async fn broadcast_to_worker(
         if let Err(err) =
             dispatch_into_runtime(runtime, event.clone(), payload.clone(), worker_id).await
         {
-            error!(target: "flora:runtime", worker_id, ?err, "broadcast to default runtime failed");
+            error!(target: "flora:runtime", worker_id, ?err, "Broadcast to default runtime failed");
         }
     }
 
@@ -540,7 +544,7 @@ async fn broadcast_to_worker(
         if let Err(err) =
             dispatch_into_runtime(runtime, event.clone(), payload.clone(), worker_id).await
         {
-            error!(target: "flora:runtime", worker_id, guild_id, ?err, "broadcast dispatch failed");
+            error!(target: "flora:runtime", worker_id, guild_id, ?err, "Broadcast dispatch failed");
         }
     }
 
@@ -557,7 +561,7 @@ async fn dispatch_into_runtime(
     let dispatch_fn = js_state
         .dispatch_fn
         .as_ref()
-        .ok_or_else(|| AnyError::msg("dispatch function not initialized"))?;
+        .ok_or_else(|| AnyError::msg("Dispatch function not initialized"))?;
 
     let context = js_state.runtime.main_context();
     let isolate = js_state.runtime.v8_isolate();
@@ -574,12 +578,12 @@ async fn dispatch_into_runtime(
 
         dispatch_fn
             .call(scope, this.into(), &[event_value, payload_value])
-            .ok_or_else(|| AnyError::msg("dispatch call failed"))?;
+            .ok_or_else(|| AnyError::msg("Dispatch call failed"))?;
     }
 
     let result =
         js_state.runtime.run_event_loop(PollEventLoopOptions::default()).await.map_err(|err| {
-            error!(target: "flora:runtime", ?err, "event loop error");
+            error!(target: "flora:runtime", ?err, "Event loop error");
             AnyError::from(err)
         });
 
@@ -598,6 +602,7 @@ async fn load_script_from_path(
 ) -> Result<(), AnyError> {
     let source = tokio::fs::read_to_string(&path).await?;
     let name = path.to_string_lossy().to_string();
+
     load_script_source(
         &mut js_state.runtime,
         ModuleName::from(name.clone()),
@@ -615,7 +620,7 @@ async fn load_script_source(
     name: String,
     worker_id: usize,
 ) -> Result<(), AnyError> {
-    info!(target: "flora:runtime", worker_id, module = module_name.as_str(), "executing module source");
+    info!(target: "flora:runtime", worker_id, module = module_name.as_str(), "Executing module source");
     let _isolate_guard = enter_isolate(js_runtime);
 
     let code = match crate::transpile::transpile_if_typescript(&module_name, &source)? {
@@ -626,16 +631,8 @@ async fn load_script_source(
     js_runtime.execute_script(name, code)?;
     js_runtime.run_event_loop(PollEventLoopOptions::default()).await?;
 
-    info!(target: "flora:runtime", worker_id, module = module_name.as_str(), "module executed");
+    info!(target: "flora:runtime", worker_id, module = module_name.as_str(), "Module executed");
     Ok(())
-}
-
-#[allow(dead_code)]
-fn extract_dispatch_fn(runtime: &mut JsRuntime) -> Result<Global<v8::Function>, AnyError> {
-    let context = runtime.main_context();
-    let isolate = runtime.v8_isolate();
-    let _isolate_guard = IsolateEnterGuard::new(isolate);
-    extract_dispatch_fn_no_enter_impl(&context, isolate)
 }
 
 fn extract_dispatch_fn_no_enter_impl(
@@ -647,17 +644,13 @@ fn extract_dispatch_fn_no_enter_impl(
     let context = v8::Local::new(scope, context);
     let global = context.global(scope);
     let key = v8::String::new(scope, "__floraDispatch")
-        .ok_or_else(|| AnyError::msg("failed to create dispatch name"))?;
+        .ok_or_else(|| AnyError::msg("Failed to create dispatch name"))?;
     let value =
-        global.get(scope, key.into()).ok_or_else(|| AnyError::msg("dispatch function missing"))?;
+        global.get(scope, key.into()).ok_or_else(|| AnyError::msg("Dispatch function missing"))?;
     let function = v8::Local::<v8::Function>::try_from(value)
-        .map_err(|_| AnyError::msg("dispatch symbol is not a function"))?;
+        .map_err(|_| AnyError::msg("Dispatch symbol is not a function"))?;
     Ok(Global::new(scope, function))
 }
-
-const BOOTSTRAP_SPECIFIER: &str = "ext:flora_bootstrap/bootstrap.js";
-const BOOTSTRAP_DEPS: &[&str] =
-    &["deno_webidl", "deno_web", "deno_fetch", "deno_net", "deno_telemetry"];
 
 fn bootstrap_extension() -> Extension {
     Extension {
@@ -665,7 +658,7 @@ fn bootstrap_extension() -> Extension {
         deps: BOOTSTRAP_DEPS,
         esm_files: Cow::Owned(vec![ExtensionFileSource::new(
             BOOTSTRAP_SPECIFIER,
-            ascii_str_include!("../scripts/runtime_bootstrap.js"),
+            RUNTIME_BOOSTRAP,
         )]),
         esm_entry_point: Some(BOOTSTRAP_SPECIFIER),
         ..Default::default()

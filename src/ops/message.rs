@@ -1,11 +1,8 @@
-use std::{cell::RefCell, rc::Rc, sync::Arc};
-
 use base64::Engine;
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
 use serde::Deserialize;
-use ts_rs::TS;
 use serenity::{
     builder::{
         CreateAllowedMentions, CreateAttachment, CreateEmbed, CreateEmbedAuthor, CreateEmbedFooter,
@@ -18,40 +15,42 @@ use serenity::{
         id::{ChannelId, MessageId, RoleId, UserId},
     },
 };
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 use tracing::info;
+use ts_rs::TS;
 
 // Note: AttachmentInput is an enum, so we keep manual derives
 #[derive(Debug, Deserialize, TS)]
 #[serde(rename_all = "camelCase", untagged)]
-#[ts(export, export_to = "sdk/src/generated/")]
-pub(crate) enum AttachmentInput {
+#[ts(export, export_to = "AttachmentInput.ts")]
+pub enum AttachmentInput {
     Url { url: String, filename: Option<String>, description: Option<String> },
     Base64 { data: String, filename: String, description: Option<String> },
 }
 
 #[expose_input]
 #[derive(Default)]
-pub(crate) struct EmbedMediaInput {
+pub struct EmbedMediaInput {
     url: Option<String>,
 }
 
 #[expose_input]
 #[derive(Default)]
-pub(crate) struct EmbedFooterInput {
+pub struct EmbedFooterInput {
     text: Option<String>,
     icon_url: Option<String>,
 }
 
 #[expose_input]
 #[derive(Default)]
-pub(crate) struct EmbedAuthorInput {
+pub struct EmbedAuthorInput {
     name: Option<String>,
     url: Option<String>,
     icon_url: Option<String>,
 }
 
 #[expose_input]
-pub(crate) struct EmbedFieldInput {
+pub struct EmbedFieldInput {
     name: String,
     value: String,
     #[serde(default)]
@@ -60,7 +59,7 @@ pub(crate) struct EmbedFieldInput {
 
 #[expose_input]
 #[derive(Default)]
-pub(crate) struct EmbedInput {
+pub struct EmbedInput {
     title: Option<String>,
     description: Option<String>,
     url: Option<String>,
@@ -75,7 +74,7 @@ pub(crate) struct EmbedInput {
 
 #[expose_input]
 #[derive(Default)]
-pub(crate) struct AllowedMentionsInput {
+pub struct AllowedMentionsInput {
     parse: Option<Vec<String>>,
     users: Option<Vec<String>>,
     roles: Option<Vec<String>>,

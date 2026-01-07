@@ -1,8 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    path::Path,
-};
-
+use crate::transpile::transpile_if_typescript;
 use deno_core::ModuleName;
 use oxc::{
     allocator::Allocator,
@@ -16,9 +12,12 @@ use oxc::{
     span::SourceType,
 };
 use oxc_sourcemap::SourceMapBuilder;
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 
-use crate::transpile::transpile_if_typescript;
-
+const RUNTIME_MODULE_RESOLVER: &str = include_str!("../scripts/runtime_module_resolution.js");
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct DeploymentFile {
     pub path: String,
@@ -83,25 +82,8 @@ pub fn bundle_files(
     collect_modules(&entry, &file_map, &mut visited, &mut modules)?;
 
     let mut output = String::new();
-    output.push_str(
-        "/* Bundled module map for multi-file deployments.\n\
-           We compile all user files into a single script and keep a tiny in-memory\n\
-           loader so ESM imports/exports work without a runtime filesystem. */\n",
-    );
-    output.push_str("const __modules = {};\n");
-    output.push_str("const __cache = {};\n");
-    output.push_str(
-        "function __define(id, factory) { __modules[id] = factory; }\n\
-         function __require(id) {\n\
-           if (__cache[id]) return __cache[id].exports;\n\
-           const factory = __modules[id];\n\
-           if (!factory) throw new Error(`Module not found: ${id}`);\n\
-           const module = { exports: {} };\n\
-           __cache[id] = module;\n\
-           factory(module.exports, module);\n\
-           return module.exports;\n\
-         }\n",
-    );
+    output.push_str(RUNTIME_MODULE_RESOLVER);
+    output.push('\n');
 
     let mut module_ids: Vec<String> = modules.keys().cloned().collect();
     module_ids.sort();

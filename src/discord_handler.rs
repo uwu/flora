@@ -193,7 +193,7 @@ impl EventHandler for DiscordHandler {
 }
 
 #[expose_payload(from = "serenity::all::User")]
-struct UserPayload {
+pub struct UserPayload {
     #[expose(expr = "src.id.get().to_string()")]
     id: String,
     #[expose(expr = "src.name.clone()")]
@@ -205,7 +205,7 @@ struct UserPayload {
 }
 
 #[expose_payload]
-struct MemberPayload {
+pub struct MemberPayload {
     user: UserPayload,
     nick: Option<String>,
     avatar: Option<String>,
@@ -221,7 +221,7 @@ struct MemberPayload {
 }
 
 #[expose_payload]
-struct MessagePayload {
+pub struct MessagePayload {
     id: String,
     channel_id: String,
     guild_id: Option<String>,
@@ -268,7 +268,7 @@ impl From<&Message> for MessagePayload {
 }
 
 #[expose_payload]
-struct MessageUpdatePayload {
+pub struct MessageUpdatePayload {
     id: String,
     channel_id: String,
     guild_id: Option<String>,
@@ -314,27 +314,27 @@ impl MessageUpdatePayload {
 }
 
 #[expose_payload]
-struct MessageDeletePayload {
+pub struct MessageDeletePayload {
     id: String,
     channel_id: String,
     guild_id: Option<String>,
 }
 
 #[expose_payload]
-struct MessageDeleteBulkPayload {
+pub struct MessageDeleteBulkPayload {
     ids: Vec<String>,
     channel_id: String,
     guild_id: Option<String>,
 }
 
 #[expose_payload]
-struct ReadyPayload {
+pub struct ReadyPayload {
     user: UserPayload,
     guild_ids: Vec<String>,
 }
 
 #[expose_payload]
-struct InteractionCreatePayload {
+pub struct InteractionCreatePayload {
     interaction_id: String,
     interaction_token: String,
     application_id: String,

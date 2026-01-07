@@ -38,7 +38,7 @@ use proc_macro::TokenStream;
 ///
 /// This macro automatically adds:
 /// - `#[derive(serde::Serialize, ts_rs::TS)]`
-/// - `#[ts(export, export_to = "sdk/src/generated/")]`
+/// - `#[ts(export, optional_fields)]`
 ///
 /// Optionally, if `from = "path::to::Type"` is specified, it also generates
 /// a `From<&SourceType>` implementation using field-level `#[expose(expr = "...")]` attributes.
@@ -78,7 +78,7 @@ pub fn expose_payload(args: TokenStream, input: TokenStream) -> TokenStream {
 /// This macro automatically adds:
 /// - `#[derive(Debug, serde::Deserialize, ts_rs::TS)]`
 /// - `#[serde(rename_all = "camelCase")]`
-/// - `#[ts(export, export_to = "sdk/src/generated/")]`
+/// - `#[ts(export, optional_fields)]`
 ///
 /// # Example
 ///

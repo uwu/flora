@@ -1,6 +1,234 @@
 var flora = (function(exports) {
 
 
+//#region src/sdk/embed.ts
+	var EmbedBuilder = class {
+		#embed;
+		constructor(initial = {}) {
+			this.#embed = { ...initial };
+		}
+		setTitle(title) {
+			this.#embed.title = title;
+			return this;
+		}
+		setDescription(description) {
+			this.#embed.description = description;
+			return this;
+		}
+		setUrl(url) {
+			this.#embed.url = url;
+			return this;
+		}
+		setColor(color) {
+			this.#embed.color = color;
+			return this;
+		}
+		setTimestamp(timestamp) {
+			this.#embed.timestamp = timestamp;
+			return this;
+		}
+		setFooter(text, iconUrl) {
+			this.#embed.footer = {
+				text,
+				iconUrl
+			};
+			return this;
+		}
+		setImage(url) {
+			this.#embed.image = { url };
+			return this;
+		}
+		setThumbnail(url) {
+			this.#embed.thumbnail = { url };
+			return this;
+		}
+		setAuthor(name, options) {
+			this.#embed.author = {
+				name,
+				...options
+			};
+			return this;
+		}
+		addField(name, value, inline = false) {
+			const field = {
+				name,
+				value,
+				inline
+			};
+			this.#embed.fields = [...this.#embed.fields ?? [], field];
+			return this;
+		}
+		addFields(fields) {
+			this.#embed.fields = [...this.#embed.fields ?? [], ...fields];
+			return this;
+		}
+		setFields(fields) {
+			this.#embed.fields = [...fields];
+			return this;
+		}
+		toJSON() {
+			return { ...this.#embed };
+		}
+		toEmbedInput() {
+			const embed$1 = this.#embed;
+			return {
+				title: embed$1.title ?? null,
+				description: embed$1.description ?? null,
+				url: embed$1.url ?? null,
+				color: embed$1.color ?? null,
+				timestamp: embed$1.timestamp ?? null,
+				footer: embed$1.footer ? {
+					text: embed$1.footer.text,
+					iconUrl: embed$1.footer.iconUrl ?? null
+				} : null,
+				image: embed$1.image ? { url: embed$1.image.url } : null,
+				thumbnail: embed$1.thumbnail ? { url: embed$1.thumbnail.url } : null,
+				author: embed$1.author ? {
+					name: embed$1.author.name ?? null,
+					url: embed$1.author.url ?? null,
+					iconUrl: embed$1.author.iconUrl ?? null
+				} : null,
+				fields: embed$1.fields?.map((f) => ({
+					name: f.name,
+					value: f.value,
+					inline: f.inline ?? false
+				})) ?? null
+			};
+		}
+	};
+	function embed(initial) {
+		return new EmbedBuilder(initial);
+	}
+
+//#endregion
+//#region src/sdk/commands.ts
+	function defineCommand(command) {
+		return command;
+	}
+	function defineSlashCommand(command) {
+		return command;
+	}
+	function createBot(options) {
+		const prefix = options.prefix ?? "!";
+		const commands = options.commands ?? options.prefixCommands ?? [];
+		const slashCommands = options.slashCommands ?? [];
+		on("messageCreate", async (ctx) => {
+			if (!ctx.msg || !ctx.msg.content) return;
+			if (ctx.msg.author?.bot) return;
+			const content = ctx.msg.content.trim();
+			if (!content.startsWith(prefix)) return;
+			const body = content.slice(prefix.length).trim();
+			const [commandName, ...args] = body.split(/\s+/);
+			const command = commands.find((cmd) => cmd.name === commandName);
+			if (!command) return;
+			await command.run({
+				...ctx,
+				args
+			});
+		});
+		on("interactionCreate", async (ctx) => {
+			if (!ctx.msg) return;
+			const command = slashCommands.find((cmd) => cmd.name === ctx.msg.command_name);
+			if (!command) return;
+			if (command.subcommands && command.subcommands.length > 0) {
+				await handleSubcommand(ctx, command);
+			} else if (command.run) {
+				const rawData = ctx.msg.data;
+				const options$1 = flattenInteractionOptions(rawData?.options || []);
+				await command.run({
+					...ctx,
+					options: options$1
+				});
+			}
+		});
+		if (slashCommands.length && typeof registerSlashCommands === "function") {
+			const flattenedCommands = flattenCommands(slashCommands);
+			registerSlashCommands(flattenedCommands);
+		}
+	}
+	function flattenCommands(commands) {
+		const subcommands = globalThis.__floraSubcommands;
+		globalThis.__floraSubcommands = subcommands || {};
+		return commands.map((cmd) => {
+			if (cmd.subcommands && cmd.subcommands.length > 0) {
+				const submap = {};
+				cmd.subcommands.forEach((sub) => {
+					submap[sub.name] = sub.run;
+				});
+				globalThis.__floraSubcommands[cmd.name] = submap;
+				return {
+					name: cmd.name,
+					description: cmd.description,
+					options: cmd.subcommands.map((sub) => ({
+						name: sub.name,
+						description: sub.description,
+						type: "subcommand",
+						options: sub.options
+					}))
+				};
+			}
+			return {
+				name: cmd.name,
+				description: cmd.description,
+				options: cmd.options
+			};
+		});
+	}
+	async function handleSubcommand(ctx, command) {
+		const rawData = ctx.msg.data;
+		if (!rawData?.options || !Array.isArray(rawData.options)) {
+			return;
+		}
+		const firstOption = rawData.options[0];
+		if (!firstOption) return;
+		const subcommandName = firstOption.name;
+		const subcommandMap = globalThis.__floraSubcommands?.[command.name];
+		if (!subcommandMap) return;
+		const subcommandHandler = subcommandMap[subcommandName];
+		if (!subcommandHandler) return;
+		const subcommandOptions = firstOption.options || [];
+		const flatOptions = flattenInteractionOptions(subcommandOptions);
+		const enrichedCtx = {
+			...ctx,
+			options: flatOptions
+		};
+		await subcommandHandler(enrichedCtx);
+	}
+	function flattenInteractionOptions(options) {
+		const result = {};
+		for (const opt of options) {
+			if (opt.type === 1 || opt.type === 2) {
+				Object.assign(result, flattenInteractionOptions(opt.options || []));
+			} else {
+				result[opt.name] = opt.value;
+			}
+		}
+		return result;
+	}
+
+//#endregion
+//#region src/sdk/helpers.ts
+	function hasRole(ctx, roleId) {
+		return ctx.msg.member?.roles?.includes(roleId) ?? false;
+	}
+	function getSubcommand(ctx) {
+		const rawData = ctx.msg.data;
+		if (!rawData?.options || !Array.isArray(rawData.options)) return undefined;
+		return rawData.options[0]?.name;
+	}
+	function getSubcommandGroup(ctx) {
+		const rawData = ctx.msg.data;
+		if (!rawData?.options || !Array.isArray(rawData.options)) return undefined;
+		const firstOption = rawData.options[0];
+		if (!firstOption) return undefined;
+		const type = firstOption.type;
+		if (type === 2) {
+			return firstOption.name;
+		}
+		return undefined;
+	}
+
+//#endregion
 //#region src/kv.ts
 	var KvStore = class {
 		#storeName;
@@ -83,201 +311,6 @@ var flora = (function(exports) {
 		return new KvStore(name);
 	}
 	const kv = { store };
-
-//#endregion
-//#region src/index.ts
-	var EmbedBuilder = class {
-		#embed;
-		constructor(initial = {}) {
-			this.#embed = { ...initial };
-		}
-		setTitle(title) {
-			this.#embed.title = title;
-			return this;
-		}
-		setDescription(description) {
-			this.#embed.description = description;
-			return this;
-		}
-		setUrl(url) {
-			this.#embed.url = url;
-			return this;
-		}
-		setColor(color) {
-			this.#embed.color = color;
-			return this;
-		}
-		setTimestamp(timestamp) {
-			this.#embed.timestamp = timestamp;
-			return this;
-		}
-		setFooter(text, iconUrl) {
-			this.#embed.footer = {
-				text,
-				iconUrl
-			};
-			return this;
-		}
-		setImage(url) {
-			this.#embed.image = { url };
-			return this;
-		}
-		setThumbnail(url) {
-			this.#embed.thumbnail = { url };
-			return this;
-		}
-		setAuthor(name, options) {
-			this.#embed.author = {
-				name,
-				...options
-			};
-			return this;
-		}
-		addField(name, value, inline = false) {
-			const field = {
-				name,
-				value,
-				inline
-			};
-			this.#embed.fields = [...this.#embed.fields ?? [], field];
-			return this;
-		}
-		addFields(fields) {
-			this.#embed.fields = [...this.#embed.fields ?? [], ...fields];
-			return this;
-		}
-		setFields(fields) {
-			this.#embed.fields = [...fields];
-			return this;
-		}
-		toJSON() {
-			return { ...this.#embed };
-		}
-	};
-	function embed(initial) {
-		return new EmbedBuilder(initial);
-	}
-	function defineCommand(command) {
-		return command;
-	}
-	function defineSlashCommand(command) {
-		return command;
-	}
-	function createBot(options) {
-		const prefix = options.prefix ?? "!";
-		const commands = options.commands ?? options.prefixCommands ?? [];
-		const slashCommands = options.slashCommands ?? [];
-		on("messageCreate", async (ctx) => {
-			if (!ctx.msg || !ctx.msg.content) return;
-			if (ctx.msg.author?.bot) return;
-			const content = ctx.msg.content.trim();
-			if (!content.startsWith(prefix)) return;
-			const body = content.slice(prefix.length).trim();
-			const [commandName, ...args] = body.split(/\s+/);
-			const command = commands.find((cmd) => cmd.name === commandName);
-			if (!command) return;
-			await command.run({
-				...ctx,
-				args
-			});
-		});
-		on("interactionCreate", async (ctx) => {
-			if (!ctx.msg) return;
-			const command = slashCommands.find((cmd) => cmd.name === ctx.msg.command_name);
-			if (!command) return;
-			if (command.subcommands && command.subcommands.length > 0) {
-				await handleSubcommand(ctx, command);
-			} else if (command.run) {
-				const rawData = ctx.msg.data;
-				const options$1 = flattenInteractionOptions(rawData?.options || []);
-				await command.run({
-					...ctx,
-					options: options$1
-				});
-			}
-		});
-		if (slashCommands.length && typeof registerSlashCommands === "function") {
-			const flattenedCommands = flattenCommands(slashCommands);
-			registerSlashCommands(flattenedCommands);
-		}
-	}
-	function flattenCommands(commands) {
-		globalThis.__floraSubcommands = globalThis.__floraSubcommands || {};
-		return commands.map((cmd) => {
-			if (cmd.subcommands && cmd.subcommands.length > 0) {
-				const submap = {};
-				cmd.subcommands.forEach((sub) => {
-					submap[sub.name] = sub.run;
-				});
-				globalThis.__floraSubcommands[cmd.name] = submap;
-				return {
-					name: cmd.name,
-					description: cmd.description,
-					options: cmd.subcommands.map((sub) => ({
-						name: sub.name,
-						description: sub.description,
-						type: "subcommand",
-						options: sub.options
-					}))
-				};
-			}
-			return {
-				name: cmd.name,
-				description: cmd.description,
-				options: cmd.options
-			};
-		});
-	}
-	async function handleSubcommand(ctx, command) {
-		const rawData = ctx.msg.data;
-		if (!rawData?.options || !Array.isArray(rawData.options)) {
-			return;
-		}
-		const firstOption = rawData.options[0];
-		if (!firstOption) return;
-		const subcommandName = firstOption.name;
-		const subcommandMap = globalThis.__floraSubcommands?.[command.name];
-		if (!subcommandMap) return;
-		const subcommandHandler = subcommandMap[subcommandName];
-		if (!subcommandHandler) return;
-		const subcommandOptions = firstOption.options || [];
-		const flatOptions = flattenInteractionOptions(subcommandOptions);
-		const enrichedCtx = {
-			...ctx,
-			options: flatOptions
-		};
-		await subcommandHandler(enrichedCtx);
-	}
-	function flattenInteractionOptions(options) {
-		const result = {};
-		for (const opt of options) {
-			if (opt.type === 1 || opt.type === 2) {
-				Object.assign(result, flattenInteractionOptions(opt.options || []));
-			} else {
-				result[opt.name] = opt.value;
-			}
-		}
-		return result;
-	}
-	function hasRole(ctx, roleId) {
-		return ctx.msg.member?.roles?.includes(roleId) ?? false;
-	}
-	function getSubcommand(ctx) {
-		const rawData = ctx.msg.data;
-		if (!rawData?.options || !Array.isArray(rawData.options)) return undefined;
-		return rawData.options[0]?.name;
-	}
-	function getSubcommandGroup(ctx) {
-		const rawData = ctx.msg.data;
-		if (!rawData?.options || !Array.isArray(rawData.options)) return undefined;
-		const firstOption = rawData.options[0];
-		if (!firstOption) return undefined;
-		const type = firstOption.type;
-		if (type === 2) {
-			return firstOption.name;
-		}
-		return undefined;
-	}
 
 //#endregion
 exports.EmbedBuilder = EmbedBuilder;
