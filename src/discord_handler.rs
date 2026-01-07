@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use color_eyre::{Report, eyre::eyre};
-use serde::Serialize;
-use ts_rs::TS;
+use flora_macros::expose_payload;
 use serenity::all::{
     ApplicationId, ChannelId, CommandInteraction, Context, EventHandler, Guild, GuildId,
-    Interaction, Message, MessageId, MessageUpdateEvent, Ready, User, async_trait,
+    Interaction, Message, MessageId, MessageUpdateEvent, Ready, async_trait,
 };
 use tracing::{error, info};
 
@@ -193,28 +192,19 @@ impl EventHandler for DiscordHandler {
     }
 }
 
-#[derive(Serialize, TS)]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_payload(from = "serenity::all::User")]
 struct UserPayload {
+    #[expose(expr = "src.id.get().to_string()")]
     id: String,
+    #[expose(expr = "src.name.clone()")]
     username: String,
+    #[expose(expr = "src.discriminator.map(|d| d.get())")]
     discriminator: Option<u16>,
+    #[expose(expr = "src.bot")]
     bot: bool,
 }
 
-impl From<&User> for UserPayload {
-    fn from(user: &User) -> Self {
-        Self {
-            id: user.id.get().to_string(),
-            username: user.name.clone(),
-            discriminator: user.discriminator.map(|d| d.get()),
-            bot: user.bot,
-        }
-    }
-}
-
-#[derive(Serialize, TS)]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_payload]
 struct MemberPayload {
     user: UserPayload,
     nick: Option<String>,
@@ -230,8 +220,7 @@ struct MemberPayload {
     communication_disabled_until: Option<String>,
 }
 
-#[derive(Serialize, TS)]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_payload]
 struct MessagePayload {
     id: String,
     channel_id: String,
@@ -278,8 +267,7 @@ impl From<&Message> for MessagePayload {
     }
 }
 
-#[derive(Serialize, TS)]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_payload]
 struct MessageUpdatePayload {
     id: String,
     channel_id: String,
@@ -325,31 +313,27 @@ impl MessageUpdatePayload {
     }
 }
 
-#[derive(Serialize, TS)]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_payload]
 struct MessageDeletePayload {
     id: String,
     channel_id: String,
     guild_id: Option<String>,
 }
 
-#[derive(Serialize, TS)]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_payload]
 struct MessageDeleteBulkPayload {
     ids: Vec<String>,
     channel_id: String,
     guild_id: Option<String>,
 }
 
-#[derive(Serialize, TS)]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_payload]
 struct ReadyPayload {
     user: UserPayload,
     guild_ids: Vec<String>,
 }
 
-#[derive(Serialize, TS)]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_payload]
 struct InteractionCreatePayload {
     interaction_id: String,
     interaction_token: String,

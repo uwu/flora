@@ -3,6 +3,7 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 use base64::Engine;
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
+use flora_macros::expose_input;
 use serde::Deserialize;
 use ts_rs::TS;
 use serenity::{
@@ -19,6 +20,7 @@ use serenity::{
 };
 use tracing::info;
 
+// Note: AttachmentInput is an enum, so we keep manual derives
 #[derive(Debug, Deserialize, TS)]
 #[serde(rename_all = "camelCase", untagged)]
 #[ts(export, export_to = "sdk/src/generated/")]
@@ -27,33 +29,28 @@ pub(crate) enum AttachmentInput {
     Base64 { data: String, filename: String, description: Option<String> },
 }
 
-#[derive(Debug, Deserialize, Default, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_input]
+#[derive(Default)]
 pub(crate) struct EmbedMediaInput {
     url: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Default, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_input]
+#[derive(Default)]
 pub(crate) struct EmbedFooterInput {
     text: Option<String>,
     icon_url: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Default, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_input]
+#[derive(Default)]
 pub(crate) struct EmbedAuthorInput {
     name: Option<String>,
     url: Option<String>,
     icon_url: Option<String>,
 }
 
-#[derive(Debug, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_input]
 pub(crate) struct EmbedFieldInput {
     name: String,
     value: String,
@@ -61,9 +58,8 @@ pub(crate) struct EmbedFieldInput {
     inline: bool,
 }
 
-#[derive(Debug, Deserialize, Default, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_input]
+#[derive(Default)]
 pub(crate) struct EmbedInput {
     title: Option<String>,
     description: Option<String>,
@@ -77,45 +73,34 @@ pub(crate) struct EmbedInput {
     fields: Option<Vec<EmbedFieldInput>>,
 }
 
-#[derive(Debug, Deserialize, Default, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_input]
+#[derive(Default)]
 pub(crate) struct AllowedMentionsInput {
     parse: Option<Vec<String>>,
     users: Option<Vec<String>>,
     roles: Option<Vec<String>>,
-    #[serde(alias = "repliedUser")]
     replied_user: Option<bool>,
 }
 
-#[derive(Deserialize, TS)]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_input]
 pub struct SendMessageArgs {
-    #[serde(alias = "channelId")]
     pub channel_id: String,
     pub content: Option<String>,
     pub embeds: Option<Vec<EmbedInput>>,
     pub attachments: Option<Vec<AttachmentInput>>,
     pub tts: Option<bool>,
-    #[serde(alias = "allowedMentions")]
     pub allowed_mentions: Option<AllowedMentionsInput>,
     pub flags: Option<u64>,
-    #[serde(alias = "messageId")]
     pub message_id: Option<String>,
-    #[serde(alias = "replyTo")]
     pub reply_to: Option<String>,
 }
 
-#[derive(Deserialize, TS)]
-#[ts(export, export_to = "sdk/src/generated/")]
+#[expose_input]
 pub struct EditMessageArgs {
-    #[serde(alias = "channelId")]
     pub channel_id: String,
-    #[serde(alias = "messageId")]
     pub message_id: String,
     pub content: Option<String>,
     pub embeds: Option<Vec<EmbedInput>>,
-    #[serde(alias = "allowedMentions")]
     pub allowed_mentions: Option<AllowedMentionsInput>,
     pub flags: Option<u64>,
 }

@@ -43,7 +43,7 @@ on("messageCreate", async (ctx) => {
           `https://api.github.com/repos/${owner}/${repo}/issues/comments/${comment}`,
         );
         if (!req.ok) continue;
-        const json = await req.json();
+        const json = (await req.json()) as any;
 
         user = json.user;
         body = json.body;
@@ -54,7 +54,7 @@ on("messageCreate", async (ctx) => {
         `https://api.github.com/repos/${owner}/${repo}/issues/${issue}`,
       );
       if (!req.ok) continue;
-      const json = await req.json();
+      const json = (await req.json()) as any;
 
       user ??= json.user;
       body ??= json.body;
@@ -77,7 +77,7 @@ on("messageCreate", async (ctx) => {
     } else {
       const req = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
       if (!req.ok) continue;
-      const json = await req.json();
+      const json = (await req.json()) as any;
 
       embed.title = `${owner}/${repo}`;
       embed.description = json.description ?? undefined;

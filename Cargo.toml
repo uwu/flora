@@ -5,7 +5,7 @@ edition = "2024"
 
 [workspace]
 resolver = "2"
-members = [".", "cli"]
+members = [".", "cli", "flora_macros"]
 
 [workspace.dependencies]
 clap = "4.5.20"
@@ -88,6 +88,7 @@ utoipa = { version = "5.4.0", features = [
 ] }
 utoipa-scalar = { version = "0.3.0", features = ["axum"] }
 ts-rs = { version = "11", features = ["serde-compat", "serde-json-impl"] }
+flora_macros = { path = "flora_macros" }
 
 [dev-dependencies]
 tempfile = "3"

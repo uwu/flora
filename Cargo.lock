@@ -1801,6 +1801,7 @@ dependencies = [
  "deno_webidl",
  "dotenvy",
  "eyre",
+ "flora_macros",
  "fred",
  "futures",
  "hex",
@@ -1850,6 +1851,15 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-stream",
+]
+
+[[package]]
+name = "flora_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.113",
 ]
 
 [[package]]
