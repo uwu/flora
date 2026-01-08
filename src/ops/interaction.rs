@@ -15,37 +15,37 @@ use serenity::{
 use tracing::info;
 
 use super::message::{
-    AllowedMentionsInput, AttachmentInput, EmbedInput, build_allowed_mentions, build_attachment,
+    RawAllowedMentions, RawAttachment, RawEmbed, build_allowed_mentions, build_attachment,
     build_embed,
 };
 
 #[expose_input]
-pub(crate) struct InteractionResponseArgs {
+pub(crate) struct RawInteractionResponse {
     pub interaction_id: String,
     pub token: String,
     pub content: Option<String>,
-    pub embeds: Option<Vec<EmbedInput>>,
-    pub attachments: Option<Vec<AttachmentInput>>,
+    pub embeds: Option<Vec<RawEmbed>>,
+    pub attachments: Option<Vec<RawAttachment>>,
     pub tts: Option<bool>,
-    pub allowed_mentions: Option<AllowedMentionsInput>,
+    pub allowed_mentions: Option<RawAllowedMentions>,
     pub ephemeral: Option<bool>,
 }
 
 #[expose_input]
-pub(crate) struct UpsertGuildCommandsArgs {
+pub(crate) struct RawUpsertGuildCommands {
     pub guild_id: String,
-    pub commands: Vec<SlashCommandDef>,
+    pub commands: Vec<RawSlashCommand>,
 }
 
 #[expose_input]
-pub(crate) struct SlashCommandDef {
+pub(crate) struct RawSlashCommand {
     pub name: String,
     pub description: Option<String>,
-    pub options: Option<Vec<SlashCommandOptionDef>>,
+    pub options: Option<Vec<RawSlashCommandOption>>,
 }
 
 #[expose_input]
-pub(crate) struct SlashCommandOptionDef {
+pub(crate) struct RawSlashCommandOption {
     pub name: String,
     pub description: String,
     #[serde(rename = "type", default)]
@@ -53,13 +53,13 @@ pub(crate) struct SlashCommandOptionDef {
     #[serde(default)]
     pub required: Option<bool>,
     #[serde(default)]
-    pub options: Option<Vec<SlashCommandOptionDef>>,
+    pub options: Option<Vec<RawSlashCommandOption>>,
 }
 
 #[op2(async)]
 pub async fn op_send_interaction_response(
     state: Rc<RefCell<OpState>>,
-    #[serde] args: InteractionResponseArgs,
+    #[serde] args: RawInteractionResponse,
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
@@ -89,7 +89,7 @@ pub async fn op_send_interaction_response(
 #[op2(async)]
 pub async fn op_upsert_guild_commands(
     state: Rc<RefCell<OpState>>,
-    #[serde] args: UpsertGuildCommandsArgs,
+    #[serde] args: RawUpsertGuildCommands,
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
@@ -141,7 +141,7 @@ pub async fn op_upsert_guild_commands(
     }
 }
 
-fn build_option(opt: SlashCommandOptionDef) -> Result<CreateCommandOption, JsErrorBox> {
+fn build_option(opt: RawSlashCommandOption) -> Result<CreateCommandOption, JsErrorBox> {
     let opt_type = match opt.kind.as_deref() {
         Some("integer") => CommandOptionType::Integer,
         Some("number") => CommandOptionType::Number,
@@ -172,7 +172,7 @@ pub(crate) struct BuiltInteractionResponse {
 
 pub(crate) async fn build_interaction_response(
     http: &Arc<Http>,
-    args: InteractionResponseArgs,
+    args: RawInteractionResponse,
 ) -> Result<BuiltInteractionResponse, JsErrorBox> {
     let mut message = CreateInteractionResponseMessage::new();
     let mut has_content = false;
@@ -234,7 +234,7 @@ mod tests {
 
     #[tokio::test]
     async fn build_rejects_empty_payload() {
-        let args = InteractionResponseArgs {
+        let args = RawInteractionResponse {
             interaction_id: "1".to_string(),
             token: "token".to_string(),
             content: None,
@@ -252,12 +252,12 @@ mod tests {
     #[tokio::test]
     async fn build_allows_base64_attachment_and_ephemeral() {
         let data = STANDARD.encode(b"hello");
-        let args = InteractionResponseArgs {
+        let args = RawInteractionResponse {
             interaction_id: "1".to_string(),
             token: "token".to_string(),
             content: Some("hi".to_string()),
             embeds: None,
-            attachments: Some(vec![AttachmentInput::Base64 {
+            attachments: Some(vec![RawAttachment::Base64 {
                 data,
                 filename: "greet.txt".to_string(),
                 description: Some("greeting".to_string()),

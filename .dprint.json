@@ -1,5 +1,5 @@
 {
-  "lineWidth": 80,
+  "lineWidth": 100,
   "typescript": {
     "quoteStyle": "preferSingle",
     "binaryExpression.operatorPosition": "sameLine",

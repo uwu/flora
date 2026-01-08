@@ -42,7 +42,7 @@ struct KvStoreRow {
 
 #[expose_payload]
 #[derive(Clone, Deserialize, ToSchema)]
-pub struct KvKeyMetadata {
+pub struct RawKvKeyMetadata {
     pub expiration: Option<i64>,
     #[serde(default)]
     pub metadata: Option<serde_json::Value>,
@@ -50,7 +50,7 @@ pub struct KvKeyMetadata {
 
 #[expose_payload]
 #[derive(Clone, Deserialize, ToSchema)]
-pub struct KvKeyInfo {
+pub struct RawKvKeyInfo {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expiration: Option<i64>,
@@ -60,8 +60,8 @@ pub struct KvKeyInfo {
 
 #[expose_payload]
 #[derive(Clone, Deserialize, ToSchema)]
-pub struct ListKeysResult {
-    pub keys: Vec<KvKeyInfo>,
+pub struct RawKvListKeysResult {
+    pub keys: Vec<RawKvKeyInfo>,
     pub list_complete: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Option<String>,
@@ -203,7 +203,7 @@ impl KvService {
         guild_id: &str,
         store_name: &str,
         key: &str,
-    ) -> Result<Option<(String, Option<KvKeyMetadata>)>> {
+    ) -> Result<Option<(String, Option<RawKvKeyMetadata>)>> {
         self.verify_store_exists(guild_id, store_name).await?;
 
         let db = self.get_or_open_db(guild_id, store_name)?;
@@ -237,7 +237,7 @@ impl KvService {
         db.insert(key.as_bytes(), value.as_bytes())?;
 
         if expiration.is_some() || metadata.is_some() {
-            let key_metadata = KvKeyMetadata { expiration, metadata };
+            let key_metadata = RawKvKeyMetadata { expiration, metadata };
             let metadata_bytes = serde_json::to_vec(&key_metadata)?;
             self.get_metadata_tree(&db)?.insert(key.as_bytes(), metadata_bytes)?;
         } else {
@@ -263,7 +263,7 @@ impl KvService {
         let new_expiration = existing.map(|m| m.expiration).flatten();
 
         if metadata.is_some() || new_expiration.is_some() {
-            let key_metadata = KvKeyMetadata { expiration: new_expiration, metadata };
+            let key_metadata = RawKvKeyMetadata { expiration: new_expiration, metadata };
             let metadata_bytes = serde_json::to_vec(&key_metadata)?;
             self.get_metadata_tree(&db)?.insert(key.as_bytes(), metadata_bytes)?;
         } else {
@@ -290,7 +290,7 @@ impl KvService {
         prefix: Option<&str>,
         limit: Option<u32>,
         cursor: Option<&str>,
-    ) -> Result<ListKeysResult> {
+    ) -> Result<RawKvListKeysResult> {
         if let Some(p) = prefix {
             validate_prefix(p)?;
         }
@@ -336,7 +336,7 @@ impl KvService {
             }
 
             let metadata = self.get_metadata(&db, &key)?;
-            let key_info = KvKeyInfo {
+            let key_info = RawKvKeyInfo {
                 name: key.clone(),
                 expiration: metadata.as_ref().and_then(|m| m.expiration),
                 metadata: metadata.as_ref().and_then(|m| m.metadata.clone()),
@@ -351,7 +351,7 @@ impl KvService {
         let list_complete = keys.len() < limit as usize;
         let cursor = if list_complete { None } else { keys.last().map(|k| k.name.clone()) };
 
-        Ok(ListKeysResult { keys, list_complete, cursor })
+        Ok(RawKvListKeysResult { keys, list_complete, cursor })
     }
 
     pub async fn export_guild(&self, guild_id: &str) -> Result<String> {
@@ -407,11 +407,11 @@ impl KvService {
         Ok(db.open_tree(METADATA_TREE_NAME)?)
     }
 
-    fn get_metadata(&self, db: &Db, key: &str) -> Result<Option<KvKeyMetadata>> {
+    fn get_metadata(&self, db: &Db, key: &str) -> Result<Option<RawKvKeyMetadata>> {
         let tree = self.get_metadata_tree(db)?;
         match tree.get(key.as_bytes())? {
             Some(bytes) => {
-                let metadata: KvKeyMetadata = serde_json::from_slice(&bytes)?;
+                let metadata: RawKvKeyMetadata = serde_json::from_slice(&bytes)?;
                 Ok(Some(metadata))
             }
             None => Ok(None),

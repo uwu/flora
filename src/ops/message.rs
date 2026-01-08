@@ -19,38 +19,38 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 use tracing::info;
 use ts_rs::TS;
 
-// Note: AttachmentInput is an enum, so we keep manual derives
+// Note: RawAttachment is an enum, so we keep manual derives
 #[derive(Debug, Deserialize, TS)]
 #[serde(rename_all = "camelCase", untagged)]
-#[ts(export, export_to = "AttachmentInput.ts")]
-pub enum AttachmentInput {
+#[ts(export, export_to = "RawAttachment.ts")]
+pub enum RawAttachment {
     Url { url: String, filename: Option<String>, description: Option<String> },
     Base64 { data: String, filename: String, description: Option<String> },
 }
 
 #[expose_input]
 #[derive(Default)]
-pub struct EmbedMediaInput {
+pub struct RawEmbedMedia {
     url: Option<String>,
 }
 
 #[expose_input]
 #[derive(Default)]
-pub struct EmbedFooterInput {
+pub struct RawEmbedFooter {
     text: Option<String>,
     icon_url: Option<String>,
 }
 
 #[expose_input]
 #[derive(Default)]
-pub struct EmbedAuthorInput {
+pub struct RawEmbedAuthor {
     name: Option<String>,
     url: Option<String>,
     icon_url: Option<String>,
 }
 
 #[expose_input]
-pub struct EmbedFieldInput {
+pub struct RawEmbedField {
     name: String,
     value: String,
     #[serde(default)]
@@ -59,22 +59,22 @@ pub struct EmbedFieldInput {
 
 #[expose_input]
 #[derive(Default)]
-pub struct EmbedInput {
+pub struct RawEmbed {
     title: Option<String>,
     description: Option<String>,
     url: Option<String>,
     color: Option<u32>,
     timestamp: Option<String>,
-    footer: Option<EmbedFooterInput>,
-    image: Option<EmbedMediaInput>,
-    thumbnail: Option<EmbedMediaInput>,
-    author: Option<EmbedAuthorInput>,
-    fields: Option<Vec<EmbedFieldInput>>,
+    footer: Option<RawEmbedFooter>,
+    image: Option<RawEmbedMedia>,
+    thumbnail: Option<RawEmbedMedia>,
+    author: Option<RawEmbedAuthor>,
+    fields: Option<Vec<RawEmbedField>>,
 }
 
 #[expose_input]
 #[derive(Default)]
-pub struct AllowedMentionsInput {
+pub struct RawAllowedMentions {
     parse: Option<Vec<String>>,
     users: Option<Vec<String>>,
     roles: Option<Vec<String>>,
@@ -82,25 +82,25 @@ pub struct AllowedMentionsInput {
 }
 
 #[expose_input]
-pub struct SendMessageArgs {
+pub struct RawSendMessage {
     pub channel_id: String,
     pub content: Option<String>,
-    pub embeds: Option<Vec<EmbedInput>>,
-    pub attachments: Option<Vec<AttachmentInput>>,
+    pub embeds: Option<Vec<RawEmbed>>,
+    pub attachments: Option<Vec<RawAttachment>>,
     pub tts: Option<bool>,
-    pub allowed_mentions: Option<AllowedMentionsInput>,
+    pub allowed_mentions: Option<RawAllowedMentions>,
     pub flags: Option<u64>,
     pub message_id: Option<String>,
     pub reply_to: Option<String>,
 }
 
 #[expose_input]
-pub struct EditMessageArgs {
+pub struct RawEditMessage {
     pub channel_id: String,
     pub message_id: String,
     pub content: Option<String>,
-    pub embeds: Option<Vec<EmbedInput>>,
-    pub allowed_mentions: Option<AllowedMentionsInput>,
+    pub embeds: Option<Vec<RawEmbed>>,
+    pub allowed_mentions: Option<RawAllowedMentions>,
     pub flags: Option<u64>,
 }
 
@@ -131,7 +131,7 @@ pub fn op_log(state: &mut OpState, #[serde] args: Vec<serde_json::Value>) {
 #[op2(async)]
 pub async fn op_send_message(
     state: Rc<RefCell<OpState>>,
-    #[serde] args: SendMessageArgs,
+    #[serde] args: RawSendMessage,
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
@@ -208,7 +208,7 @@ pub async fn op_send_message(
 #[op2(async)]
 pub async fn op_edit_message(
     state: Rc<RefCell<OpState>>,
-    #[serde] args: EditMessageArgs,
+    #[serde] args: RawEditMessage,
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
@@ -259,7 +259,7 @@ pub async fn op_edit_message(
     Ok(())
 }
 
-pub(crate) fn build_allowed_mentions(input: AllowedMentionsInput) -> CreateAllowedMentions {
+pub(crate) fn build_allowed_mentions(input: RawAllowedMentions) -> CreateAllowedMentions {
     let mut allowed = CreateAllowedMentions::new();
 
     if let Some(parse) = input.parse {
@@ -290,7 +290,7 @@ pub(crate) fn build_allowed_mentions(input: AllowedMentionsInput) -> CreateAllow
     allowed
 }
 
-pub(crate) fn build_embed(input: EmbedInput) -> Result<CreateEmbed, JsErrorBox> {
+pub(crate) fn build_embed(input: RawEmbed) -> Result<CreateEmbed, JsErrorBox> {
     let mut embed = CreateEmbed::new();
 
     if let Some(title) = input.title {
@@ -362,10 +362,10 @@ pub(crate) fn build_embed(input: EmbedInput) -> Result<CreateEmbed, JsErrorBox> 
 
 pub(crate) async fn build_attachment(
     http: &Arc<Http>,
-    attachment: AttachmentInput,
+    attachment: RawAttachment,
 ) -> Result<CreateAttachment, JsErrorBox> {
     match attachment {
-        AttachmentInput::Url { url, filename, description } => {
+        RawAttachment::Url { url, filename, description } => {
             let mut att = serenity::builder::CreateAttachment::url(http, &url)
                 .await
                 .map_err(|err| JsErrorBox::generic(err.to_string()))?;
@@ -378,7 +378,7 @@ pub(crate) async fn build_attachment(
             }
             Ok(att)
         }
-        AttachmentInput::Base64 { data, filename, description } => {
+        RawAttachment::Base64 { data, filename, description } => {
             let bytes = base64::engine::general_purpose::STANDARD
                 .decode(data)
                 .map_err(|_| JsErrorBox::generic("Invalid base64 attachment data"))?;

@@ -12,7 +12,7 @@ use crate::{
         error::ApiError,
         response::ApiJson,
     },
-    kv::{KvKeyInfo, ListKeysResult},
+    kv::{RawKvKeyInfo, RawKvListKeysResult},
     state::AppState,
 };
 
@@ -31,7 +31,7 @@ pub struct ListKeysQuery {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ListKeysResponse {
-    pub keys: Vec<KvKeyInfo>,
+    pub keys: Vec<RawKvKeyInfo>,
     pub list_complete: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Option<String>,
@@ -59,7 +59,7 @@ pub async fn list_keys_handler(
     headers: HeaderMap,
     Path(params): Path<ListKeysParams>,
     Query(query): Query<ListKeysQuery>,
-) -> Result<ApiJson<ListKeysResult>, ApiError> {
+) -> Result<ApiJson<RawKvListKeysResult>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
     ensure_guild_admin(&state, &identity, &params.guild_id).await?;
     let result = state

@@ -43,7 +43,7 @@ impl EventHandler for DiscordHandler {
             }
         }
 
-        let payload = ReadyPayload::from(&ready);
+        let payload = EventReady::from(&ready);
         if let Err(err) = self
             .runtime
             .dispatch_js_event("ready", None, serde_json::to_value(payload).unwrap_or_default())
@@ -61,7 +61,7 @@ impl EventHandler for DiscordHandler {
             msg.author.id,
             msg.content
         );
-        let payload = MessagePayload::from(&msg);
+        let payload = EventMessage::from(&msg);
         let value = match serde_json::to_value(payload) {
             Ok(value) => value,
             Err(err) => {
@@ -83,7 +83,7 @@ impl EventHandler for DiscordHandler {
         new: Option<Message>,
         event: MessageUpdateEvent,
     ) {
-        let payload = MessageUpdatePayload::from_parts(old, new, &event);
+        let payload = EventMessageUpdate::from_parts(old, new, &event);
         let guild_id = payload.guild_id.clone();
         let value = match serde_json::to_value(payload) {
             Ok(value) => value,
@@ -105,7 +105,7 @@ impl EventHandler for DiscordHandler {
         deleted_message_id: MessageId,
         guild_id: Option<GuildId>,
     ) {
-        let payload = MessageDeletePayload {
+        let payload = EventMessageDelete {
             id: deleted_message_id.get().to_string(),
             channel_id: channel_id.get().to_string(),
             guild_id: guild_id.map(|g| g.get().to_string()),
@@ -132,7 +132,7 @@ impl EventHandler for DiscordHandler {
         multiple_deleted_messages_ids: Vec<MessageId>,
         guild_id: Option<GuildId>,
     ) {
-        let payload = MessageDeleteBulkPayload {
+        let payload = EventMessageDeleteBulk {
             ids: multiple_deleted_messages_ids.into_iter().map(|id| id.get().to_string()).collect(),
             channel_id: channel_id.get().to_string(),
             guild_id: guild_id.map(|g| g.get().to_string()),
@@ -164,7 +164,7 @@ impl EventHandler for DiscordHandler {
                     command.data.name
                 );
 
-                let payload = InteractionCreatePayload::from(&command);
+                let payload = EventInteractionCreate::from(&command);
                 let guild_id = payload.guild_id.clone();
                 let value = match serde_json::to_value(payload) {
                     Ok(value) => value,
@@ -193,7 +193,7 @@ impl EventHandler for DiscordHandler {
 }
 
 #[expose_payload(from = "serenity::all::User")]
-pub struct UserPayload {
+pub struct EventUser {
     #[expose(expr = "src.id.get().to_string()")]
     id: String,
     #[expose(expr = "src.name.clone()")]
@@ -205,8 +205,8 @@ pub struct UserPayload {
 }
 
 #[expose_payload]
-pub struct MemberPayload {
-    user: UserPayload,
+pub struct EventMember {
+    user: EventUser,
     nick: Option<String>,
     avatar: Option<String>,
     roles: Vec<String>,
@@ -221,19 +221,19 @@ pub struct MemberPayload {
 }
 
 #[expose_payload]
-pub struct MessagePayload {
+pub struct EventMessage {
     id: String,
     channel_id: String,
     guild_id: Option<String>,
     content: String,
-    author: UserPayload,
-    member: Option<MemberPayload>,
+    author: EventUser,
+    member: Option<EventMember>,
 }
 
-impl From<&Message> for MessagePayload {
+impl From<&Message> for EventMessage {
     fn from(msg: &Message) -> Self {
-        let member = msg.member.as_ref().map(|member| MemberPayload {
-            user: UserPayload {
+        let member = msg.member.as_ref().map(|member| EventMember {
+            user: EventUser {
                 id: msg.author.id.get().to_string(),
                 username: msg.author.name.clone(),
                 discriminator: msg.author.discriminator.map(|d| d.get()),
@@ -256,7 +256,7 @@ impl From<&Message> for MessagePayload {
             channel_id: msg.channel_id.get().to_string(),
             guild_id: msg.guild_id.map(|g| g.get().to_string()),
             content: msg.content.clone(),
-            author: UserPayload {
+            author: EventUser {
                 id: msg.author.id.get().to_string(),
                 username: msg.author.name.clone(),
                 discriminator: msg.author.discriminator.map(|d| d.get()),
@@ -268,18 +268,18 @@ impl From<&Message> for MessagePayload {
 }
 
 #[expose_payload]
-pub struct MessageUpdatePayload {
+pub struct EventMessageUpdate {
     id: String,
     channel_id: String,
     guild_id: Option<String>,
     content: Option<String>,
-    author: Option<UserPayload>,
+    author: Option<EventUser>,
     edited_timestamp: Option<String>,
-    old: Option<MessagePayload>,
-    new: Option<MessagePayload>,
+    old: Option<EventMessage>,
+    new: Option<EventMessage>,
 }
 
-impl MessageUpdatePayload {
+impl EventMessageUpdate {
     fn from_parts(old: Option<Message>, new: Option<Message>, event: &MessageUpdateEvent) -> Self {
         let guild_id = event
             .guild_id
@@ -292,8 +292,8 @@ impl MessageUpdatePayload {
         let author = event
             .author
             .as_ref()
-            .map(UserPayload::from)
-            .or_else(|| new.as_ref().map(|m| UserPayload::from(&m.author)));
+            .map(EventUser::from)
+            .or_else(|| new.as_ref().map(|m| EventUser::from(&m.author)));
 
         let edited_timestamp =
             event.edited_timestamp.and_then(|ts| ts.to_rfc3339()).or_else(|| {
@@ -307,48 +307,48 @@ impl MessageUpdatePayload {
             content,
             author,
             edited_timestamp,
-            old: old.as_ref().map(MessagePayload::from),
-            new: new.as_ref().map(MessagePayload::from),
+            old: old.as_ref().map(EventMessage::from),
+            new: new.as_ref().map(EventMessage::from),
         }
     }
 }
 
 #[expose_payload]
-pub struct MessageDeletePayload {
+pub struct EventMessageDelete {
     id: String,
     channel_id: String,
     guild_id: Option<String>,
 }
 
 #[expose_payload]
-pub struct MessageDeleteBulkPayload {
+pub struct EventMessageDeleteBulk {
     ids: Vec<String>,
     channel_id: String,
     guild_id: Option<String>,
 }
 
 #[expose_payload]
-pub struct ReadyPayload {
-    user: UserPayload,
+pub struct EventReady {
+    user: EventUser,
     guild_ids: Vec<String>,
 }
 
 #[expose_payload]
-pub struct InteractionCreatePayload {
+pub struct EventInteractionCreate {
     interaction_id: String,
     interaction_token: String,
     application_id: String,
     guild_id: Option<String>,
     channel_id: Option<String>,
-    user: UserPayload,
-    member: Option<MemberPayload>,
+    user: EventUser,
+    member: Option<EventMember>,
     command_name: String,
     data: serde_json::Value,
     locale: Option<String>,
     guild_locale: Option<String>,
 }
 
-impl From<&CommandInteraction> for InteractionCreatePayload {
+impl From<&CommandInteraction> for EventInteractionCreate {
     fn from(interaction: &CommandInteraction) -> Self {
         let data = serde_json::to_value(&interaction.data).unwrap_or_default();
         Self {
@@ -357,9 +357,9 @@ impl From<&CommandInteraction> for InteractionCreatePayload {
             application_id: interaction.application_id.get().to_string(),
             guild_id: interaction.guild_id.map(|g| g.get().to_string()),
             channel_id: Some(interaction.channel_id.get().to_string()),
-            user: UserPayload::from(&interaction.user),
-            member: interaction.member.as_ref().map(|m| MemberPayload {
-                user: UserPayload::from(&interaction.user),
+            user: EventUser::from(&interaction.user),
+            member: interaction.member.as_ref().map(|m| EventMember {
+                user: EventUser::from(&interaction.user),
                 nick: m.nick.clone(),
                 avatar: m.avatar.map(|h| h.to_string()),
                 roles: m.roles.iter().map(|r| r.get().to_string()).collect(),
@@ -423,10 +423,10 @@ impl DiscordHandler {
     }
 }
 
-impl From<&Ready> for ReadyPayload {
+impl From<&Ready> for EventReady {
     fn from(ready: &Ready) -> Self {
         Self {
-            user: UserPayload {
+            user: EventUser {
                 id: ready.user.id.get().to_string(),
                 username: ready.user.name.clone(),
                 discriminator: ready.user.discriminator.map(|d| d.get()),

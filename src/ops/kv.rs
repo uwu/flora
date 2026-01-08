@@ -4,7 +4,7 @@ use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
 
-use crate::kv::{KvKeyMetadata, KvService};
+use crate::kv::{RawKvKeyMetadata, KvService};
 
 #[op2(async)]
 #[string]
@@ -24,7 +24,7 @@ pub async fn op_kv_get(
 }
 
 #[expose_input]
-pub struct SetOptions {
+pub struct RawKvSetOptions {
     expiration: Option<i64>,
     metadata: Option<serde_json::Value>,
 }
@@ -35,7 +35,7 @@ pub async fn op_kv_set(
     #[string] store_name: String,
     #[string] key: String,
     #[string] value: String,
-    #[serde(default)] options: Option<SetOptions>,
+    #[serde(default)] options: Option<RawKvSetOptions>,
 ) -> Result<(), JsErrorBox> {
     let (kv, guild_id) = {
         let state = state.borrow();
@@ -69,7 +69,7 @@ pub async fn op_kv_delete(
 }
 
 #[expose_input]
-pub struct ListKeysOptions {
+pub struct RawKvListKeysOptions {
     prefix: Option<String>,
     limit: Option<i64>,
     cursor: Option<String>,
@@ -79,9 +79,9 @@ pub struct ListKeysOptions {
 #[serde]
 pub async fn op_kv_list_keys(
     state: Rc<RefCell<OpState>>,
-    #[serde(default)] options: Option<ListKeysOptions>,
+    #[serde(default)] options: Option<RawKvListKeysOptions>,
     #[string] store_name: String,
-) -> Result<crate::kv::ListKeysResult, JsErrorBox> {
+) -> Result<crate::kv::RawKvListKeysResult, JsErrorBox> {
     let (kv, guild_id) = {
         let state = state.borrow();
         let kv = state.borrow::<KvService>().clone();
@@ -104,7 +104,7 @@ pub async fn op_kv_get_with_metadata(
     state: Rc<RefCell<OpState>>,
     #[string] store_name: String,
     #[string] key: String,
-) -> Result<Option<(String, Option<KvKeyMetadata>)>, JsErrorBox> {
+) -> Result<Option<(String, Option<RawKvKeyMetadata>)>, JsErrorBox> {
     let (kv, guild_id) = {
         let state = state.borrow();
         let kv = state.borrow::<KvService>().clone();
