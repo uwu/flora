@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from "bun:test";
 import type { InteractionContext } from "./index";
-import { createBot, defineSlashCommand } from "./index";
+import { createBot, slash } from "./index";
 
 describe("createBot slash registration", () => {
   it("registers slash commands when guild id is present", () => {
@@ -10,13 +10,13 @@ describe("createBot slash registration", () => {
     };
 
     const register = mock(() => Promise.resolve());
-    globalThis.registerSlashCommands = register;
+    globalThis.slash = register;
     // @ts-expect-error
     globalThis.__floraGuildId = "123";
 
     createBot({
       slashCommands: [
-        defineSlashCommand({
+        slash({
           name: "ping",
           description: "Reply with pong",
           options: [

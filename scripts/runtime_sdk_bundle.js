@@ -307,8 +307,8 @@ return exports;
 ;(function (global) {
   if (!global.flora) return;
   global.createBot = global.flora.createBot;
-  global.defineCommand = global.flora.defineCommand;
-  global.defineSlashCommand = global.flora.defineSlashCommand;
+  global.prefix = global.flora.prefix;
+  global.slash = global.flora.slash;
   global.hasRole = global.flora.hasRole;
   global.getSubcommand = global.flora.getSubcommand;
   global.getSubcommandGroup = global.flora.getSubcommandGroup;

@@ -1,22 +1,28 @@
-import { defineConfig } from "rolldown";
-import { dts } from "rolldown-plugin-dts";
+import { defineConfig } from 'rolldown'
+import { globalTypes } from './src/plugins/global-types'
 
 export default defineConfig([
   {
-    input: "./src/index.ts",
-    platform: "neutral",
+    input: './src/index.ts',
+    platform: 'neutral',
     treeshake: false,
+    plugins: [
+      globalTypes({
+        input: './src/index.ts',
+        output: './global-types.d.ts'
+      })
+    ],
     output: {
-      file: "../scripts/runtime_sdk_bundle.js",
-      format: "iife",
-      name: "flora",
-      exports: "named",
+      file: '../scripts/runtime_sdk_bundle.js',
+      format: 'iife',
+      name: 'flora',
+      exports: 'named',
       footer: `
 ;(function (global) {
   if (!global.flora) return;
   global.createBot = global.flora.createBot;
-  global.defineCommand = global.flora.defineCommand;
-  global.defineSlashCommand = global.flora.defineSlashCommand;
+  global.prefix = global.flora.prefix;
+  global.slash = global.flora.slash;
   global.hasRole = global.flora.hasRole;
   global.getSubcommand = global.flora.getSubcommand;
   global.getSubcommandGroup = global.flora.getSubcommandGroup;
@@ -24,12 +30,7 @@ export default defineConfig([
   global.EmbedBuilder = global.flora.EmbedBuilder;
   global.embed = global.flora.embed;
 })(globalThis);
-`,
-    },
-  },
-
-  {
-    input: "./src/index.ts",
-    plugins: [dts({ emitDtsOnly: true })],
-  },
-]);
+`
+    }
+  }
+])

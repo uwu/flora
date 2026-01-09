@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from 'bun:test'
 import type { InteractionContext } from './index'
-import { createBot, defineSlashCommand } from './index'
+import { createBot, slash } from './index'
 
 describe('createBot slash commands', () => {
   it('routes interactionCreate to matching slash command', async () => {
@@ -12,12 +12,12 @@ describe('createBot slash commands', () => {
     }
 
     const run = mock(async (ctx: InteractionContext) => {
-      expect(ctx.msg.command_name).toBe('ping')
+      expect(ctx.msg.commandName).toBe('ping')
       expect(ctx.options).toEqual({ text: 'hello', count: 2 })
       await ctx.reply({ content: 'pong', ephemeral: true })
     })
 
-    createBot({ slashCommands: [defineSlashCommand({ name: 'ping', description: 'Ping command', run })] })
+    createBot({ slashCommands: [slash({ name: 'ping', description: 'Ping command', run })] })
 
     const reply = mock(() => Promise.resolve())
     const handler = handlers['interactionCreate']

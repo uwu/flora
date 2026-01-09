@@ -33,24 +33,27 @@ export type SlashCommand = {
   run?: (ctx: InteractionContext) => Promise<void> | void
 }
 
-export function slash (command: SlashCommand): SlashCommand {
+export function slash(command: SlashCommand): SlashCommand {
   return command
 }
 
-type CreateOptions = {
+export type CreateOptions = {
   prefix?: string
   commands?: Command[]
   prefixCommands?: Command[]
   slashCommands?: SlashCommand[]
 }
 
-type FlattenedSlashCommand = {
+export type FlattenedSlashCommand = {
   name: string
   description: string
   options?: SlashCommandOption[]
 }
 
-type SubcommandMap = Record<string, Record<string, (ctx: InteractionContext) => Promise<void> | void>>
+export type SubcommandMap = Record<
+  string,
+  Record<string, (ctx: InteractionContext) => Promise<void> | void>
+>
 
 export function createBot(options: CreateOptions) {
   const prefix = options.prefix ?? '!'
@@ -92,7 +95,7 @@ export function createBot(options: CreateOptions) {
   }
 }
 
-function flattenCommands(commands: SlashCommand[]): FlattenedSlashCommand[] {
+export function flattenCommands(commands: SlashCommand[]): FlattenedSlashCommand[] {
   const subcommands = (globalThis as any).__floraSubcommands as SubcommandMap | undefined
   ;(globalThis as any).__floraSubcommands = subcommands || {}
   return commands.map((cmd) => {
@@ -123,7 +126,7 @@ function flattenCommands(commands: SlashCommand[]): FlattenedSlashCommand[] {
   })
 }
 
-async function handleSubcommand(ctx: InteractionContext, command: SlashCommand) {
+export async function handleSubcommand(ctx: InteractionContext, command: SlashCommand) {
   const rawData = ctx.msg.data as any
   if (!rawData?.options || !Array.isArray(rawData.options)) {
     return
@@ -133,7 +136,8 @@ async function handleSubcommand(ctx: InteractionContext, command: SlashCommand) 
   if (!firstOption) return
 
   const subcommandName = firstOption.name
-  const subcommandMap = ((globalThis as any).__floraSubcommands as SubcommandMap | undefined)?.[command.name]
+  const subcommandMap = ((globalThis as any).__floraSubcommands as SubcommandMap | undefined)
+    ?.[command.name]
   if (!subcommandMap) return
 
   const subcommandHandler = subcommandMap[subcommandName]
@@ -150,7 +154,7 @@ async function handleSubcommand(ctx: InteractionContext, command: SlashCommand) 
   await subcommandHandler(enrichedCtx)
 }
 
-function flattenInteractionOptions(options: any[]): Record<string, any> {
+export function flattenInteractionOptions(options: any[]): Record<string, any> {
   const result: Record<string, any> = {}
 
   for (const opt of options) {

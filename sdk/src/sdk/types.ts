@@ -1,6 +1,9 @@
 // Re-export all types from generated
-import type { EventInteractionCreate, EventMessage, EventMessageDelete, EventMessageDeleteBulk, EventMessageUpdate, RawAllowedMentions, RawAttachment, RawEmbed } from '../generated'
+import type { EventInteractionCreate, EventMessage, EventMessageDelete, EventMessageDeleteBulk, EventMessageUpdate, RawAllowedMentions, RawAttachment, RawEmbed, RawEmbedField } from '../generated'
 export type * from '../generated'
+
+export type Embed = RawEmbed
+export type EmbedField = RawEmbedField
 
 export type MessageReplyOptions = {
   content?: string

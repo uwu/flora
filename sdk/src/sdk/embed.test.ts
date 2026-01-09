@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { embed } from './index'
+import { embed } from './embed'
 
 describe('EmbedBuilder', () => {
   it('builds embed with fluent setters', () => {
@@ -28,8 +28,8 @@ describe('EmbedBuilder', () => {
       author: { name: 'author', url: 'https://auth', iconUrl: 'https://img/auth.png' },
       fields: [
         { name: 'Field 1', value: 'Value 1', inline: false },
-        { name: 'Field 2', value: 'Value 2', inline: true },
-      ],
+        { name: 'Field 2', value: 'Value 2', inline: true }
+      ]
     })
   })
 
@@ -39,4 +39,3 @@ describe('EmbedBuilder', () => {
     expect(built.description).toBe('desc')
   })
 })
-
