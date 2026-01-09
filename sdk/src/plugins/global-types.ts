@@ -24,20 +24,6 @@ export function globalTypes(options: {
   }
 }
 
-const SDK_GLOBALS = new Set([
-  'createBot',
-  'prefix',
-  'slash',
-  'hasRole',
-  'getSubcommand',
-  'getSubcommandGroup',
-  'kv',
-  'KvStore',
-  'store',
-  'EmbedBuilder',
-  'embed'
-])
-
 function generateBundledDeclarations(entryPath: string): string {
   const configPath = ts.findConfigFile(dirname(entryPath), ts.sys.fileExists, 'tsconfig.json')
   const configFile = configPath ? ts.readConfigFile(configPath, ts.sys.readFile) : { config: {} }
@@ -60,9 +46,9 @@ function generateBundledDeclarations(entryPath: string): string {
   const program = ts.createProgram([entryPath], compilerOptions, host)
   const checker = program.getTypeChecker()
 
-  const collectedTypes: string[] = []
-  const collectedGlobals: string[] = []
+  const collectedDeclarations: string[] = []
   const processedSymbols = new Set<string>()
+  const exportedNames: string[] = []
 
   function getFullyQualifiedType(type: ts.Type, node?: ts.Node): string {
     let result = checker.typeToString(
@@ -72,12 +58,11 @@ function generateBundledDeclarations(entryPath: string): string {
       ts.TypeFormatFlags.WriteArrayAsGenericType |
       ts.TypeFormatFlags.InTypeAlias
     )
-    // Remove any import(...) references - use the type name directly
     result = result.replace(/import\([^)]+\)\./g, '')
     return result
   }
 
-  function processSymbol(symbol: ts.Symbol, isExported = true) {
+  function processSymbol(symbol: ts.Symbol) {
     const name = symbol.getName()
     if (processedSymbols.has(name)) return
     processedSymbols.add(name)
@@ -95,7 +80,7 @@ function generateBundledDeclarations(entryPath: string): string {
         ? `<${decl.typeParameters.map(tp => tp.getText()).join(', ')}>`
         : ''
       const typeString = getFullyQualifiedType(type, decl)
-      collectedTypes.push(`  type ${name}${typeParams} = ${typeString};`)
+      collectedDeclarations.push(`  type ${name}${typeParams} = ${typeString};`)
     }
     // Interface
     else if (ts.isInterfaceDeclaration(decl)) {
@@ -115,7 +100,7 @@ function generateBundledDeclarations(entryPath: string): string {
         }
       }
 
-      collectedTypes.push(`  interface ${name}${typeParams} {\n${members.join('\n')}\n  }`)
+      collectedDeclarations.push(`  interface ${name}${typeParams} {\n${members.join('\n')}\n  }`)
     }
     // Function
     else if (ts.isFunctionDeclaration(decl)) {
@@ -132,21 +117,15 @@ function generateBundledDeclarations(entryPath: string): string {
           ? `<${decl.typeParameters.map(tp => tp.getText()).join(', ')}>`
           : ''
 
-        const funcDecl = `  function ${name}${typeParams}(${params}): ${getFullyQualifiedType(returnType, decl)};`
-
-        if (SDK_GLOBALS.has(name)) {
-          collectedGlobals.push(funcDecl)
-        }
+        collectedDeclarations.push(`  function ${name}${typeParams}(${params}): ${getFullyQualifiedType(returnType, decl)};`)
+        exportedNames.push(name)
       }
     }
     // Variable/const
     else if (ts.isVariableDeclaration(decl)) {
       const type = checker.getTypeAtLocation(decl)
-      const constDecl = `  const ${name}: ${getFullyQualifiedType(type, decl)};`
-
-      if (SDK_GLOBALS.has(name)) {
-        collectedGlobals.push(constDecl)
-      }
+      collectedDeclarations.push(`  const ${name}: ${getFullyQualifiedType(type, decl)};`)
+      exportedNames.push(name)
     }
     // Class
     else if (ts.isClassDeclaration(decl)) {
@@ -196,13 +175,8 @@ function generateBundledDeclarations(entryPath: string): string {
         }
       }
 
-      const classDecl = `  class ${name}${typeParams} {\n${members.join('\n')}\n  }`
-
-      if (SDK_GLOBALS.has(name)) {
-        collectedGlobals.push(classDecl)
-      } else {
-        collectedTypes.push(classDecl)
-      }
+      collectedDeclarations.push(`  class ${name}${typeParams} {\n${members.join('\n')}\n  }`)
+      exportedNames.push(name)
     }
   }
 
@@ -219,6 +193,7 @@ function generateBundledDeclarations(entryPath: string): string {
   }
 
   const runtimeGlobals = `
+  // Runtime globals (from runtime_prelude.js)
   interface FloraEventMap {
     ready: BaseContext<EventReady>
     messageCreate: MessageContext
@@ -235,9 +210,7 @@ function generateBundledDeclarations(entryPath: string): string {
   const __floraGuildId: string | undefined
   function __floraDispatch(event: string, payload: unknown): Promise<void>
 
-  const flora: {
-${Array.from(SDK_GLOBALS).map(name => `    ${name}: typeof ${name}`).join('\n')}
-  }
+  const flora: typeof import('./src/index')
 `
 
   return `// Auto-generated global types for Flora SDK
@@ -246,11 +219,8 @@ ${Array.from(SDK_GLOBALS).map(name => `    ${name}: typeof ${name}`).join('\n')}
 declare global {
 ${runtimeGlobals}
 
-  // SDK exports
-${collectedGlobals.join('\n\n')}
-
-  // SDK types
-${collectedTypes.join('\n\n')}
+  // SDK exports (functions, consts, classes, types)
+${collectedDeclarations.join('\n\n')}
 }
 
 export {}

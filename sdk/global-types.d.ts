@@ -3,6 +3,7 @@
 
 declare global {
 
+  // Runtime globals (from runtime_prelude.js)
   interface FloraEventMap {
     ready: BaseContext<EventReady>
     messageCreate: MessageContext
@@ -19,27 +20,35 @@ declare global {
   const __floraGuildId: string | undefined
   function __floraDispatch(event: string, payload: unknown): Promise<void>
 
-  const flora: {
-    createBot: typeof createBot
-    prefix: typeof prefix
-    slash: typeof slash
-    hasRole: typeof hasRole
-    getSubcommand: typeof getSubcommand
-    getSubcommandGroup: typeof getSubcommandGroup
-    kv: typeof kv
-    KvStore: typeof KvStore
-    store: typeof store
-    EmbedBuilder: typeof EmbedBuilder
-    embed: typeof embed
-  }
+  const flora: typeof import('./src/index')
 
 
-  // SDK exports
+  // SDK exports (functions, consts, classes, types)
   function prefix(command: { name: string; description?: string; run: (ctx: MessageContext & { args: string[]; }) => Promise<void> | void; }): { name: string; description?: string; run: (ctx: MessageContext & { args: string[]; }) => Promise<void> | void; };
 
   function slash(command: { name: string; description: string; options?: SlashCommandOption[]; subcommands?: SlashSubcommand[]; run?: (ctx: InteractionContext) => Promise<void> | void; }): { name: string; description: string; options?: SlashCommandOption[]; subcommands?: SlashSubcommand[]; run?: (ctx: InteractionContext) => Promise<void> | void; };
 
   function createBot(options: { prefix?: string; commands?: Command[]; prefixCommands?: Command[]; slashCommands?: SlashCommand[]; }): void;
+
+  function flattenCommands(commands: Array<SlashCommand>): Array<FlattenedSlashCommand>;
+
+  function handleSubcommand(ctx: BaseContext<EventInteractionCreate> & { options: SlashCommandOptions; }, command: { name: string; description: string; options?: SlashCommandOption[]; subcommands?: SlashSubcommand[]; run?: (ctx: InteractionContext) => Promise<void> | void; }): Promise<void>;
+
+  function flattenInteractionOptions(options: Array<any>): { [x: string]: any; };
+
+  type Command = { name: string; description?: string; run: (ctx: MessageContext & { args: string[]; }) => Promise<void> | void; };
+
+  type SlashCommandOption = { name: string; description: string; type?: "string" | "integer" | "number" | "boolean" | "subcommand" | "subcommand_group"; required?: boolean; options?: SlashCommandOption[]; };
+
+  type SlashSubcommand = { name: string; description: string; options?: SlashCommandOption[]; run: (ctx: InteractionContext) => Promise<void> | void; };
+
+  type SlashCommand = { name: string; description: string; options?: SlashCommandOption[]; subcommands?: SlashSubcommand[]; run?: (ctx: InteractionContext) => Promise<void> | void; };
+
+  type CreateOptions = { prefix?: string; commands?: Command[]; prefixCommands?: Command[]; slashCommands?: SlashCommand[]; };
+
+  type FlattenedSlashCommand = { name: string; description: string; options?: SlashCommandOption[]; };
+
+  type SubcommandMap = { [x: string]: Record<string, (ctx: InteractionContext) => Promise<void> | void>; };
 
   function embed(initial: Embed | undefined): EmbedBuilder;
 
@@ -67,6 +76,8 @@ declare global {
 
   function store(name: string): KvStore;
 
+  type RawKvGetResult = { value: string | null; metadata?: Record<string, unknown>; };
+
   class KvStore {
     get(key: string): Promise<string | null>;
     getWithMetadata(key: string): Promise<RawKvGetResult>;
@@ -77,23 +88,6 @@ declare global {
   }
 
   const kv: { store: (name: string) => KvStore; };
-
-  // SDK types
-  type Command = { name: string; description?: string; run: (ctx: MessageContext & { args: string[]; }) => Promise<void> | void; };
-
-  type SlashCommandOption = { name: string; description: string; type?: "string" | "integer" | "number" | "boolean" | "subcommand" | "subcommand_group"; required?: boolean; options?: SlashCommandOption[]; };
-
-  type SlashSubcommand = { name: string; description: string; options?: SlashCommandOption[]; run: (ctx: InteractionContext) => Promise<void> | void; };
-
-  type SlashCommand = { name: string; description: string; options?: SlashCommandOption[]; subcommands?: SlashSubcommand[]; run?: (ctx: InteractionContext) => Promise<void> | void; };
-
-  type CreateOptions = { prefix?: string; commands?: Command[]; prefixCommands?: Command[]; slashCommands?: SlashCommand[]; };
-
-  type FlattenedSlashCommand = { name: string; description: string; options?: SlashCommandOption[]; };
-
-  type SubcommandMap = { [x: string]: Record<string, (ctx: InteractionContext) => Promise<void> | void>; };
-
-  type RawKvGetResult = { value: string | null; metadata?: Record<string, unknown>; };
 
   type Embed = { title?: string; description?: string; url?: string; color?: number; timestamp?: string; footer?: RawEmbedFooter; image?: RawEmbedMedia; thumbnail?: RawEmbedMedia; author?: RawEmbedAuthor; fields?: Array<RawEmbedField>; };
 
