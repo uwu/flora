@@ -110,7 +110,10 @@ function generateBundledDeclarations(entryPath: string): string {
         const params = signature.getParameters().map(p => {
           const paramDecl = p.getDeclarations()?.[0]
           const paramType = paramDecl ? checker.getTypeOfSymbolAtLocation(p, paramDecl) : checker.getAnyType()
-          return `${p.getName()}: ${getFullyQualifiedType(paramType, paramDecl)}`
+          const isOptional = p.flags & ts.SymbolFlags.Optional ||
+            (paramDecl && ts.isParameter(paramDecl) && (paramDecl.questionToken !== undefined || paramDecl.initializer !== undefined))
+          const optionalMarker = isOptional ? '?' : ''
+          return `${p.getName()}${optionalMarker}: ${getFullyQualifiedType(paramType, paramDecl)}`
         }).join(', ')
 
         const typeParams = decl.typeParameters
@@ -166,7 +169,10 @@ function generateBundledDeclarations(entryPath: string): string {
             const params = sig.getParameters().map(p => {
               const pd = p.getDeclarations()?.[0]
               const pt = pd ? checker.getTypeOfSymbolAtLocation(p, pd) : checker.getAnyType()
-              return `${p.getName()}: ${getFullyQualifiedType(pt, pd)}`
+              const isOptional = p.flags & ts.SymbolFlags.Optional ||
+                (pd && ts.isParameter(pd) && (pd.questionToken !== undefined || pd.initializer !== undefined))
+              const optionalMarker = isOptional ? '?' : ''
+              return `${p.getName()}${optionalMarker}: ${getFullyQualifiedType(pt, pd)}`
             }).join(', ')
             members.push(`    ${prop.getName()}(${params}): ${getFullyQualifiedType(returnType, propDecl)};`)
           }

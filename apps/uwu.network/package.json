@@ -3,6 +3,10 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "sdk": "workspace:*"
+    "sdk": "workspace:*",
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
   }
 }

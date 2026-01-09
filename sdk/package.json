@@ -1,7 +1,7 @@
 {
   "name": "sdk",
   "exports": {
-    "./tsconfig": "./tsconfig.flora.json",
+    "./tsconfig": "./tsconfig.json",
     "./*": "./dist/*"
   },
   "type": "module",

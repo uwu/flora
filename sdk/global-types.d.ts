@@ -50,7 +50,7 @@ declare global {
 
   type SubcommandMap = { [x: string]: Record<string, (ctx: InteractionContext) => Promise<void> | void>; };
 
-  function embed(initial: Embed | undefined): EmbedBuilder;
+  function embed(initial?: Embed | undefined): EmbedBuilder;
 
   class EmbedBuilder {
     setTitle(title: string): this;
@@ -58,11 +58,11 @@ declare global {
     setUrl(url: string): this;
     setColor(color: number): this;
     setTimestamp(timestamp: string): this;
-    setFooter(text: string, iconUrl: string | undefined): this;
+    setFooter(text: string, iconUrl?: string | undefined): this;
     setImage(url: string): this;
     setThumbnail(url: string): this;
-    setAuthor(name: string | undefined, options: { url?: string; iconUrl?: string; } | undefined): this;
-    addField(name: string, value: string, inline: boolean): this;
+    setAuthor(name?: string | undefined, options?: { url?: string; iconUrl?: string; } | undefined): this;
+    addField(name: string, value: string, inline?: boolean): this;
     addFields(fields: Array<EmbedField>): this;
     setFields(fields: Array<EmbedField>): this;
     toJSON(): { title?: string; description?: string; url?: string; color?: number; timestamp?: string; footer?: RawEmbedFooter; image?: RawEmbedMedia; thumbnail?: RawEmbedMedia; author?: RawEmbedAuthor; fields?: Array<EmbedField>; };
@@ -81,10 +81,10 @@ declare global {
   class KvStore {
     get(key: string): Promise<string | null>;
     getWithMetadata(key: string): Promise<RawKvGetResult>;
-    set(key: string, value: string, options: RawKvSetOptions | undefined): Promise<void>;
+    set(key: string, value: string, options?: RawKvSetOptions | undefined): Promise<void>;
     updateMetadata(key: string, metadata: JsonValue | undefined): Promise<void>;
     delete(key: string): Promise<void>;
-    list(options: RawKvListKeysOptions | undefined): Promise<RawKvListKeysResult>;
+    list(options?: RawKvListKeysOptions | undefined): Promise<RawKvListKeysResult>;
   }
 
   const kv: { store: (name: string) => KvStore; };

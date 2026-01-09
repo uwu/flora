@@ -31,6 +31,7 @@
       "name": "uwu.network",
       "devDependencies": {
         "sdk": "workspace:*",
+        "typescript": "^5.0.0",
       },
     },
     "example": {
