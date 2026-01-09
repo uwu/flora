@@ -1,5 +1,5 @@
 import { defineConfig } from 'rolldown'
-import { globalTypes } from './src/plugins/global-types'
+import { globalTypes } from './src/build/plugins/global-types'
 
 export default defineConfig([
   {
