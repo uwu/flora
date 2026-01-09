@@ -1,19 +1,13 @@
 {
-  "name": "flora",
-  "module": "index.ts",
-  "type": "module",
+  "name": "@flora-monorepo/flora",
   "private": true,
   "workspaces": ["sdk", "example", "apps/*"],
   "scripts": {
-    "format": "dprint fmt",
-    "typecheck": "bun x tsc --noEmit -p example/tsconfig.json"
+    "format": "dprint fmt"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "dprint": "^0.51.1",
     "typescript": "^5.7.2"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
   }
 }
