@@ -1,4 +1,4 @@
-import type { EmbedFieldInput as EmbedField, EmbedInput as Embed } from './types'
+import type { RawEmbedField as EmbedField, RawEmbed as Embed } from './types'
 
 export class EmbedBuilder {
   #embed: Embed

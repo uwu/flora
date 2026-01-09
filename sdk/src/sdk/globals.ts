@@ -60,8 +60,8 @@ declare global {
 
   // SDK functions (exposed via IIFE footer)
   function createBot(options: CreateOptions): void
-  function defineCommand(command: Command): Command
-  function defineSlashCommand(command: SlashCommand): SlashCommand
+  function prefix(command: Command): Command
+  function slash(command: SlashCommand): SlashCommand
   function hasRole(ctx: InteractionContext, roleId: string): boolean
   function getSubcommand(ctx: InteractionContext): string | undefined
   function getSubcommandGroup(ctx: InteractionContext): string | undefined

@@ -113,10 +113,10 @@ async fn main() -> Result<()> {
     }
 
     // Optionally load a default script for local development when present.
-    if Path::new("scripts/bot.ts").exists() {
-        if let Err(err) = runtime.load_local_script("scripts/bot.ts").await {
-            error!("Failed to load user script: {:?}", err);
-        }
+    if Path::new("scripts/bot.ts").exists()
+        && let Err(err) = runtime.load_local_script("scripts/bot.ts").await
+    {
+        error!("Failed to load user script: {:?}", err);
     }
 
     let cached_deployments = deployment_service.list_deployments().await?;

@@ -1,0 +1,103 @@
+use confique::Config;
+use std::fmt::Debug;
+use std::net::IpAddr;
+
+/// Flora configuration template. To begin, copy this file to `config.toml` and fill in the values.
+#[derive(Debug, Config)]
+pub struct AppConfig {
+    /// Discord config.
+    #[config(nested)]
+    pub discord: DiscordConfig,
+    /// Database (PostgreSQL) config.
+    #[config(nested)]
+    pub database: DatabaseConfig,
+    /// Cache (Valkey) config.
+    #[config(nested)]
+    pub cache: CacheConfig,
+    /// Runtime config.
+    #[config(nested)]
+    pub runtime: RuntimeConfig,
+    /// API server config.
+    #[config(nested)]
+    pub api: ApiConfig,
+}
+
+/// Discord OAuth configuration.
+#[derive(Debug, Config)]
+pub struct DiscordConfig {
+    /// Discord bot token.
+    #[config(env = "DISCORD_TOKEN")]
+    pub bot_token: String,
+    /// Discord client ID for OAuth.
+    #[config(env = "DISCORD_CLIENT_ID")]
+    pub client_id: String,
+    /// Discord client secret for OAuth.
+    #[config(env = "DISCORD_CLIENT_SECRET")]
+    pub client_secret: String,
+    /// Discord redirect URI for OAuth. Must match the one in the Discord developer portal, and has to be exposed like so: `https://<host>/auth/callback`
+    #[config(env = "DISCORD_REDIRECT_URI", default = "http://localhost:3000/auth/callback")]
+    pub redirect_uri: String,
+}
+
+/// Database configuration.
+#[derive(Debug, Config)]
+pub struct DatabaseConfig {
+    /// Database URL.
+    #[config(env = "DATABASE_URL", default = "postgres://user:pass@localhost:5433/flora")]
+    pub url: String,
+    /// Maximum number of connections to the database.
+    #[config(env = "DATABASE_MAX_CONNECTIONS", default = "5")]
+    pub max_connections: u32,
+}
+
+/// Cache/Valkey configuration.
+#[derive(Debug, Config)]
+pub struct CacheConfig {
+    /// Cache URL.
+    #[config(env = "CACHE_URL", default = "redis://127.0.0.1:5434/0")]
+    pub url: String,
+    /// Pool size.
+    #[config(env = "CACHE_POOL_SIZE", default = 10)]
+    pub pool_size: usize,
+}
+
+/// Runtime configuration.
+#[derive(Debug, Config)]
+pub struct RuntimeConfig {
+    #[config(env = "RUNTIME_MAX_WORKERS", default = 4)]
+    pub max_workers: usize,
+}
+
+/// API server configuration.
+#[derive(Debug, Config)]
+pub struct ApiConfig {
+    /// Port to listen on.
+    #[config(env = "API_PORT", default = 3000)]
+    pub port: u16,
+    /// Bind address.
+    #[config(env = "API_ADDRESS", default = "0.0.0.0")]
+    pub address: IpAddr,
+    /// Secret key for signing cookies.
+    #[config(env = "API_SECRET")]
+    pub secret: String,
+    /// Cookie TTL in seconds. Default is 30 days.
+    #[config(env = "API_COOKIE_TTL_SECS", default = "60 * 60 * 24 * 30")] // 30 days
+    pub cookie_ttl_secs: u64,
+    /// Whether to use secure cookies.
+    #[config(env = "API_COOKIE_SECURE", default = false)]
+    pub cookie_secure: bool,
+}
+
+#[cfg(test)]
+mod config {
+    use super::AppConfig;
+    use confique::toml::FormatOptions;
+
+    /// Abuse tests like ts-rs does to generate config.toml.template
+    #[test]
+    fn generate_config_template() -> Result<(), Box<dyn std::error::Error>> {
+        let toml = confique::toml::template::<AppConfig>(FormatOptions::default());
+        std::fs::write("../config.toml.template", toml)?;
+        Ok(())
+    }
+}

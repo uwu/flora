@@ -1,80 +1,13 @@
 // Re-export all types from generated
-import type {
-  AllowedMentionsInput,
-  AttachmentInput,
-  EditMessageArgs,
-  EmbedAuthorInput,
-  EmbedFieldInput,
-  EmbedFooterInput,
-  EmbedInput,
-  EmbedMediaInput,
-  InteractionCreatePayload,
-  // Op Input Types - Interaction
-  InteractionResponseArgs,
-  KvKeyInfo,
-  KvKeyMetadata,
-  ListKeysOptions,
-  ListKeysResult,
-  MemberPayload,
-  MessageDeleteBulkPayload,
-  MessageDeletePayload,
-  MessagePayload,
-  MessageUpdatePayload,
-  ReadyPayload,
-  // Op Input Types - Message
-  SendMessageArgs,
-  // Op Input/Output Types - KV
-  SetOptions,
-  SlashCommandDef,
-  SlashCommandOptionDef,
-  UpsertGuildCommandsArgs,
-  // Event Payloads
-  UserPayload
-} from '../generated'
-
-export type {
-  AllowedMentionsInput,
-  AttachmentInput,
-  EditMessageArgs,
-  EmbedAuthorInput,
-  EmbedFieldInput,
-  EmbedFooterInput,
-  EmbedInput,
-  EmbedMediaInput,
-  InteractionCreatePayload,
-  // Op Input Types - Interaction
-  InteractionResponseArgs,
-  KvKeyInfo,
-  KvKeyMetadata,
-  ListKeysOptions,
-  ListKeysResult,
-  MemberPayload,
-  MessageDeleteBulkPayload,
-  MessageDeletePayload,
-  MessagePayload,
-  MessageUpdatePayload,
-  ReadyPayload,
-  // Op Input Types - Message
-  SendMessageArgs,
-  // Op Input/Output Types - KV
-  SetOptions,
-  SlashCommandDef,
-  SlashCommandOptionDef,
-  UpsertGuildCommandsArgs,
-  // Event Payloads
-  UserPayload
-} from '../generated'
-
-export type MessageAuthor = UserPayload
-export type GuildMember = MemberPayload
-export type InteractionPayload = InteractionCreatePayload
+import type { EventInteractionCreate, EventMessage, EventMessageDelete, EventMessageDeleteBulk, EventMessageUpdate, RawAllowedMentions, RawAttachment, RawEmbed } from '../generated'
+export type * from '../generated'
 
 export type MessageReplyOptions = {
   content?: string
-  embeds?: EmbedInput[]
-  attachments?: AttachmentInput[]
+  embeds?: RawEmbed[]
+  attachments?: RawAttachment[]
   tts?: boolean
-  allowedMentions?: AllowedMentionsInput
+  allowedMentions?: RawAllowedMentions
   replyTo?: string | null
   ephemeral?: boolean
   flags?: number
@@ -82,27 +15,27 @@ export type MessageReplyOptions = {
 
 export type MessageEditOptions = {
   content?: string
-  embeds?: EmbedInput[]
-  allowedMentions?: AllowedMentionsInput
+  embeds?: RawEmbed[]
+  allowedMentions?: RawAllowedMentions
   flags?: number
 }
 
-type BaseContext<TPayload> = {
+export type BaseContext<TPayload> = {
   msg: TPayload
   reply: (content: string | MessageReplyOptions) => Promise<void>
   edit: (content: string | MessageEditOptions) => Promise<void>
 }
 
-export type MessageContext = BaseContext<MessagePayload>
-export type MessageUpdateContext = BaseContext<MessageUpdatePayload>
-export type MessageDeleteContext = BaseContext<MessageDeletePayload>
-export type MessageDeleteBulkContext = BaseContext<MessageDeleteBulkPayload>
+export type MessageContext = BaseContext<EventMessage>
+export type MessageUpdateContext = BaseContext<EventMessageUpdate>
+export type MessageDeleteContext = BaseContext<EventMessageDelete>
+export type MessageDeleteBulkContext = BaseContext<EventMessageDeleteBulk>
 
 export type SlashCommandOptions = Record<
   string,
   string | number | boolean | undefined
 >
 
-export type InteractionContext = BaseContext<InteractionPayload> & {
+export type InteractionContext = BaseContext<EventInteractionCreate> & {
   options: SlashCommandOptions
 }

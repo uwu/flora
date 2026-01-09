@@ -6,7 +6,7 @@ export type Command = {
   run: (ctx: MessageContext & { args: string[] }) => Promise<void> | void
 }
 
-export function defineCommand(command: Command): Command {
+export function prefix(command: Command): Command {
   return command
 }
 
@@ -33,7 +33,7 @@ export type SlashCommand = {
   run?: (ctx: InteractionContext) => Promise<void> | void
 }
 
-export function defineSlashCommand(command: SlashCommand): SlashCommand {
+export function slash (command: SlashCommand): SlashCommand {
   return command
 }
 
@@ -74,7 +74,7 @@ export function createBot(options: CreateOptions) {
 
   on('interactionCreate', async (ctx: InteractionContext) => {
     if (!ctx.msg) return
-    const command = slashCommands.find((cmd) => cmd.name === ctx.msg.command_name)
+    const command = slashCommands.find((cmd) => cmd.name === ctx.msg.commandName)
     if (!command) return
 
     if (command.subcommands && command.subcommands.length > 0) {

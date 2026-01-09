@@ -5,12 +5,10 @@
  * Supports cursor-based pagination and optional metadata on keys.
  */
 
-import type { KvKeyMetadata } from '../generated/KvKeyMetadata'
-import type { ListKeysOptions } from '../generated/ListKeysOptions'
-import type { ListKeysResult } from '../generated/ListKeysResult'
+import type { RawKvKeyMetadata, RawKvKeyInfo, RawKvListKeysOptions, RawKvListKeysResult, RawKvSetOptions } from '../generated'
 import type { JsonValue } from '../generated/serde_json/JsonValue'
 
-export interface GetResult {
+export type RawKvGetResult = {
   value: string | null
   metadata?: Record<string, unknown>
 }
@@ -24,14 +22,14 @@ declare const Deno: {
         storeName: string,
         key: string
       ): Promise<
-        | [string, KvKeyMetadata | null]
+        | [string, RawKvKeyMetadata | null]
         | null
       >
       op_kv_set(
         storeName: string,
         key: string,
         value: string,
-        options: KvKeyMetadata
+        options: RawKvSetOptions
       ): Promise<void>
       op_kv_update_metadata(
         storeName: string,
@@ -40,9 +38,9 @@ declare const Deno: {
       ): Promise<void>
       op_kv_delete(storeName: string, key: string): Promise<void>
       op_kv_list_keys(
-        options: ListKeysOptions,
+        options: RawKvListKeysOptions,
         storeName: string
-      ): Promise<ListKeysResult>
+      ): Promise<RawKvListKeysResult>
     }
   }
 }
@@ -70,7 +68,7 @@ export class KvStore {
    * @param key - The key to retrieve
    * @returns Object with value and optional metadata
    */
-  async getWithMetadata(key: string): Promise<GetResult> {
+  async getWithMetadata(key: string): Promise<RawKvGetResult> {
     const result = await Deno.core.ops.op_kv_get_with_metadata(
       this.#storeName,
       key
@@ -97,7 +95,7 @@ export class KvStore {
   async set(
     key: string,
     value: string,
-    options?: KvKeyMetadata
+    options?: RawKvSetOptions
   ): Promise<void> {
     await Deno.core.ops.op_kv_set(this.#storeName, key, value, {
       expiration: options?.expiration ?? undefined,
@@ -137,7 +135,7 @@ export class KvStore {
    * @param options - Optional prefix filter, limit (default 100, max 1000), and cursor for pagination
    * @returns Paginated result with keys, list_complete flag, and cursor for next page
    */
-  async list(options?: ListKeysOptions): Promise<ListKeysResult> {
+  async list(options?: RawKvListKeysOptions): Promise<RawKvListKeysResult> {
     return await Deno.core.ops.op_kv_list_keys(
       {
         prefix: options?.prefix ?? undefined,
