@@ -6,3 +6,4 @@ dist
 *env
 /data
 bindings
+config.toml

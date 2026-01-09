@@ -1,4 +1,11 @@
-# Top-level application configuration.
+# Flora configuration template. To begin, copy this file to `config.toml` and fill in the values.
+
+# Logging config. This is the same as `RUST_LOG`'s format.
+#
+# Can also be specified via environment variable `RUST_LOG`.
+#
+# Default value: "flora::runtime=info,flora=info"
+#log_level = "flora::runtime=info,flora=info"
 
 # Discord config.
 [discord]
@@ -43,8 +50,8 @@
 #
 # Can also be specified via environment variable `DATABASE_MAX_CONNECTIONS`.
 #
-# Default value: "5"
-#max_connections = "5"
+# Default value: 5
+#max_connections = 5
 
 # Cache (Valkey) config.
 [cache]
@@ -64,7 +71,12 @@
 
 # Runtime config.
 [runtime]
+# Maximum number of worker threads for guild isolates.
+# Default: 4
+# Max: 64
+#
 # Can also be specified via environment variable `RUNTIME_MAX_WORKERS`.
+#
 # Default value: 4
 #max_workers = 4
 
@@ -95,8 +107,8 @@
 #
 # Can also be specified via environment variable `API_COOKIE_TTL_SECS`.
 #
-# Default value: "60 * 60 * 24 * 30"
-#cookie_ttl_secs = "60 * 60 * 24 * 30"
+# Default value: 2592000
+#cookie_ttl_secs = 2592000
 
 # Whether to use secure cookies.
 #

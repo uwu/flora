@@ -20,11 +20,10 @@ tokio = "1"
 axum = "0.8.7"
 base64 = { version = "0.22", default-features = false, features = ["alloc"] }
 chrono = { version = "0.4", features = ["serde"] }
-color-eyre = "0.6.5"
+color-eyre = { version = "0.6.5", features = ["capture-spantrace", "issue-url"] }
+confique = { version = "0.4.0", features = ["toml"] }
 cookie = "0.18"
-deno_core = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat", default-features = false, features = [
-  "v8_use_custom_libcxx"
-] }
+deno_core = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat", default-features = false, features = ["v8_use_custom_libcxx"] }
 deno_error = "0.7.1"
 deno_fetch = "0.249.0"
 deno_net = "0.217.0"
@@ -35,18 +34,16 @@ deno_web = "0.256.0"
 deno_webidl = "0.225.0"
 dotenvy = "0.15"
 eyre = "0.6.12"
+flora_config = { path = "flora_config" }
+flora_macros = { path = "flora_macros" }
 fred = "10.1.0"
 futures = "0.3"
+futures-util = "0.3.31"
 hex = "0.4"
 hmac = "0.12"
 num_cpus = "1.16"
 openssl = { version = "0.10.75", features = ["vendored"] }
-oxc = { version = "0.101.0", features = [
-  "full",
-  "oxc_regular_expression",
-  "semantic",
-  "transformer"
-] }
+oxc = { version = "0.101.0", features = ["full", "oxc_regular_expression", "semantic", "transformer"] }
 oxc_sourcemap = "6"
 parking_lot = "0.12"
 rand = "0.8"
@@ -56,41 +53,24 @@ serde_json = "1"
 serenity = "0.12.4"
 sha2 = "0.10"
 sled = "0.34"
-sqlx = { version = "0.8.6", features = [
-  "chrono",
-  "macros",
-  "postgres",
-  "runtime-tokio-rustls",
-  "uuid"
-] }
+sqlx = { version = "0.8.6", features = ["chrono", "macros", "postgres", "runtime-tokio-rustls", "uuid"] }
 sys_traits = { version = "0.1.17", features = ["libc", "real"] }
 thiserror = "2.0.17"
 time = "0.3"
 tokio = { version = "1", features = ["full"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
+tower-http = { version = "0.6.8", features = ["compression-gzip", "fs", "timeout", "trace"] }
+tower-layer = "0.3.3"
+tower-service = "0.3.3"
 tracing = "0.1.43"
-tracing-subscriber = { version = "0.3.22", features = [
-  "chrono",
-  "env-filter",
-  "serde",
-  "time"
-] }
+tracing-error = "0.2.1"
+tracing-subscriber = { version = "0.3.22", features = ["chrono", "env-filter", "serde", "time"] }
+ts-rs = { version = "11", features = ["serde-compat", "serde-json-impl"] }
 url = "2"
 urlencoding = "2.1"
-utoipa = { version = "5.4.0", features = [
-  "auto_into_responses",
-  "axum_extras",
-  "chrono",
-  "config",
-  "debug",
-  "url",
-  "uuid"
-] }
+utoipa = { version = "5.4.0", features = ["auto_into_responses", "axum_extras", "chrono", "config", "debug", "url", "uuid"] }
 utoipa-scalar = { version = "0.3.0", features = ["axum"] }
-ts-rs = { version = "11", features = ["serde-compat", "serde-json-impl"] }
-flora_macros = { path = "flora_macros" }
-flora_config = { path = "flora_config" }
-confique = { version = "0.4.0", features = ["toml"] }
+uuid = { version = "1.19.0", features = ["v4"] }
 
 [dev-dependencies]
 tempfile = "3"

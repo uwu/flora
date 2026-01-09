@@ -66,7 +66,10 @@ pub struct AuthIdentity {
 
 impl From<Session> for AuthIdentity {
     fn from(session: Session) -> Self {
-        Self { user_id: session.user.id.clone(), access_token: Some(session.access_token.clone()) }
+        Self {
+            user_id: session.user.id.clone(),
+            access_token: Some(session.access_token.clone()),
+        }
     }
 }
 
@@ -135,14 +138,18 @@ where
 #[derive(Clone)]
 pub struct AuthService {
     config: AuthConfig,
-    cache: Client,
+    cache_pool: fred::prelude::Pool,
     _cache_task: Arc<ConnectHandle>,
     http: HttpClient,
     session_key: Vec<u8>,
 }
 
 impl AuthService {
-    pub fn new(config: AuthConfig, cache: Client, cache_task: ConnectHandle) -> Result<Self> {
+    pub fn new(
+        config: AuthConfig,
+        cache_pool: fred::prelude::Pool,
+        cache_task: ConnectHandle,
+    ) -> Result<Self> {
         if config.session_secret.len() < 32 {
             return Err(eyre!("SESSION_SECRET must be at least 32 characters long"));
         }
@@ -153,7 +160,13 @@ impl AuthService {
             .build()
             .wrap_err("failed to build http client")?;
 
-        Ok(Self { cache, _cache_task: Arc::new(cache_task), http, session_key, config })
+        Ok(Self {
+            cache_pool,
+            _cache_task: Arc::new(cache_task),
+            http,
+            session_key,
+            config,
+        })
     }
 
     pub fn authorization_url(&self, state: &str) -> Result<Uri> {
@@ -164,7 +177,8 @@ impl AuthService {
             "https://discord.com/api/oauth2/authorize?client_id={}&response_type=code&redirect_uri={encoded_redirect}&scope={encoded_scopes}&state={state}&prompt=consent",
             self.config.client_id
         );
-        url.parse().map_err(|err| eyre!("invalid authorization url: {err}"))
+        url.parse()
+            .map_err(|err| eyre!("invalid authorization url: {err}"))
     }
 
     pub fn generate_state(&self) -> String {
@@ -173,7 +187,7 @@ impl AuthService {
 
     pub async fn issue_state(&self, state: String) -> Result<()> {
         let key = format!("oauth:state:{state}");
-        self.cache
+        self.cache_pool
             .set::<(), _, _>(key, "1", Some(Expiration::EX(600)), None, false)
             .await
             .wrap_err("failed to cache oauth state")?;
@@ -183,7 +197,7 @@ impl AuthService {
     pub async fn consume_state(&self, state: &str) -> Result<bool> {
         let key = format!("oauth:state:{state}");
         let removed: i64 = self
-            .cache
+            .cache_pool
             .del::<i64, _>(key.clone())
             .await
             .wrap_err("failed to consume oauth state")?;
@@ -212,7 +226,9 @@ impl AuthService {
             return Err(eyre!("discord token exchange failed: {}", body));
         }
 
-        res.json::<TokenResponse>().await.wrap_err("failed to decode token exchange response")
+        res.json::<TokenResponse>()
+            .await
+            .wrap_err("failed to decode token exchange response")
     }
 
     pub async fn refresh_token(&self, refresh_token: &str) -> Result<TokenResponse> {
@@ -236,7 +252,9 @@ impl AuthService {
             return Err(eyre!("discord token refresh failed: {}", body));
         }
 
-        res.json::<TokenResponse>().await.wrap_err("failed to decode refresh response")
+        res.json::<TokenResponse>()
+            .await
+            .wrap_err("failed to decode refresh response")
     }
 
     pub async fn fetch_user(&self, access_token: &str) -> Result<DiscordUser> {
@@ -253,7 +271,9 @@ impl AuthService {
             return Err(eyre!("discord identify failed: {}", body));
         }
 
-        res.json::<DiscordUser>().await.wrap_err("failed to decode discord user")
+        res.json::<DiscordUser>()
+            .await
+            .wrap_err("failed to decode discord user")
     }
 
     pub async fn fetch_user_guilds(&self, access_token: &str) -> Result<Vec<UserGuild>> {
@@ -272,7 +292,11 @@ impl AuthService {
 
         let body = res.text().await.wrap_err("failed to read response")?;
         serde_json::from_str::<Vec<UserGuild>>(&body).wrap_err_with(|| {
-            let preview = if body.len() > 500 { &body[..500] } else { &body };
+            let preview = if body.len() > 500 {
+                &body[..500]
+            } else {
+                &body
+            };
             format!("failed to decode user guilds. First 500 chars: {}", preview)
         })
     }
@@ -293,13 +317,23 @@ impl AuthService {
 
         match res.status().as_u16() {
             200 => {
-                let body = res.text().await.wrap_err("failed to read guild member response")?;
-                serde_json::from_str::<CurrentUserGuildMember>(&body).map(Some).wrap_err_with(
-                    || {
-                        let preview = if body.len() > 1000 { &body[..1000] } else { &body };
-                        format!("failed to decode guild membership. Full response: {}", preview)
-                    },
-                )
+                let body = res
+                    .text()
+                    .await
+                    .wrap_err("failed to read guild member response")?;
+                serde_json::from_str::<CurrentUserGuildMember>(&body)
+                    .map(Some)
+                    .wrap_err_with(|| {
+                        let preview = if body.len() > 1000 {
+                            &body[..1000]
+                        } else {
+                            &body
+                        };
+                        format!(
+                            "failed to decode guild membership. Full response: {}",
+                            preview
+                        )
+                    })
             }
             401 => Ok(None),
             403 | 404 => Ok(None),
@@ -324,7 +358,7 @@ impl AuthService {
         let key = session_cache_key(&session_id);
         let value = serde_json::to_string(&session)?;
         let ttl_i64 = ttl as i64;
-        self.cache
+        self.cache_pool
             .set::<(), _, _>(key, value, Some(Expiration::EX(ttl_i64)), None, false)
             .await
             .wrap_err("failed to persist session")?;
@@ -342,8 +376,11 @@ impl AuthService {
         };
 
         let key = session_cache_key(&session_id);
-        let value: Option<String> =
-            self.cache.get(key.clone()).await.wrap_err("failed to load session")?;
+        let value: Option<String> = self
+            .cache_pool
+            .get(key.clone())
+            .await
+            .wrap_err("failed to load session")?;
 
         let Some(raw) = value else {
             return Ok(None);
@@ -365,7 +402,7 @@ impl AuthService {
 
                         let value = serde_json::to_string(&session)?;
                         let ttl = self.config.session_ttl_secs as i64;
-                        self.cache
+                        self.cache_pool
                             .set::<(), _, _>(
                                 key.clone(),
                                 value,
@@ -377,18 +414,18 @@ impl AuthService {
                     }
                     Err(err) => {
                         warn!(target: "flora:auth", ?err, "failed to refresh expired session");
-                        self.cache.del::<(), _>(key).await.ok();
+                        self.cache_pool.del::<(), _>(key).await.ok();
                         return Ok(None);
                     }
                 }
             } else {
-                self.cache.del::<(), _>(key).await.ok();
+                self.cache_pool.del::<(), _>(key).await.ok();
                 return Ok(None);
             }
         } else {
             // Touch TTL to keep active sessions warm.
             let ttl = self.config.session_ttl_secs as i64;
-            self.cache.expire::<(), _>(key, ttl, None).await.ok();
+            self.cache_pool.expire::<(), _>(key, ttl, None).await.ok();
         }
 
         Ok(Some(session))
@@ -415,7 +452,11 @@ impl AuthService {
     }
 
     fn random_token(&self, len: usize) -> String {
-        rand::thread_rng().sample_iter(&Alphanumeric).take(len).map(char::from).collect()
+        rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(len)
+            .map(char::from)
+            .collect()
     }
 
     fn sign_session_token(&self, session_id: &str) -> Result<String> {
@@ -443,7 +484,8 @@ impl AuthService {
         let mut mac = HmacSha256::new_from_slice(&self.session_key)
             .map_err(|err| eyre!("invalid session key: {err}"))?;
         mac.update(session_id.as_bytes());
-        mac.verify_slice(&provided).map_err(|_| eyre!("signature mismatch"))?;
+        mac.verify_slice(&provided)
+            .map_err(|_| eyre!("signature mismatch"))?;
 
         Ok(session_id.to_string())
     }

@@ -3,14 +3,14 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
-  "workspaces": ["sdk", "example", "uwu.network"],
+  "workspaces": ["sdk", "example", "apps/*"],
   "scripts": {
     "format": "dprint fmt",
     "typecheck": "bun x tsc --noEmit -p example/tsconfig.json"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "dprint": "^0.50.2",
+    "dprint": "^0.51.1",
     "typescript": "^5.7.2"
   },
   "peerDependencies": {

@@ -1,8 +1,0 @@
-{
-  "name": "uwu.network",
-  "type": "module",
-  "private": true,
-  "devDependencies": {
-    "sdk": "workspace:*"
-  }
-}

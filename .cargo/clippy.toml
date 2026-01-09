@@ -1,0 +1,49 @@
+# Be strict but not masochistic
+warn = [
+  "clippy::all",
+  "clippy::pedantic",
+]
+
+# Allow a few pedantic lints that are mostly noise in real code
+allow = [
+  "clippy::module_name_repetitions",
+  "clippy::missing_errors_doc",
+  "clippy::missing_panics_doc",
+  "clippy::must_use_candidate",
+  "clippy::similar_names",
+  "clippy::too_many_lines",
+  "clippy::struct_excessive_bools",
+]
+
+# Performance matters
+deny = [
+  "clippy::inefficient_to_string",
+  "clippy::unnecessary_collect",
+  "clippy::large_enum_variant",
+]
+
+# Style and readability tuning
+enum_variant_name_threshold = 3
+struct_field_name_threshold = 3
+type_complexity_threshold = 250
+
+# Let wider lines exist
+too_many_arguments_threshold = 8
+max_fn_params_bools = 3
+
+# Avoid annoying false positives
+single_char_lifetime_names = false
+
+# Tests are a different universe soooooooo
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+
+# Docs
+doc-valid-idents = [
+  "GitHub",
+  "GitLab",
+  "PostgreSQL",
+  "TypeScript",
+  "JavaScript",
+  "WebAssembly",
+]

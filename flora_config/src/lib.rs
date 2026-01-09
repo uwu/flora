@@ -5,6 +5,9 @@ use std::net::IpAddr;
 /// Flora configuration template. To begin, copy this file to `config.toml` and fill in the values.
 #[derive(Debug, Config)]
 pub struct AppConfig {
+    /// Logging config. This is the same as `RUST_LOG`'s format.
+    #[config(env = "RUST_LOG", default = "flora::runtime=info,flora=info")]
+    pub log_level: String,
     /// Discord config.
     #[config(nested)]
     pub discord: DiscordConfig,
@@ -35,7 +38,10 @@ pub struct DiscordConfig {
     #[config(env = "DISCORD_CLIENT_SECRET")]
     pub client_secret: String,
     /// Discord redirect URI for OAuth. Must match the one in the Discord developer portal, and has to be exposed like so: `https://<host>/auth/callback`
-    #[config(env = "DISCORD_REDIRECT_URI", default = "http://localhost:3000/auth/callback")]
+    #[config(
+        env = "DISCORD_REDIRECT_URI",
+        default = "http://localhost:3000/auth/callback"
+    )]
     pub redirect_uri: String,
 }
 
@@ -43,10 +49,13 @@ pub struct DiscordConfig {
 #[derive(Debug, Config)]
 pub struct DatabaseConfig {
     /// Database URL.
-    #[config(env = "DATABASE_URL", default = "postgres://user:pass@localhost:5433/flora")]
+    #[config(
+        env = "DATABASE_URL",
+        default = "postgres://user:pass@localhost:5433/flora"
+    )]
     pub url: String,
     /// Maximum number of connections to the database.
-    #[config(env = "DATABASE_MAX_CONNECTIONS", default = "5")]
+    #[config(env = "DATABASE_MAX_CONNECTIONS", default = 5)]
     pub max_connections: u32,
 }
 
@@ -64,6 +73,9 @@ pub struct CacheConfig {
 /// Runtime configuration.
 #[derive(Debug, Config)]
 pub struct RuntimeConfig {
+    /// Maximum number of worker threads for guild isolates.
+    /// Default: 4
+    /// Max: 64
     #[config(env = "RUNTIME_MAX_WORKERS", default = 4)]
     pub max_workers: usize,
 }
@@ -81,7 +93,7 @@ pub struct ApiConfig {
     #[config(env = "API_SECRET")]
     pub secret: String,
     /// Cookie TTL in seconds. Default is 30 days.
-    #[config(env = "API_COOKIE_TTL_SECS", default = "60 * 60 * 24 * 30")] // 30 days
+    #[config(env = "API_COOKIE_TTL_SECS", default = 2592000)] // 30 days
     pub cookie_ttl_secs: u64,
     /// Whether to use secure cookies.
     #[config(env = "API_COOKIE_SECURE", default = false)]
@@ -97,7 +109,7 @@ mod config {
     #[test]
     fn generate_config_template() -> Result<(), Box<dyn std::error::Error>> {
         let toml = confique::toml::template::<AppConfig>(FormatOptions::default());
-        std::fs::write("../config.toml.template", toml)?;
+        std::fs::write("../config.template.toml", toml)?;
         Ok(())
     }
 }

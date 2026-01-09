@@ -7,6 +7,7 @@ use deno_core::{
     v8::{self, Global},
 };
 use deno_permissions::{PermissionsContainer, RuntimePermissionDescriptorParser};
+use flora_config::RuntimeConfig;
 use serde_json::Value;
 use serenity::http::Http;
 use std::{
@@ -26,42 +27,41 @@ use tokio::{
 };
 use tracing::{error, info};
 
-const DEFAULT_MAX_WORKERS: usize = 4;
 const MAX_WORKERS_LIMIT: usize = 64;
-
 const RUNTIME_PRELUDE: &str = include_str!("../scripts/runtime_prelude.js");
 const SDK_BUNDLE_PATH: &str = "scripts/runtime_sdk_bundle.js";
 const BOOTSTRAP_SPECIFIER: &str = "ext:flora_bootstrap/bootstrap.js";
-const BOOTSTRAP_DEPS: &[&str] =
-    &["deno_webidl", "deno_web", "deno_fetch", "deno_net", "deno_telemetry"];
+const BOOTSTRAP_DEPS: &[&str] = &[
+    "deno_webidl",
+    "deno_web",
+    "deno_fetch",
+    "deno_net",
+    "deno_telemetry",
+];
 const RUNTIME_BOOSTRAP: FastStaticString = ascii_str_include!("../scripts/runtime_bootstrap.js");
-
-/// Configuration for the runtime thread pool.
-#[derive(Debug, Clone)]
-pub struct RuntimeConfig {
-    /// Maximum number of worker threads for guild isolates.
-    /// Default: min(num_cpus, 4)
-    /// Max: 64
-    pub max_workers: usize,
-}
-
-impl Default for RuntimeConfig {
-    fn default() -> Self {
-        Self { max_workers: num_cpus::get().min(DEFAULT_MAX_WORKERS) }
-    }
-}
 
 /// Commands sent to worker threads.
 #[allow(dead_code)]
 enum WorkerCommand {
     /// Initialize the worker's default runtime.
-    Initialize { respond_to: oneshot::Sender<Result<(), AnyError>> },
+    Initialize {
+        respond_to: oneshot::Sender<Result<(), AnyError>>,
+    },
     /// Load the SDK bundle into the default runtime.
-    LoadSdkBundle { path: PathBuf, respond_to: oneshot::Sender<Result<(), AnyError>> },
+    LoadSdkBundle {
+        path: PathBuf,
+        respond_to: oneshot::Sender<Result<(), AnyError>>,
+    },
     /// Load a user script into the default runtime.
-    LoadUserScript { path: PathBuf, respond_to: oneshot::Sender<Result<(), AnyError>> },
+    LoadUserScript {
+        path: PathBuf,
+        respond_to: oneshot::Sender<Result<(), AnyError>>,
+    },
     /// Deploy a guild's script (creates/replaces guild isolate).
-    DeployGuild { deployment: Deployment, respond_to: oneshot::Sender<Result<(), AnyError>> },
+    DeployGuild {
+        deployment: Deployment,
+        respond_to: oneshot::Sender<Result<(), AnyError>>,
+    },
     /// Dispatch an event to a specific guild's runtime.
     DispatchEvent {
         guild_id: Option<String>,
@@ -76,7 +76,10 @@ enum WorkerCommand {
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
     /// Unload a guild's runtime.
-    UnloadGuild { guild_id: String, respond_to: oneshot::Sender<()> },
+    UnloadGuild {
+        guild_id: String,
+        respond_to: oneshot::Sender<()>,
+    },
     /// Shutdown the worker.
     Shutdown,
 }
@@ -101,7 +104,10 @@ impl Worker {
     async fn load_sdk_bundle(&self, path: PathBuf) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
         self.sender
-            .send(WorkerCommand::LoadSdkBundle { path, respond_to: tx })
+            .send(WorkerCommand::LoadSdkBundle {
+                path,
+                respond_to: tx,
+            })
             .map_err(|_| AnyError::msg("worker unavailable"))?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
@@ -109,7 +115,10 @@ impl Worker {
     async fn load_user_script(&self, path: PathBuf) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
         self.sender
-            .send(WorkerCommand::LoadUserScript { path, respond_to: tx })
+            .send(WorkerCommand::LoadUserScript {
+                path,
+                respond_to: tx,
+            })
             .map_err(|_| AnyError::msg("worker unavailable"))?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
@@ -117,7 +126,10 @@ impl Worker {
     async fn deploy_guild(&self, deployment: Deployment) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
         self.sender
-            .send(WorkerCommand::DeployGuild { deployment, respond_to: tx })
+            .send(WorkerCommand::DeployGuild {
+                deployment,
+                respond_to: tx,
+            })
             .map_err(|_| AnyError::msg("worker unavailable"))?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
@@ -130,7 +142,12 @@ impl Worker {
     ) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
         self.sender
-            .send(WorkerCommand::DispatchEvent { guild_id, event, payload, respond_to: tx })
+            .send(WorkerCommand::DispatchEvent {
+                guild_id,
+                event,
+                payload,
+                respond_to: tx,
+            })
             .map_err(|_| AnyError::msg("worker unavailable"))?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
@@ -138,7 +155,11 @@ impl Worker {
     async fn broadcast(&self, event: String, payload: Value) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
         self.sender
-            .send(WorkerCommand::BroadcastEvent { event, payload, respond_to: tx })
+            .send(WorkerCommand::BroadcastEvent {
+                event,
+                payload,
+                respond_to: tx,
+            })
             .map_err(|_| AnyError::msg("worker unavailable"))?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
@@ -157,10 +178,14 @@ impl BotRuntime {
         let num_workers = config.max_workers.clamp(1, MAX_WORKERS_LIMIT);
         info!(target: "flora:runtime", num_workers, "spawning worker pool");
 
-        let workers: Vec<Worker> =
-            (0..num_workers).map(|id| spawn_worker(id, http.clone(), kv.clone())).collect();
+        let workers: Vec<Worker> = (0..num_workers)
+            .map(|id| spawn_worker(id, http.clone(), kv.clone()))
+            .collect();
 
-        Self { workers, num_workers }
+        Self {
+            workers,
+            num_workers,
+        }
     }
 
     /// Initialize all workers (creates default runtimes).
@@ -177,8 +202,11 @@ impl BotRuntime {
     /// Load the SDK bundle into all workers' default runtimes.
     pub async fn load_user_script(&self, path: impl Into<PathBuf>) -> Result<(), AnyError> {
         let path = path.into();
-        let futures: Vec<_> =
-            self.workers.iter().map(|w| w.load_sdk_bundle(path.clone())).collect();
+        let futures: Vec<_> = self
+            .workers
+            .iter()
+            .map(|w| w.load_sdk_bundle(path.clone()))
+            .collect();
         futures::future::try_join_all(futures).await?;
         Ok(())
     }
@@ -211,7 +239,9 @@ impl BotRuntime {
         match &guild_id {
             Some(gid) => {
                 let worker_idx = self.worker_for_guild(gid);
-                self.workers[worker_idx].dispatch(guild_id, event.to_string(), payload).await
+                self.workers[worker_idx]
+                    .dispatch(guild_id, event.to_string(), payload)
+                    .await
             }
             None => {
                 // Broadcast to all workers (ready event, etc....)
@@ -258,7 +288,11 @@ fn spawn_worker(id: usize, http: Arc<Http>, kv: KvService) -> Worker {
         })
         .expect("failed to spawn worker thread");
 
-    Worker { id, sender: tx, handle: Some(handle) }
+    Worker {
+        id,
+        sender: tx,
+        handle: Some(handle),
+    }
 }
 
 fn worker_thread(
@@ -267,8 +301,10 @@ fn worker_thread(
     http: Arc<Http>,
     kv: KvService,
 ) {
-    let rt =
-        Builder::new_current_thread().enable_all().build().expect("failed to build worker runtime");
+    let rt = Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("failed to build worker runtime");
 
     rt.block_on(async move {
         let mut guild_runtimes: HashMap<String, JsRuntimeState> = HashMap::new();
@@ -432,8 +468,13 @@ async fn initialize_worker_default(
 ) -> Result<(), AnyError> {
     let mut runtime = new_js_runtime(http.clone(), kv.clone(), None);
 
-    runtime.runtime.execute_script("flora:bootstrap", RUNTIME_PRELUDE)?;
-    runtime.runtime.run_event_loop(PollEventLoopOptions::default()).await?;
+    runtime
+        .runtime
+        .execute_script("flora:bootstrap", RUNTIME_PRELUDE)?;
+    runtime
+        .runtime
+        .run_event_loop(PollEventLoopOptions::default())
+        .await?;
 
     // Extract dispatch function - need to enter isolate first
     let context = runtime.runtime.main_context();
@@ -467,11 +508,18 @@ async fn deploy_guild_to_worker(
     {
         let _isolate_guard = enter_isolate(&mut runtime.runtime);
         let code = format!("globalThis.__floraGuildId = \"{}\";", guild_id);
-        runtime.runtime.execute_script("flora:guild_context", code)?;
+        runtime
+            .runtime
+            .execute_script("flora:guild_context", code)?;
     }
 
-    runtime.runtime.execute_script("flora:bootstrap", RUNTIME_PRELUDE)?;
-    runtime.runtime.run_event_loop(PollEventLoopOptions::default()).await?;
+    runtime
+        .runtime
+        .execute_script("flora:bootstrap", RUNTIME_PRELUDE)?;
+    runtime
+        .runtime
+        .run_event_loop(PollEventLoopOptions::default())
+        .await?;
 
     {
         let context = runtime.runtime.main_context();
@@ -581,8 +629,11 @@ async fn dispatch_into_runtime(
             .ok_or_else(|| AnyError::msg("Dispatch call failed"))?;
     }
 
-    let result =
-        js_state.runtime.run_event_loop(PollEventLoopOptions::default()).await.map_err(|err| {
+    let result = js_state
+        .runtime
+        .run_event_loop(PollEventLoopOptions::default())
+        .await
+        .map_err(|err| {
             error!(target: "flora:runtime", ?err, "Event loop error");
             AnyError::from(err)
         });
@@ -629,7 +680,9 @@ async fn load_script_source(
     };
 
     js_runtime.execute_script(name, code)?;
-    js_runtime.run_event_loop(PollEventLoopOptions::default()).await?;
+    js_runtime
+        .run_event_loop(PollEventLoopOptions::default())
+        .await?;
 
     info!(target: "flora:runtime", worker_id, module = module_name.as_str(), "Module executed");
     Ok(())
@@ -645,8 +698,9 @@ fn extract_dispatch_fn_no_enter_impl(
     let global = context.global(scope);
     let key = v8::String::new(scope, "__floraDispatch")
         .ok_or_else(|| AnyError::msg("Failed to create dispatch name"))?;
-    let value =
-        global.get(scope, key.into()).ok_or_else(|| AnyError::msg("Dispatch function missing"))?;
+    let value = global
+        .get(scope, key.into())
+        .ok_or_else(|| AnyError::msg("Dispatch function missing"))?;
     let function = v8::Local::<v8::Function>::try_from(value)
         .map_err(|_| AnyError::msg("Dispatch symbol is not a function"))?;
     Ok(Global::new(scope, function))
@@ -697,5 +751,9 @@ fn new_js_runtime(http: Arc<Http>, kv: KvService, guild_id: Option<String>) -> J
         runtime.op_state().borrow_mut().put(gid.clone());
     }
 
-    JsRuntimeState { runtime, dispatch_fn: None, guild_id }
+    JsRuntimeState {
+        runtime,
+        dispatch_fn: None,
+        guild_id,
+    }
 }

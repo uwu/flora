@@ -1,123 +1,23 @@
 var flora = (function(exports) {
 
 
-//#region src/sdk/embed.ts
-	var EmbedBuilder = class {
-		#embed;
-		constructor(initial = {}) {
-			this.#embed = { ...initial };
-		}
-		setTitle(title) {
-			this.#embed.title = title;
-			return this;
-		}
-		setDescription(description) {
-			this.#embed.description = description;
-			return this;
-		}
-		setUrl(url) {
-			this.#embed.url = url;
-			return this;
-		}
-		setColor(color) {
-			this.#embed.color = color;
-			return this;
-		}
-		setTimestamp(timestamp) {
-			this.#embed.timestamp = timestamp;
-			return this;
-		}
-		setFooter(text, iconUrl) {
-			this.#embed.footer = {
-				text,
-				iconUrl
-			};
-			return this;
-		}
-		setImage(url) {
-			this.#embed.image = { url };
-			return this;
-		}
-		setThumbnail(url) {
-			this.#embed.thumbnail = { url };
-			return this;
-		}
-		setAuthor(name, options) {
-			this.#embed.author = {
-				name,
-				...options
-			};
-			return this;
-		}
-		addField(name, value, inline = false) {
-			const field = {
-				name,
-				value,
-				inline
-			};
-			this.#embed.fields = [...this.#embed.fields ?? [], field];
-			return this;
-		}
-		addFields(fields) {
-			this.#embed.fields = [...this.#embed.fields ?? [], ...fields];
-			return this;
-		}
-		setFields(fields) {
-			this.#embed.fields = [...fields];
-			return this;
-		}
-		toJSON() {
-			return { ...this.#embed };
-		}
-		toEmbedInput() {
-			const embed$1 = this.#embed;
-			return {
-				title: embed$1.title ?? null,
-				description: embed$1.description ?? null,
-				url: embed$1.url ?? null,
-				color: embed$1.color ?? null,
-				timestamp: embed$1.timestamp ?? null,
-				footer: embed$1.footer ? {
-					text: embed$1.footer.text,
-					iconUrl: embed$1.footer.iconUrl ?? null
-				} : null,
-				image: embed$1.image ? { url: embed$1.image.url } : null,
-				thumbnail: embed$1.thumbnail ? { url: embed$1.thumbnail.url } : null,
-				author: embed$1.author ? {
-					name: embed$1.author.name ?? null,
-					url: embed$1.author.url ?? null,
-					iconUrl: embed$1.author.iconUrl ?? null
-				} : null,
-				fields: embed$1.fields?.map((f) => ({
-					name: f.name,
-					value: f.value,
-					inline: f.inline ?? false
-				})) ?? null
-			};
-		}
-	};
-	function embed(initial) {
-		return new EmbedBuilder(initial);
-	}
-
-//#endregion
 //#region src/sdk/commands.ts
-	function defineCommand(command) {
+	function prefix(command) {
 		return command;
 	}
-	function defineSlashCommand(command) {
+	function slash(command) {
 		return command;
 	}
 	function createBot(options) {
-		const prefix = options.prefix ?? "!";
+		const prefix$1 = options.prefix ?? "!";
 		const commands = options.commands ?? options.prefixCommands ?? [];
 		const slashCommands = options.slashCommands ?? [];
 		on("messageCreate", async (ctx) => {
 			if (!ctx.msg || !ctx.msg.content) return;
 			if (ctx.msg.author?.bot) return;
 			const content = ctx.msg.content.trim();
-			if (!content.startsWith(prefix)) return;
-			const body = content.slice(prefix.length).trim();
+			if (!content.startsWith(prefix$1)) return;
+			const body = content.slice(prefix$1.length).trim();
 			const [commandName, ...args] = body.split(/\s+/);
 			const command = commands.find((cmd) => cmd.name === commandName);
 			if (!command) return;
@@ -128,7 +28,7 @@ var flora = (function(exports) {
 		});
 		on("interactionCreate", async (ctx) => {
 			if (!ctx.msg) return;
-			const command = slashCommands.find((cmd) => cmd.name === ctx.msg.command_name);
+			const command = slashCommands.find((cmd) => cmd.name === ctx.msg.commandName);
 			if (!command) return;
 			if (command.subcommands && command.subcommands.length > 0) {
 				await handleSubcommand(ctx, command);
@@ -207,6 +107,80 @@ var flora = (function(exports) {
 	}
 
 //#endregion
+//#region src/sdk/embed.ts
+	var EmbedBuilder = class {
+		#embed;
+		constructor(initial = {}) {
+			this.#embed = { ...initial };
+		}
+		setTitle(title) {
+			this.#embed.title = title;
+			return this;
+		}
+		setDescription(description) {
+			this.#embed.description = description;
+			return this;
+		}
+		setUrl(url) {
+			this.#embed.url = url;
+			return this;
+		}
+		setColor(color) {
+			this.#embed.color = color;
+			return this;
+		}
+		setTimestamp(timestamp) {
+			this.#embed.timestamp = timestamp;
+			return this;
+		}
+		setFooter(text, iconUrl) {
+			this.#embed.footer = {
+				text,
+				iconUrl
+			};
+			return this;
+		}
+		setImage(url) {
+			this.#embed.image = { url };
+			return this;
+		}
+		setThumbnail(url) {
+			this.#embed.thumbnail = { url };
+			return this;
+		}
+		setAuthor(name, options) {
+			this.#embed.author = {
+				name,
+				...options
+			};
+			return this;
+		}
+		addField(name, value, inline = false) {
+			const field = {
+				name,
+				value,
+				inline
+			};
+			this.#embed.fields = [...this.#embed.fields ?? [], field];
+			return this;
+		}
+		addFields(fields) {
+			this.#embed.fields = [...this.#embed.fields ?? [], ...fields];
+			return this;
+		}
+		setFields(fields) {
+			this.#embed.fields = [...fields];
+			return this;
+		}
+		toJSON() {
+			return { ...this.#embed };
+		}
+	};
+	function embed(initial) {
+		return new EmbedBuilder(initial);
+	}
+
+//#endregion
 //#region src/sdk/helpers.ts
 	function hasRole(ctx, roleId) {
 		return ctx.msg.member?.roles?.includes(roleId) ?? false;
@@ -229,7 +203,7 @@ var flora = (function(exports) {
 	}
 
 //#endregion
-//#region src/kv.ts
+//#region src/sdk/kv.ts
 	var KvStore = class {
 		#storeName;
 		constructor(storeName) {
@@ -272,8 +246,8 @@ var flora = (function(exports) {
 		*/
 		async set(key, value, options) {
 			await Deno.core.ops.op_kv_set(this.#storeName, key, value, {
-				expiration: options?.expiration ?? null,
-				metadata: options?.metadata ?? null
+				expiration: options?.expiration ?? undefined,
+				metadata: options?.metadata ?? undefined
 			});
 		}
 		/**
@@ -283,7 +257,7 @@ var flora = (function(exports) {
 		* @param metadata - The metadata to set, or null to remove metadata
 		*/
 		async updateMetadata(key, metadata) {
-			await Deno.core.ops.op_kv_update_metadata(this.#storeName, key, metadata ?? null);
+			await Deno.core.ops.op_kv_update_metadata(this.#storeName, key, metadata ?? undefined);
 		}
 		/**
 		* Delete a key from the store.
@@ -301,9 +275,9 @@ var flora = (function(exports) {
 		*/
 		async list(options) {
 			return await Deno.core.ops.op_kv_list_keys({
-				prefix: options?.prefix ?? null,
-				limit: options?.limit ?? null,
-				cursor: options?.cursor ?? null
+				prefix: options?.prefix ?? undefined,
+				limit: options?.limit ?? undefined,
+				cursor: options?.cursor ?? undefined
 			}, this.#storeName);
 		}
 	};
@@ -316,13 +290,17 @@ var flora = (function(exports) {
 exports.EmbedBuilder = EmbedBuilder;
 exports.KvStore = KvStore;
 exports.createBot = createBot;
-exports.defineCommand = defineCommand;
-exports.defineSlashCommand = defineSlashCommand;
 exports.embed = embed;
+exports.flattenCommands = flattenCommands;
+exports.flattenInteractionOptions = flattenInteractionOptions;
 exports.getSubcommand = getSubcommand;
 exports.getSubcommandGroup = getSubcommandGroup;
+exports.handleSubcommand = handleSubcommand;
 exports.hasRole = hasRole;
 exports.kv = kv;
+exports.prefix = prefix;
+exports.slash = slash;
+exports.store = store;
 return exports;
 })({});
 

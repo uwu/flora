@@ -1,6 +1,6 @@
 {
   "editor.formatOnSave": true,
-  "[typescript,javascript,typescriptreact,javascriptreact,json,jsonc]": {
+  "[typescript,javascript,typescriptreact,javascriptreact,json,jsonc,toml]": {
     "editor.defaultFormatter": "gplane.dprint2"
   },
   "rust-analyzer.files.exclude": [

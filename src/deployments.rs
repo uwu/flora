@@ -23,8 +23,8 @@ pub struct Deployment {
 
 #[derive(Clone)]
 pub struct DeploymentService {
-    db: Pool<Postgres>,
-    cache: Client,
+    db_pool: Pool<Postgres>,
+    cache_pool: fred::prelude::Pool,
     _cache_task: Arc<ConnectHandle>,
 }
 
@@ -39,8 +39,16 @@ struct DeploymentRow {
 }
 
 impl DeploymentService {
-    pub fn new(db: Pool<Postgres>, cache: Client, cache_task: ConnectHandle) -> Self {
-        Self { db, cache, _cache_task: Arc::new(cache_task) }
+    pub fn new(
+        db_pool: Pool<Postgres>,
+        cache_pool: fred::prelude::Pool,
+        cache_task: ConnectHandle,
+    ) -> Self {
+        Self {
+            db_pool,
+            cache_pool,
+            _cache_task: Arc::new(cache_task),
+        }
     }
 
     pub async fn upsert_deployment(
@@ -66,7 +74,7 @@ impl DeploymentService {
         .bind(&entry)
         .bind(sqlx::types::Json(&files))
         .bind(&bundle)
-        .fetch_one(&self.db)
+        .fetch_one(&self.db_pool)
         .await?;
 
         let deployment = to_deployment(record)?;
@@ -88,7 +96,7 @@ impl DeploymentService {
             "#,
         )
         .bind(guild_id)
-        .fetch_optional(&self.db)
+        .fetch_optional(&self.db_pool)
         .await?;
 
         let Some(row) = row else {
@@ -107,23 +115,27 @@ impl DeploymentService {
             FROM deployments
             "#,
         )
-        .fetch_all(&self.db)
+        .fetch_all(&self.db_pool)
         .await?;
 
-        rows.into_iter().map(to_deployment).collect::<Result<Vec<_>>>()
+        rows.into_iter()
+            .map(to_deployment)
+            .collect::<Result<Vec<_>>>()
     }
 
     async fn cache_deployment(&self, deployment: &Deployment) -> Result<()> {
         let key = cache_key(&deployment.guild_id);
         let value = serde_json::to_string(deployment)?;
         // cache for 10 minutes to reduce DB traffic.
-        self.cache.set::<(), _, _>(key, value, Some(Expiration::EX(600)), None, false).await?;
+        self.cache_pool
+            .set::<(), _, _>(key, value, Some(Expiration::EX(600)), None, false)
+            .await?;
         Ok(())
     }
 
     async fn fetch_cached_deployment(&self, guild_id: &str) -> Result<Option<Deployment>> {
         let key = cache_key(guild_id);
-        let value: Option<String> = self.cache.get(key).await?;
+        let value: Option<String> = self.cache_pool.get(key).await?;
         if let Some(raw) = value {
             match serde_json::from_str::<Deployment>(&raw) {
                 Ok(deployment) => Ok(Some(deployment)),

@@ -1,0 +1,25 @@
+# require the shorthand instead of it being optional
+use_field_init_shorthand = true
+newline_style = "Unix"
+max_width = 140
+chain_width = 100
+fn_call_width = 100
+# Format string literals where necessary
+format_strings = true
+# Format macro invocations
+format_macro_matchers = true
+# Reorder impl items
+reorder_impl_items = true
+# Format code inside macro declarations
+format_macro_bodies = true
+# Merge imports with the same prefix
+imports_granularity = "Crate"
+# Group imports
+group_imports = "StdExternalCrate"
+# Format type annotations
+format_code_in_doc_comments = true
+# Format doc comments
+doc_comment_code_block_width = 100
+# Format comments
+comment_width = 100
+wrap_comments = true

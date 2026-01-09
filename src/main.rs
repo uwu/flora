@@ -4,6 +4,7 @@ mod deployments;
 mod discord_handler;
 mod handlers;
 mod kv;
+mod layers;
 mod log_sink;
 mod metrics;
 mod ops;
@@ -15,97 +16,128 @@ mod v8_init;
 
 use auth::{AuthConfig, AuthService};
 use color_eyre::eyre::Result;
+use confique::Config;
 use deno_tls::{rustls, rustls::crypto::CryptoProvider};
 use deployments::DeploymentService;
 use discord_handler::DiscordHandler;
-use eyre::eyre;
+use eyre::{Context, eyre};
+use flora_config::AppConfig;
 use fred::prelude::*;
 use handlers::create_router;
 use kv::KvService;
-use runtime::{BotRuntime, RuntimeConfig};
+use layers::logger::LoggingMiddleware;
+use reqwest::StatusCode;
+use runtime::BotRuntime;
 use serenity::all::{Client, GatewayIntents};
 use sqlx::{migrate::Migrator, postgres::PgPoolOptions};
 use state::AppState;
-use std::{future::IntoFuture, net::SocketAddr, path::Path, sync::Arc};
+use std::time::Duration;
+use std::{future::IntoFuture, path::Path, sync::Arc};
+use time::macros::format_description;
 use tokens::TokenService;
 use tokio::net::TcpListener;
-use tracing::{error, info};
+use tower_http::{compression::CompressionLayer, timeout::TimeoutLayer};
+use tower_layer::layer_fn;
+use tracing::error;
+use tracing_error::ErrorLayer;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{
+    EnvFilter,
+    fmt::{format::FmtSpan, layer, time::UtcTime},
+};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenvy::dotenv().ok();
-    color_eyre::install()?;
+    let config: AppConfig = Config::builder()
+        .env()
+        .file("config.toml")
+        .load()
+        .context("Failed to load config")?;
+
+    // Initialize tracing
+    let fmt_layer = layer()
+        .with_target(false)
+        .with_timer(UtcTime::new(format_description!(
+            "[year]-[month]-[day] [hour]:[minute]:[second]"
+        )))
+        .with_span_events(FmtSpan::FULL)
+        .compact();
+
+    let filter_layer = EnvFilter::try_new(&config.log_level)?;
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .with(ErrorLayer::default())
+        .init();
+
+    color_eyre::config::HookBuilder::default()
+        .issue_url(concat!("https://github.com/uwu/flora", "/issues/new"))
+        .add_issue_metadata("version", env!("CARGO_PKG_VERSION"))
+        .issue_filter(|kind| match kind {
+            color_eyre::ErrorKind::NonRecoverable(_) => false,
+            color_eyre::ErrorKind::Recoverable(_) => true,
+        })
+        .install()?;
+
     CryptoProvider::install_default(rustls::crypto::ring::default_provider()).ok();
-    tracing_subscriber::fmt::init();
 
-    let token = std::env::var("DISCORD_TOKEN")
-        .map_err(|_| color_eyre::eyre::eyre!("DISCORD_TOKEN environment variable not set"))?;
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://user:pass@localhost:5433/flora".to_string());
-    let valkey_url =
-        std::env::var("VALKEY_URL").unwrap_or_else(|_| "redis://127.0.0.1:5434/0".to_string());
-    let discord_client_id =
-        std::env::var("DISCORD_CLIENT_ID").map_err(|_| eyre!("DISCORD_CLIENT_ID not set"))?;
-    let discord_client_secret = std::env::var("DISCORD_CLIENT_SECRET")
-        .map_err(|_| eyre!("DISCORD_CLIENT_SECRET not set"))?;
-    let discord_redirect_uri = std::env::var("DISCORD_REDIRECT_URI")
-        .unwrap_or_else(|_| "http://localhost:3000/auth/callback".to_string());
-    let session_secret =
-        std::env::var("SESSION_SECRET").map_err(|_| eyre!("SESSION_SECRET not set"))?;
-    let session_ttl_secs = std::env::var("SESSION_TTL_SECS")
-        .ok()
-        .and_then(|raw| raw.parse::<u64>().ok())
-        .unwrap_or(60 * 60 * 24 * 30);
-    let cookie_secure = std::env::var("COOKIE_SECURE")
-        .ok()
-        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-        .unwrap_or_else(|| discord_redirect_uri.starts_with("https://"));
-    let api_addr: SocketAddr = std::env::var("API_ADDR")
-        .unwrap_or_else(|_| "0.0.0.0:3000".to_string())
-        .parse()
-        .map_err(|_| eyre!("invalid API_ADDR"))?;
+    let db_pool = PgPoolOptions::new()
+        .max_connections(config.database.max_connections)
+        .connect(&config.database.url)
+        .await?;
 
-    let pool = PgPoolOptions::new().max_connections(5).connect(&database_url).await?;
     static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
-    MIGRATOR.run(&pool).await?;
+    MIGRATOR.run(&db_pool).await?;
 
-    let valkey_config = Config::from_url(&valkey_url)?;
-    let valkey_client = Builder::from_config(valkey_config).build()?;
-    let valkey_task = valkey_client.init().await?;
+    let cache_config: fred::types::config::Config =
+        fred::types::config::Config::from_url(&config.cache.url)?;
+    let cache_client = Builder::from_config(cache_config)
+        .with_connection_config(|config| {
+            config.connection_timeout = Duration::from_secs(10);
+        })
+        // use exponential backoff, starting at 100 ms and doubling on each failed attempt up to 30 sec
+        .set_policy(ReconnectPolicy::new_exponential(0, 100, 30_000, 2))
+        .build_pool(config.cache.pool_size)
+        .expect("Failed to create redis pool");
+
+    let cache_task = cache_client
+        .init()
+        .await
+        .expect("Failed to connect to redis");
+
     let deployment_service =
-        DeploymentService::new(pool.clone(), valkey_client.clone(), valkey_task);
-    let token_service = TokenService::new(pool.clone());
-    let kv_service = KvService::new(pool.clone(), "./data/kv".into());
-    let auth_task = valkey_client.clone().init().await?;
+        DeploymentService::new(db_pool.clone(), cache_client.clone(), cache_task);
+    let token_service = TokenService::new(db_pool.clone());
+    let kv_service = KvService::new(db_pool.clone(), "./data/kv".into());
+    let auth_task = cache_client.clone().init().await?;
     let auth_service = AuthService::new(
         AuthConfig {
-            client_id: discord_client_id,
-            client_secret: discord_client_secret,
-            redirect_uri: discord_redirect_uri,
-            session_secret,
-            session_ttl_secs,
-            cookie_secure,
+            client_id: config.discord.client_id,
+            client_secret: config.discord.client_secret,
+            redirect_uri: config.discord.redirect_uri,
+            session_secret: config.api.secret,
+            session_ttl_secs: config.api.cookie_ttl_secs,
+            cookie_secure: config.api.cookie_secure,
         },
-        valkey_client.clone(),
+        cache_client.clone(),
         auth_task,
     )?;
 
     v8_init::init();
 
-    let max_workers = std::env::var("FLORA_MAX_WORKERS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or_else(|| num_cpus::get().min(4));
-    let runtime_config = RuntimeConfig { max_workers };
-    info!(max_workers, "configured runtime worker pool");
-
-    let http = Arc::new(serenity::http::Http::new(&token));
+    let http = Arc::new(serenity::http::Http::new(&config.discord.bot_token));
 
     // Set application id early so guild command registration works before the READY event fires.
     let app_info = http.get_current_application_info().await?;
     http.set_application_id(app_info.id);
 
-    let runtime = Arc::new(BotRuntime::new(http.clone(), kv_service.clone(), runtime_config));
+    let runtime = Arc::new(BotRuntime::new(
+        http.clone(),
+        kv_service.clone(),
+        config.runtime,
+    ));
     runtime.initialize().await.map_err(|err| eyre!(err))?;
 
     if let Err(err) = runtime.load_user_script("dist/sdk-bundle.js").await {
@@ -122,7 +154,10 @@ async fn main() -> Result<()> {
     let cached_deployments = deployment_service.list_deployments().await?;
     for deployment in cached_deployments {
         if let Err(err) = runtime.deploy_guild_script(deployment.clone()).await {
-            error!("Failed to load deployment for guild {}: {:?}", deployment.guild_id, err);
+            error!(
+                "Failed to load deployment for guild {}: {:?}",
+                deployment.guild_id, err
+            );
         }
     }
 
@@ -135,7 +170,9 @@ async fn main() -> Result<()> {
         deployments: deployment_service.clone(),
     };
 
-    let mut client = Client::builder(&token, intents).event_handler(handler).await?;
+    let mut client = Client::builder(&config.discord.bot_token, intents)
+        .event_handler(handler)
+        .await?;
 
     let api_state = AppState {
         runtime: runtime.clone(),
@@ -146,8 +183,24 @@ async fn main() -> Result<()> {
         http: http.clone(),
     };
 
-    let api_router = create_router().with_state(api_state);
-    let listener = TcpListener::bind(api_addr).await?;
+    let api_router = create_router()
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            Duration::from_secs(10),
+        ))
+        .layer(CompressionLayer::new())
+        .layer(layer_fn(LoggingMiddleware))
+        .with_state(api_state);
+
+    let listener = TcpListener::bind(format!("{}:{}", config.api.address, config.api.port))
+        .await
+        .with_context(|| {
+            format!(
+                "Failed to bind to {}:{}",
+                config.api.address, config.api.port
+            )
+        })?;
+
     let api_service = api_router.into_make_service();
     let api_task = tokio::spawn(axum::serve(listener, api_service).into_future());
 
