@@ -4,16 +4,16 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-chrono = { workspace = true }
+chrono.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
-color-eyre = { workspace = true }
+color-eyre.workspace = true
 confy = "0.6"
 ctrlc = "3.4"
-futures-util = { workspace = true }
+futures-util.workspace = true
 ignore = "0.4"
-openssl = { workspace = true }
+openssl.workspace = true
 reqwest = { workspace = true, features = ["json", "rustls-tls", "stream"] }
-serde = { workspace = true }
-serde_json = { workspace = true }
+serde.workspace = true
+serde_json.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
-tokio-stream = { workspace = true }
+tokio-stream.workspace = true

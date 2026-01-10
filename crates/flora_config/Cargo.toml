@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-chrono = { workspace = true }
-confique = { workspace = true }
-num_cpus = { workspace = true }
-serde = { workspace = true }
-thiserror = { workspace = true }
+chrono.workspace = true
+confique.workspace = true
+num_cpus.workspace = true
+serde.workspace = true
+thiserror.workspace = true
