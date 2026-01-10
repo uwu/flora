@@ -1,0 +1,149 @@
+use axum::{
+    Json, Router,
+    extract::{Path, State},
+    http::HeaderMap,
+    routing::{delete, post},
+};
+use serde::{Deserialize, Serialize};
+use utoipa::{OpenApi, ToSchema};
+
+use crate::{
+    handlers::{
+        auth::{IdentityContext, require_identity},
+        error::ApiError,
+        response::ApiJson,
+    },
+    state::AppState,
+    tokens::UserToken,
+};
+
+/// Token management endpoints.
+#[derive(OpenApi)]
+#[openapi(
+    paths(create_token_handler, list_tokens_handler, delete_token_handler),
+    components(schemas(CreateTokenRequest, CreateTokenResponse, TokenResponse, crate::handlers::error::ErrorResponse)),
+    tags((name = "tokens", description = "User API tokens"))
+)]
+pub struct TokenApi;
+
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/", post(create_token_handler))
+        .route("/", axum::routing::get(list_tokens_handler))
+        .route("/{token_id}", delete(delete_token_handler))
+}
+
+/// Create-token payload.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateTokenRequest {
+    pub label: Option<String>,
+}
+
+/// Token creation response (includes plaintext token).
+#[derive(Debug, Serialize, ToSchema)]
+pub struct CreateTokenResponse {
+    pub token: String,
+}
+
+/// Token list item.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct TokenResponse {
+    pub token_id: String,
+    pub label: Option<String>,
+    pub created_at: String,
+    pub last_used_at: Option<String>,
+}
+
+impl From<UserToken> for TokenResponse {
+    fn from(value: UserToken) -> Self {
+        Self {
+            token_id: value.token_id,
+            label: value.label,
+            created_at: value.created_at.to_rfc3339(),
+            last_used_at: value.last_used_at.map(|t| t.to_rfc3339()),
+        }
+    }
+}
+
+/// Mint a new API token for the authenticated user.
+#[utoipa::path(
+    post,
+    path = "/",
+    tag = "tokens",
+    request_body = CreateTokenRequest,
+    responses(
+        (status = 200, description = "Token created", body = CreateTokenResponse),
+        (status = 401, description = "Unauthorized", body = crate::handlers::error::ErrorResponse)
+    )
+)]
+pub async fn create_token_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<CreateTokenRequest>,
+) -> Result<ApiJson<CreateTokenResponse>, ApiError> {
+    let IdentityContext { user_id, .. } = require_identity(&state, &headers).await?;
+    let token = state
+        .tokens
+        .create_token(&user_id, body.label)
+        .await
+        .map_err(ApiError::internal)?;
+
+    Ok(ApiJson(Json(CreateTokenResponse { token })))
+}
+
+/// List tokens for the authenticated user.
+#[utoipa::path(
+    get,
+    path = "/",
+    tag = "tokens",
+    responses(
+        (status = 200, description = "Tokens listed", body = [TokenResponse]),
+        (status = 401, description = "Unauthorized", body = crate::handlers::error::ErrorResponse)
+    )
+)]
+pub async fn list_tokens_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<ApiJson<Vec<TokenResponse>>, ApiError> {
+    let IdentityContext { user_id, .. } = require_identity(&state, &headers).await?;
+    let tokens = state
+        .tokens
+        .list_tokens(&user_id)
+        .await
+        .map_err(ApiError::internal)?;
+    Ok(ApiJson(Json(
+        tokens.into_iter().map(TokenResponse::from).collect(),
+    )))
+}
+
+/// Delete a token by id.
+#[utoipa::path(
+    delete,
+    path = "/{token_id}",
+    tag = "tokens",
+    params(
+        ("token_id" = String, Path, description = "Token identifier")
+    ),
+    responses(
+        (status = 204, description = "Token deleted"),
+        (status = 401, description = "Unauthorized", body = crate::handlers::error::ErrorResponse),
+        (status = 404, description = "Token not found", body = crate::handlers::error::ErrorResponse)
+    )
+)]
+pub async fn delete_token_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(token_id): Path<String>,
+) -> Result<ApiJson<()>, ApiError> {
+    let IdentityContext { user_id, .. } = require_identity(&state, &headers).await?;
+    let deleted = state
+        .tokens
+        .delete_token(&user_id, &token_id)
+        .await
+        .map_err(ApiError::internal)?;
+    if deleted {
+        Ok(ApiJson(Json(())))
+    } else {
+        Err(ApiError::not_found("token not found"))
+    }
+}
