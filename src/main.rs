@@ -140,15 +140,11 @@ async fn main() -> Result<()> {
     ));
     runtime.initialize().await.map_err(|err| eyre!(err))?;
 
-    if let Err(err) = runtime.load_user_script("dist/sdk-bundle.js").await {
-        error!("Failed to load SDK bundle: {:?}", err);
-    }
-
-    // Optionally load a default script for local development when present.
-    if Path::new("scripts/bot.ts").exists()
-        && let Err(err) = runtime.load_local_script("scripts/bot.ts").await
+    if let Err(err) = runtime
+        .load_user_script("runtime-dist/runtime_sdk_bundle.js")
+        .await
     {
-        error!("Failed to load user script: {:?}", err);
+        error!("Failed to load SDK bundle: {:?}", err);
     }
 
     let cached_deployments = deployment_service.list_deployments().await?;

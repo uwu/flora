@@ -3,16 +3,18 @@ import { resolve, dirname } from 'node:path'
 import ts from 'typescript'
 
 export function globalTypes(options: {
-  input: string
+  sdkInput: string
+  runtimeInput: string
   output: string
 }): Plugin {
   return {
     name: 'global-types',
     async buildEnd() {
-      const { input, output } = options
-      const inputPath = resolve(process.cwd(), input)
+      const { sdkInput, runtimeInput, output } = options
+      const sdkPath = resolve(process.cwd(), sdkInput)
+      const runtimePath = resolve(process.cwd(), runtimeInput)
 
-      const declarations = generateBundledDeclarations(inputPath)
+      const declarations = generateBundledDeclarations(sdkPath, runtimePath)
 
       const outputPath = resolve(process.cwd(), output)
       const { writeFileSync, mkdirSync } = await import('node:fs')
@@ -24,13 +26,13 @@ export function globalTypes(options: {
   }
 }
 
-function generateBundledDeclarations(entryPath: string): string {
-  const configPath = ts.findConfigFile(dirname(entryPath), ts.sys.fileExists, 'tsconfig.json')
+function generateBundledDeclarations(sdkPath: string, runtimePath: string): string {
+  const configPath = ts.findConfigFile(dirname(sdkPath), ts.sys.fileExists, 'tsconfig.json')
   const configFile = configPath ? ts.readConfigFile(configPath, ts.sys.readFile) : { config: {} }
   const parsedConfig = ts.parseJsonConfigFileContent(
     configFile.config,
     ts.sys,
-    dirname(configPath || entryPath)
+    dirname(configPath || sdkPath)
   )
 
   const compilerOptions: ts.CompilerOptions = {
@@ -43,12 +45,12 @@ function generateBundledDeclarations(entryPath: string): string {
   }
 
   const host = ts.createCompilerHost(compilerOptions)
-  const program = ts.createProgram([entryPath], compilerOptions, host)
+  const program = ts.createProgram([sdkPath, runtimePath], compilerOptions, host)
   const checker = program.getTypeChecker()
 
-  const collectedDeclarations: string[] = []
+  const sdkDeclarations: string[] = []
+  const runtimeDeclarations: string[] = []
   const processedSymbols = new Set<string>()
-  const exportedNames: string[] = []
 
   function getFullyQualifiedType(type: ts.Type, node?: ts.Node): string {
     let result = checker.typeToString(
@@ -62,7 +64,7 @@ function generateBundledDeclarations(entryPath: string): string {
     return result
   }
 
-  function processSymbol(symbol: ts.Symbol) {
+  function processSymbol(symbol: ts.Symbol, target: string[]): void {
     const name = symbol.getName()
     if (processedSymbols.has(name)) return
     processedSymbols.add(name)
@@ -80,7 +82,7 @@ function generateBundledDeclarations(entryPath: string): string {
         ? `<${decl.typeParameters.map(tp => tp.getText()).join(', ')}>`
         : ''
       const typeString = getFullyQualifiedType(type, decl)
-      collectedDeclarations.push(`  type ${name}${typeParams} = ${typeString};`)
+      target.push(`  type ${name}${typeParams} = ${typeString};`)
     }
     // Interface
     else if (ts.isInterfaceDeclaration(decl)) {
@@ -100,7 +102,7 @@ function generateBundledDeclarations(entryPath: string): string {
         }
       }
 
-      collectedDeclarations.push(`  interface ${name}${typeParams} {\n${members.join('\n')}\n  }`)
+      target.push(`  interface ${name}${typeParams} {\n${members.join('\n')}\n  }`)
     }
     // Function
     else if (ts.isFunctionDeclaration(decl)) {
@@ -120,15 +122,16 @@ function generateBundledDeclarations(entryPath: string): string {
           ? `<${decl.typeParameters.map(tp => tp.getText()).join(', ')}>`
           : ''
 
-        collectedDeclarations.push(`  function ${name}${typeParams}(${params}): ${getFullyQualifiedType(returnType, decl)};`)
-        exportedNames.push(name)
+        target.push(`  function ${name}${typeParams}(${params}): ${getFullyQualifiedType(returnType, decl)};`)
       }
     }
     // Variable/const
     else if (ts.isVariableDeclaration(decl)) {
       const type = checker.getTypeAtLocation(decl)
-      collectedDeclarations.push(`  const ${name}: ${getFullyQualifiedType(type, decl)};`)
-      exportedNames.push(name)
+      const isLet = decl.parent && ts.isVariableDeclarationList(decl.parent) &&
+        (decl.parent.flags & ts.NodeFlags.Let) !== 0
+      const keyword = isLet ? 'let' : 'const'
+      target.push(`  ${keyword} ${name}: ${getFullyQualifiedType(type, decl)};`)
     }
     // Class
     else if (ts.isClassDeclaration(decl)) {
@@ -181,52 +184,90 @@ function generateBundledDeclarations(entryPath: string): string {
         }
       }
 
-      collectedDeclarations.push(`  class ${name}${typeParams} {\n${members.join('\n')}\n  }`)
-      exportedNames.push(name)
+      target.push(`  class ${name}${typeParams} {\n${members.join('\n')}\n  }`)
     }
   }
 
-  // Process exports from entry file
-  const sourceFile = program.getSourceFile(entryPath)
-  if (sourceFile) {
-    const moduleSymbol = checker.getSymbolAtLocation(sourceFile)
+  // Process SDK exports
+  const sdkSourceFile = program.getSourceFile(sdkPath)
+  if (sdkSourceFile) {
+    const moduleSymbol = checker.getSymbolAtLocation(sdkSourceFile)
     if (moduleSymbol) {
       const exports = checker.getExportsOfModule(moduleSymbol)
       for (const exp of exports) {
-        processSymbol(exp)
+        processSymbol(exp, sdkDeclarations)
       }
     }
   }
 
-  const runtimeGlobals = `
-  // Runtime globals (from runtime_prelude.js)
-  interface FloraEventMap {
-    ready: BaseContext<EventReady>
-    messageCreate: MessageContext
-    messageUpdate: MessageUpdateContext
-    messageDelete: MessageDeleteContext
-    messageDeleteBulk: MessageDeleteBulkContext
-    interactionCreate: InteractionContext
+  // Process runtime exports
+  const runtimeSourceFile = program.getSourceFile(runtimePath)
+  if (runtimeSourceFile) {
+    const moduleSymbol = checker.getSymbolAtLocation(runtimeSourceFile)
+    if (moduleSymbol) {
+      const exports = checker.getExportsOfModule(moduleSymbol)
+      for (const exp of exports) {
+        processSymbol(exp, runtimeDeclarations)
+      }
+    }
+
+    // Extract declare global block contents
+    ts.forEachChild(runtimeSourceFile, (node) => {
+      if (ts.isModuleDeclaration(node) && node.name.getText() === 'global') {
+        const body = node.body
+        if (body && ts.isModuleBlock(body)) {
+          for (const statement of body.statements) {
+            if (ts.isVariableStatement(statement)) {
+              for (const decl of statement.declarationList.declarations) {
+                const name = decl.name.getText()
+                if (!processedSymbols.has(name)) {
+                  processedSymbols.add(name)
+                  const type = checker.getTypeAtLocation(decl)
+                  const keyword = (statement.declarationList.flags & ts.NodeFlags.Let) ? 'let' : 'var'
+                  runtimeDeclarations.push(`  ${keyword} ${name}: ${getFullyQualifiedType(type, decl)};`)
+                }
+              }
+            } else if (ts.isFunctionDeclaration(statement) && statement.name) {
+              const name = statement.name.getText()
+              if (!processedSymbols.has(name)) {
+                processedSymbols.add(name)
+                const signature = checker.getSignatureFromDeclaration(statement)
+                if (signature) {
+                  const returnType = checker.getReturnTypeOfSignature(signature)
+                  const params = signature.getParameters().map(p => {
+                    const paramDecl = p.getDeclarations()?.[0]
+                    const paramType = paramDecl ? checker.getTypeOfSymbolAtLocation(p, paramDecl) : checker.getAnyType()
+                    const isOptional = p.flags & ts.SymbolFlags.Optional ||
+                      (paramDecl && ts.isParameter(paramDecl) && (paramDecl.questionToken !== undefined || paramDecl.initializer !== undefined))
+                    const optionalMarker = isOptional ? '?' : ''
+                    return `${p.getName()}${optionalMarker}: ${getFullyQualifiedType(paramType, paramDecl)}`
+                  }).join(', ')
+
+                  const typeParams = statement.typeParameters
+                    ? `<${statement.typeParameters.map(tp => tp.getText()).join(', ')}>`
+                    : ''
+
+                  runtimeDeclarations.push(`  function ${name}${typeParams}(${params}): ${getFullyQualifiedType(returnType, statement)};`)
+                }
+              }
+            }
+          }
+        }
+      }
+    })
   }
-
-  function on<E extends keyof FloraEventMap>(event: E, handler: (ctx: FloraEventMap[E]) => void | Promise<void>): void
-  function registerSlashCommands(commands: FlattenedSlashCommand[]): void
-
-  const __floraHandlers: Record<string, Function[]>
-  const __floraGuildId: string | undefined
-  function __floraDispatch(event: string, payload: unknown): Promise<void>
-
-  const flora: typeof import('./src/index')
-`
 
   return `// Auto-generated global types for Flora SDK
 // Do not edit manually - regenerate with \`bun run build\`
 
 declare global {
-${runtimeGlobals}
+  // Runtime exports (from runtime/index.ts)
+${runtimeDeclarations.join('\n\n')}
 
   // SDK exports (functions, consts, classes, types)
-${collectedDeclarations.join('\n\n')}
+${sdkDeclarations.join('\n\n')}
+
+  const flora: typeof import('./src/index')
 }
 
 export {}

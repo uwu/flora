@@ -17,7 +17,7 @@ use std::{
     path::Path,
 };
 
-const RUNTIME_MODULE_RESOLVER: &str = include_str!("../scripts/runtime_module_resolution.js");
+const RUNTIME_MODULE_RESOLVER: &str = include_str!("../runtime-dist/runtime_module_resolution.js");
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct DeploymentFile {
     pub path: String,
@@ -54,7 +54,9 @@ pub fn bundle_files(
     files: &[DeploymentFile],
 ) -> Result<BundleOutput, BundleError> {
     if files.len() > MAX_FILES {
-        return Err(BundleError::InvalidPath(format!("too many files (max {MAX_FILES})")));
+        return Err(BundleError::InvalidPath(format!(
+            "too many files (max {MAX_FILES})"
+        )));
     }
 
     let mut total_bytes = 0usize;
@@ -67,8 +69,13 @@ pub fn bundle_files(
             )));
         }
         let normalized = normalize_path(&file.path)?;
-        if file_map.insert(normalized.clone(), file.contents.clone()).is_some() {
-            return Err(BundleError::InvalidPath(format!("duplicate file path: {normalized}")));
+        if file_map
+            .insert(normalized.clone(), file.contents.clone())
+            .is_some()
+        {
+            return Err(BundleError::InvalidPath(format!(
+                "duplicate file path: {normalized}"
+            )));
         }
     }
 
@@ -89,7 +96,10 @@ pub fn bundle_files(
     module_ids.sort();
     for id in &module_ids {
         let module = modules.get(id).expect("module missing");
-        output.push_str(&format!("__define({}, (exports, module) => {{\n", quote(id)));
+        output.push_str(&format!(
+            "__define({}, (exports, module) => {{\n",
+            quote(id)
+        ));
         output.push_str(&module.code);
         if !module.code.ends_with('\n') {
             output.push('\n');
@@ -147,7 +157,10 @@ fn collect_modules(
 fn transpile_source(path: &str, source: &str) -> Result<String, BundleError> {
     let module_name = ModuleName::from(path.to_string());
     match transpile_if_typescript(&module_name, source).map_err(|err| {
-        BundleError::TranspileError { path: path.to_string(), message: err.to_string() }
+        BundleError::TranspileError {
+            path: path.to_string(),
+            message: err.to_string(),
+        }
     })? {
         Some(output) => Ok(output.code.to_string()),
         None => Ok(source.to_string()),
@@ -168,9 +181,16 @@ fn transform_module(
     let parser = Parser::new(&allocator, source, source_type);
     let parsed = parser.parse();
     if !parsed.errors.is_empty() {
-        let message =
-            parsed.errors.iter().map(|err| err.to_string()).collect::<Vec<_>>().join("\n");
-        return Err(BundleError::ParseError { path: path.to_string(), message });
+        let message = parsed
+            .errors
+            .iter()
+            .map(|err| err.to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+        return Err(BundleError::ParseError {
+            path: path.to_string(),
+            message,
+        });
     }
 
     let mut output = String::new();
@@ -202,7 +222,13 @@ fn transform_module(
                 output.push_str(&render_export_default(decl));
             }
             Statement::ExportAllDeclaration(decl) => {
-                output.push_str(&render_export_all(decl, path, file_map, &mut deps, &mut counter)?);
+                output.push_str(&render_export_all(
+                    decl,
+                    path,
+                    file_map,
+                    &mut deps,
+                    &mut counter,
+                )?);
             }
             _ => {
                 output.push_str(&render_node(stmt));
@@ -257,7 +283,10 @@ fn render_import(decl: &ImportDeclaration<'_>, spec: &str, counter: usize) -> St
             }
 
             let module_ident = format!("__mod{counter}");
-            out.push_str(&format!("const {module_ident} = __require({});\n", quote(spec)));
+            out.push_str(&format!(
+                "const {module_ident} = __require({});\n",
+                quote(spec)
+            ));
             if let Some(name) = namespace {
                 out.push_str(&format!("const {name} = {module_ident};\n"));
             }
@@ -311,7 +340,10 @@ fn render_export_named(
         deps.push(resolved.clone());
         *counter += 1;
         let module_ident = format!("__mod{counter}");
-        out.push_str(&format!("const {module_ident} = __require({});\n", quote(&resolved)));
+        out.push_str(&format!(
+            "const {module_ident} = __require({});\n",
+            quote(&resolved)
+        ));
         for specifier in &decl.specifiers {
             if specifier.export_kind == ImportOrExportKind::Type {
                 continue;
@@ -381,7 +413,10 @@ fn render_export_all(
     *counter += 1;
     let module_ident = format!("__mod{counter}");
     let mut out = String::new();
-    out.push_str(&format!("const {module_ident} = __require({});\n", quote(&resolved)));
+    out.push_str(&format!(
+        "const {module_ident} = __require({});\n",
+        quote(&resolved)
+    ));
     if let Some(exported) = &decl.exported {
         let exported = module_export_name(exported);
         out.push_str(&format!("exports.{exported} = {module_ident};\n"));
@@ -411,12 +446,16 @@ fn collect_declaration_names(declaration: &Declaration<'_>) -> Vec<String> {
             }
             names
         }
-        Declaration::FunctionDeclaration(decl) => {
-            decl.id.as_ref().map(|id| vec![id.name.as_str().to_string()]).unwrap_or_default()
-        }
-        Declaration::ClassDeclaration(decl) => {
-            decl.id.as_ref().map(|id| vec![id.name.as_str().to_string()]).unwrap_or_default()
-        }
+        Declaration::FunctionDeclaration(decl) => decl
+            .id
+            .as_ref()
+            .map(|id| vec![id.name.as_str().to_string()])
+            .unwrap_or_default(),
+        Declaration::ClassDeclaration(decl) => decl
+            .id
+            .as_ref()
+            .map(|id| vec![id.name.as_str().to_string()])
+            .unwrap_or_default(),
         _ => Vec::new(),
     }
 }

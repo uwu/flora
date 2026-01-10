@@ -2,26 +2,27 @@
 // Do not edit manually - regenerate with `bun run build`
 
 declare global {
-
-  // Runtime globals (from runtime_prelude.js)
+  // Runtime exports (from runtime/index.ts)
   interface FloraEventMap {
-    ready: BaseContext<EventReady>
-    messageCreate: MessageContext
-    messageUpdate: MessageUpdateContext
-    messageDelete: MessageDeleteContext
-    messageDeleteBulk: MessageDeleteBulkContext
-    interactionCreate: InteractionContext
+    ready: { msg: EventReady; reply: (content: string | MessageReplyOptions) => Promise<void>; edit: (content: string | MessageEditOptions) => Promise<void>; };
+    messageCreate: { msg: EventMessage; reply: (content: string | MessageReplyOptions) => Promise<void>; edit: (content: string | MessageEditOptions) => Promise<void>; };
+    messageUpdate: { msg: EventMessageUpdate; reply: (content: string | MessageReplyOptions) => Promise<void>; edit: (content: string | MessageEditOptions) => Promise<void>; };
+    messageDelete: { msg: EventMessageDelete; reply: (content: string | MessageReplyOptions) => Promise<void>; edit: (content: string | MessageEditOptions) => Promise<void>; };
+    messageDeleteBulk: { msg: EventMessageDeleteBulk; reply: (content: string | MessageReplyOptions) => Promise<void>; edit: (content: string | MessageEditOptions) => Promise<void>; };
+    interactionCreate: BaseContext<EventInteractionCreate> & { options: SlashCommandOptions; };
   }
 
-  function on<E extends keyof FloraEventMap>(event: E, handler: (ctx: FloraEventMap[E]) => void | Promise<void>): void
-  function registerSlashCommands(commands: FlattenedSlashCommand[]): void
+  type FloraEventHandler<E extends keyof FloraEventMap> = (ctx: FloraEventMap[E]) => void | Promise<void>;
 
-  const __floraHandlers: Record<string, Function[]>
-  const __floraGuildId: string | undefined
-  function __floraDispatch(event: string, payload: unknown): Promise<void>
+  var __floraHandlers: { [x: string]: Array<Function>; };
 
-  const flora: typeof import('./src/index')
+  var __floraGuildId: string | undefined;
 
+  function on<E extends keyof FloraEventMap>(event: E, handler: (ctx: FloraEventMap[E]) => void | Promise<void>): void;
+
+  function __floraDispatch(event: string, payload: unknown): Promise<void>;
+
+  function registerSlashCommands(commands: Array<FlattenedSlashCommand>): Promise<void> | undefined;
 
   // SDK exports (functions, consts, classes, types)
   function prefix(command: { name: string; description?: string; run: (ctx: MessageContext & { args: string[]; }) => Promise<void> | void; }): { name: string; description?: string; run: (ctx: MessageContext & { args: string[]; }) => Promise<void> | void; };
@@ -164,6 +165,8 @@ declare global {
   type RawSlashCommandOption = { name: string; description: string; type?: string; required?: boolean; options?: Array<RawSlashCommandOption>; };
 
   type RawUpsertGuildCommands = { guildId: string; commands: Array<RawSlashCommand>; };
+
+  const flora: typeof import('./src/index')
 }
 
 export {}

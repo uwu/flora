@@ -28,8 +28,8 @@ use tokio::{
 use tracing::{error, info};
 
 const MAX_WORKERS_LIMIT: usize = 64;
-const RUNTIME_PRELUDE: &str = include_str!("../scripts/runtime_prelude.js");
-const SDK_BUNDLE_PATH: &str = "scripts/runtime_sdk_bundle.js";
+const RUNTIME_PRELUDE: &str = include_str!("../runtime-dist/runtime_prelude.js");
+const SDK_BUNDLE_PATH: &str = "runtime-dist/runtime_sdk_bundle.js";
 const BOOTSTRAP_SPECIFIER: &str = "ext:flora_bootstrap/bootstrap.js";
 const BOOTSTRAP_DEPS: &[&str] = &[
     "deno_webidl",
@@ -38,7 +38,8 @@ const BOOTSTRAP_DEPS: &[&str] = &[
     "deno_net",
     "deno_telemetry",
 ];
-const RUNTIME_BOOSTRAP: FastStaticString = ascii_str_include!("../scripts/runtime_bootstrap.js");
+const RUNTIME_BOOSTRAP: FastStaticString =
+    ascii_str_include!("../runtime-dist/runtime_bootstrap.js");
 
 /// Commands sent to worker threads.
 #[allow(dead_code)]
