@@ -32,7 +32,7 @@ use serenity::all::{Client, GatewayIntents};
 use sqlx::{migrate::Migrator, postgres::PgPoolOptions};
 use state::AppState;
 use std::time::Duration;
-use std::{future::IntoFuture, path::Path, sync::Arc};
+use std::{future::IntoFuture, sync::Arc};
 use time::macros::format_description;
 use tokens::TokenService;
 use tokio::net::TcpListener;
