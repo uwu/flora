@@ -203,7 +203,7 @@ impl BotRuntime {
     }
 
     /// Load the SDK bundle into all workers' default runtimes.
-    pub async fn load_user_script(&self, path: impl Into<PathBuf>) -> Result<(), AnyError> {
+    pub async fn load_sdk_bundle(&self, path: impl Into<PathBuf>) -> Result<(), AnyError> {
         let path = path.into();
         let futures: Vec<_> = self
             .workers
