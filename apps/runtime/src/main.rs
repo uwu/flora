@@ -28,7 +28,7 @@ use kv::KvService;
 use layers::logger::LoggingMiddleware;
 use reqwest::StatusCode;
 use runtime::BotRuntime;
-use serenity::all::{Client, GatewayIntents};
+use serenity::all::{Client, GatewayIntents, Token};
 use sqlx::{migrate::Migrator, postgres::PgPoolOptions};
 use state::AppState;
 use std::time::Duration;
@@ -127,7 +127,12 @@ async fn main() -> Result<()> {
 
     v8_init::init();
 
-    let http = Arc::new(serenity::http::Http::new(&config.discord.bot_token));
+    let token: Token = config
+        .discord
+        .bot_token
+        .parse()
+        .map_err(|err: serenity::secrets::TokenError| eyre!(err))?;
+    let http = Arc::new(serenity::http::Http::new(token.clone()));
 
     // Set application id early so guild command registration works before the READY event fires.
     let app_info = http.get_current_application_info().await?;
@@ -159,14 +164,14 @@ async fn main() -> Result<()> {
 
     let intents = GatewayIntents::all();
 
-    let handler = DiscordHandler {
+    let handler = Arc::new(DiscordHandler {
         runtime: runtime.clone(),
         http: http.clone(),
         application_id: Arc::new(std::sync::RwLock::new(Some(app_info.id))),
         deployments: deployment_service.clone(),
-    };
+    });
 
-    let mut client = Client::builder(&config.discord.bot_token, intents)
+    let mut client = Client::builder(token, intents)
         .event_handler(handler)
         .await?;
 

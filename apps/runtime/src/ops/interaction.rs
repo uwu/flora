@@ -103,7 +103,7 @@ pub async fn op_upsert_guild_commands(
 
     let command_defs = args.commands;
     let names: Vec<String> = command_defs.iter().map(|c| c.name.clone()).collect();
-    let commands: Vec<CreateCommand> = command_defs
+    let commands: Vec<CreateCommand<'static>> = command_defs
         .into_iter()
         .map(|cmd| {
             let desc = cmd
@@ -146,7 +146,7 @@ pub async fn op_upsert_guild_commands(
     }
 }
 
-fn build_option(opt: RawSlashCommandOption) -> Result<CreateCommandOption, JsErrorBox> {
+fn build_option(opt: RawSlashCommandOption) -> Result<CreateCommandOption<'static>, JsErrorBox> {
     let opt_type = match opt.kind.as_deref() {
         Some("integer") => CommandOptionType::Integer,
         Some("number") => CommandOptionType::Number,
@@ -170,9 +170,9 @@ fn build_option(opt: RawSlashCommandOption) -> Result<CreateCommandOption, JsErr
 
 /// Build the response payload and attachments for an interaction reply.
 pub(crate) struct BuiltInteractionResponse {
-    pub message: CreateInteractionResponseMessage,
+    pub message: CreateInteractionResponseMessage<'static>,
     pub token: String,
-    pub files: Vec<CreateAttachment>,
+    pub files: Vec<CreateAttachment<'static>>,
 }
 
 pub(crate) async fn build_interaction_response(

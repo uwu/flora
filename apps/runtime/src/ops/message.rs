@@ -11,13 +11,14 @@ use serenity::{
     http::Http,
     model::{
         Color, Timestamp,
-        channel::MessageFlags,
+        channel::{MessageFlags, MessageReference, MessageReferenceKind},
         id::{ChannelId, MessageId, RoleId, UserId},
     },
 };
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 use tracing::info;
 use ts_rs::TS;
+use url::Url;
 
 // Note: RawAttachment is an enum, so we keep manual derives
 #[derive(Debug, Deserialize, TS)]
@@ -194,8 +195,9 @@ pub async fn op_send_message(
         let message_id = message_id_str
             .parse::<u64>()
             .map_err(|_| JsErrorBox::generic("Invalid message id"))?;
-        let reference = MessageId::new(message_id);
-        message = message.reference_message((channel_id, reference));
+        let reference = MessageReference::new(MessageReferenceKind::Default, channel_id.widen())
+            .message_id(MessageId::new(message_id));
+        message = message.reference_message(reference);
     }
 
     if let Some(attachments) = args.attachments {
@@ -215,6 +217,7 @@ pub async fn op_send_message(
     }
 
     channel_id
+        .widen()
         .send_message(&http, message)
         .await
         .map_err(|err| JsErrorBox::generic(err.to_string()))?;
@@ -276,13 +279,16 @@ pub async fn op_edit_message(
     }
 
     channel_id
+        .widen()
         .edit_message(&http, message_id, message)
         .await
         .map_err(|err| JsErrorBox::generic(err.to_string()))?;
     Ok(())
 }
 
-pub(crate) fn build_allowed_mentions(input: RawAllowedMentions) -> CreateAllowedMentions {
+pub(crate) fn build_allowed_mentions(
+    input: RawAllowedMentions,
+) -> CreateAllowedMentions<'static> {
     let mut allowed = CreateAllowedMentions::new();
 
     if let Some(parse) = input.parse {
@@ -297,18 +303,20 @@ pub(crate) fn build_allowed_mentions(input: RawAllowedMentions) -> CreateAllowed
     }
 
     if let Some(users) = input.users {
-        let ids = users
+        let ids: Vec<UserId> = users
             .into_iter()
             .filter_map(|id| id.parse::<u64>().ok())
-            .map(UserId::new);
+            .map(UserId::new)
+            .collect();
         allowed = allowed.users(ids);
     }
 
     if let Some(roles) = input.roles {
-        let ids = roles
+        let ids: Vec<RoleId> = roles
             .into_iter()
             .filter_map(|id| id.parse::<u64>().ok())
-            .map(RoleId::new);
+            .map(RoleId::new)
+            .collect();
         allowed = allowed.roles(ids);
     }
 
@@ -319,7 +327,7 @@ pub(crate) fn build_allowed_mentions(input: RawAllowedMentions) -> CreateAllowed
     allowed
 }
 
-pub(crate) fn build_embed(input: RawEmbed) -> Result<CreateEmbed, JsErrorBox> {
+pub(crate) fn build_embed(input: RawEmbed) -> Result<CreateEmbed<'static>, JsErrorBox> {
     let mut embed = CreateEmbed::new();
 
     if let Some(title) = input.title {
@@ -392,19 +400,30 @@ pub(crate) fn build_embed(input: RawEmbed) -> Result<CreateEmbed, JsErrorBox> {
 pub(crate) async fn build_attachment(
     http: &Arc<Http>,
     attachment: RawAttachment,
-) -> Result<CreateAttachment, JsErrorBox> {
+) -> Result<CreateAttachment<'static>, JsErrorBox> {
     match attachment {
         RawAttachment::Url {
             url,
             filename,
             description,
         } => {
-            let mut att = serenity::builder::CreateAttachment::url(http, &url)
+            let resolved_name = filename.clone().unwrap_or_else(|| {
+                Url::parse(&url)
+                    .ok()
+                    .and_then(|parsed| {
+                        parsed
+                            .path_segments()
+                            .and_then(|segments| segments.last().map(|name| name.to_string()))
+                    })
+                    .filter(|name| !name.is_empty())
+                    .unwrap_or_else(|| "attachment".to_string())
+            });
+            let mut att = serenity::builder::CreateAttachment::url(http, &url, resolved_name)
                 .await
                 .map_err(|err| JsErrorBox::generic(err.to_string()))?;
 
             if let Some(name) = filename {
-                att.filename = name;
+                att.filename = name.into();
             }
             if let Some(desc) = description {
                 att = att.description(desc);

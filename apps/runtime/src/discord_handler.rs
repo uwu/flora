@@ -3,8 +3,8 @@ use std::sync::Arc;
 use color_eyre::{Report, eyre::eyre};
 use flora_macros::expose_payload;
 use serenity::all::{
-    ApplicationId, ChannelId, CommandInteraction, Context, EventHandler, Guild, GuildId,
-    Interaction, Message, MessageId, MessageUpdateEvent, Ready, async_trait,
+    ApplicationId, CommandInteraction, Context, EventHandler, FullEvent, GuildId, Interaction,
+    Message, MessageUpdateEvent, Ready, async_trait,
 };
 use tracing::{error, info};
 
@@ -24,184 +24,88 @@ pub struct DiscordHandler {
 
 #[async_trait]
 impl EventHandler for DiscordHandler {
-    async fn ready(&self, _ctx: Context, ready: Ready) {
-        info!("Connected as {}", ready.user.name);
+    async fn dispatch(&self, _ctx: &Context, event: &FullEvent) {
+        match event {
+            FullEvent::Ready {
+                data_about_bot: ready,
+                ..
+            } => {
+                info!("Connected as {}", ready.user.name.to_string());
 
-        {
-            let mut app_id = self.application_id.write().unwrap();
-            *app_id = Some(ready.application.id);
-        }
-        self.http.set_application_id(ready.application.id);
+                {
+                    let mut app_id = self.application_id.write().unwrap();
+                    *app_id = Some(ready.application.id);
+                }
+                self.http.set_application_id(ready.application.id);
 
-        for guild in &ready.guilds {
-            if let Err(err) = self.register_guild_commands(guild.id).await {
-                error!("failed to register guild commands {}: {:?}", guild.id, err);
+                for guild in &ready.guilds {
+                    if let Err(err) = self.register_guild_commands(guild.id).await {
+                        error!("failed to register guild commands {}: {:?}", guild.id, err);
+                    }
+
+                    if let Err(err) = self.bootstrap_default_script(guild.id).await {
+                        error!(
+                            "failed to bootstrap default script for guild {}: {:?}",
+                            guild.id, err
+                        );
+                    }
+                }
+
+                let payload = EventReady::from(ready);
+                if let Err(err) = self
+                    .runtime
+                    .dispatch_js_event(
+                        "ready",
+                        None,
+                        serde_json::to_value(payload).unwrap_or_default(),
+                    )
+                    .await
+                {
+                    error!("dispatch_js_event (ready) error: {:?}", err);
+                }
             }
-
-            if let Err(err) = self.bootstrap_default_script(guild.id).await {
-                error!(
-                    "failed to bootstrap default script for guild {}: {:?}",
-                    guild.id, err
-                );
-            }
-        }
-
-        let payload = EventReady::from(&ready);
-        if let Err(err) = self
-            .runtime
-            .dispatch_js_event(
-                "ready",
-                None,
-                serde_json::to_value(payload).unwrap_or_default(),
-            )
-            .await
-        {
-            error!("dispatch_js_event (ready) error: {:?}", err);
-        }
-    }
-
-    async fn message(&self, _ctx: Context, msg: Message) {
-        info!(
-            target: "flora:discord",
-            "message event channel={} author={} content={}",
-            msg.channel_id,
-            msg.author.id,
-            msg.content
-        );
-        let payload = EventMessage::from(&msg);
-        let value = match serde_json::to_value(payload) {
-            Ok(value) => value,
-            Err(err) => {
-                error!("Failed to serialize message payload: {:?}", err);
-                return;
-            }
-        };
-
-        let guild_id = msg.guild_id.map(|guild| guild.get().to_string());
-        if guild_id.is_none() {
-            return;
-        }
-        if let Err(err) = self
-            .runtime
-            .dispatch_js_event("messageCreate", guild_id, value)
-            .await
-        {
-            error!("dispatch_js_event error: {:?}", err);
-        }
-    }
-
-    async fn message_update(
-        &self,
-        _ctx: Context,
-        old: Option<Message>,
-        new: Option<Message>,
-        event: MessageUpdateEvent,
-    ) {
-        let payload = EventMessageUpdate::from_parts(old, new, &event);
-        let guild_id = payload.guild_id.clone();
-        if guild_id.is_none() {
-            return;
-        }
-        let value = match serde_json::to_value(payload) {
-            Ok(value) => value,
-            Err(err) => {
-                error!("Failed to serialize message update payload: {:?}", err);
-                return;
-            }
-        };
-
-        if let Err(err) = self
-            .runtime
-            .dispatch_js_event("messageUpdate", guild_id, value)
-            .await
-        {
-            error!("dispatch_js_event (messageUpdate) error: {:?}", err);
-        }
-    }
-
-    async fn message_delete(
-        &self,
-        _ctx: Context,
-        channel_id: ChannelId,
-        deleted_message_id: MessageId,
-        guild_id: Option<GuildId>,
-    ) {
-        let payload = EventMessageDelete {
-            id: deleted_message_id.get().to_string(),
-            channel_id: channel_id.get().to_string(),
-            guild_id: guild_id.map(|g| g.get().to_string()),
-        };
-        let guild_id = payload.guild_id.clone();
-        if guild_id.is_none() {
-            return;
-        }
-
-        let value = match serde_json::to_value(payload) {
-            Ok(value) => value,
-            Err(err) => {
-                error!("Failed to serialize message delete payload: {:?}", err);
-                return;
-            }
-        };
-
-        if let Err(err) = self
-            .runtime
-            .dispatch_js_event("messageDelete", guild_id, value)
-            .await
-        {
-            error!("dispatch_js_event (messageDelete) error: {:?}", err);
-        }
-    }
-
-    async fn message_delete_bulk(
-        &self,
-        _ctx: Context,
-        channel_id: ChannelId,
-        multiple_deleted_messages_ids: Vec<MessageId>,
-        guild_id: Option<GuildId>,
-    ) {
-        let payload = EventMessageDeleteBulk {
-            ids: multiple_deleted_messages_ids
-                .into_iter()
-                .map(|id| id.get().to_string())
-                .collect(),
-            channel_id: channel_id.get().to_string(),
-            guild_id: guild_id.map(|g| g.get().to_string()),
-        };
-        let guild_id = payload.guild_id.clone();
-        if guild_id.is_none() {
-            return;
-        }
-
-        let value = match serde_json::to_value(payload) {
-            Ok(value) => value,
-            Err(err) => {
-                error!("Failed to serialize message bulk delete payload: {:?}", err);
-                return;
-            }
-        };
-
-        if let Err(err) = self
-            .runtime
-            .dispatch_js_event("messageDeleteBulk", guild_id, value)
-            .await
-        {
-            error!("dispatch_js_event (messageDeleteBulk) error: {:?}", err);
-        }
-    }
-
-    async fn interaction_create(&self, _ctx: Context, interaction: Interaction) {
-        match interaction {
-            Interaction::Command(command) => {
+            FullEvent::Message {
+                new_message: msg,
+                ..
+            } => {
                 info!(
                     target: "flora:discord",
-                    "slash command interaction guild={:?} channel={} name={}",
-                    command.guild_id,
-                    command.channel_id,
-                    command.data.name
+                    "message event channel={} author={} content={}",
+                    msg.channel_id,
+                    msg.author.id,
+                    msg.content
                 );
+                let payload = EventMessage::from(msg);
+                let value = match serde_json::to_value(payload) {
+                    Ok(value) => value,
+                    Err(err) => {
+                        error!("Failed to serialize message payload: {:?}", err);
+                        return;
+                    }
+                };
 
-                let payload = EventInteractionCreate::from(&command);
+                let guild_id = msg.guild_id.map(|guild| guild.get().to_string());
+                if guild_id.is_none() {
+                    return;
+                }
+                if let Err(err) = self
+                    .runtime
+                    .dispatch_js_event("messageCreate", guild_id, value)
+                    .await
+                {
+                    error!("dispatch_js_event error: {:?}", err);
+                }
+            }
+            FullEvent::MessageUpdate {
+                old_if_available,
+                event,
+                ..
+            } => {
+                let payload = EventMessageUpdate::from_parts(
+                    old_if_available.clone(),
+                    Some(event.message.clone()),
+                    event,
+                );
                 let guild_id = payload.guild_id.clone();
                 if guild_id.is_none() {
                     return;
@@ -209,27 +113,133 @@ impl EventHandler for DiscordHandler {
                 let value = match serde_json::to_value(payload) {
                     Ok(value) => value,
                     Err(err) => {
-                        error!("Failed to serialize interaction payload: {:?}", err);
+                        error!("Failed to serialize message update payload: {:?}", err);
                         return;
                     }
                 };
 
                 if let Err(err) = self
                     .runtime
-                    .dispatch_js_event("interactionCreate", guild_id, value)
+                    .dispatch_js_event("messageUpdate", guild_id, value)
                     .await
                 {
-                    error!("dispatch_js_event (interactionCreate) error: {:?}", err);
+                    error!("dispatch_js_event (messageUpdate) error: {:?}", err);
+                }
+            }
+            FullEvent::MessageDelete {
+                channel_id,
+                deleted_message_id,
+                guild_id,
+                ..
+            } => {
+                let payload = EventMessageDelete {
+                    id: deleted_message_id.get().to_string(),
+                    channel_id: channel_id.get().to_string(),
+                    guild_id: guild_id.map(|g| g.get().to_string()),
+                };
+                let guild_id = payload.guild_id.clone();
+                if guild_id.is_none() {
+                    return;
+                }
+
+                let value = match serde_json::to_value(payload) {
+                    Ok(value) => value,
+                    Err(err) => {
+                        error!("Failed to serialize message delete payload: {:?}", err);
+                        return;
+                    }
+                };
+
+                if let Err(err) = self
+                    .runtime
+                    .dispatch_js_event("messageDelete", guild_id, value)
+                    .await
+                {
+                    error!("dispatch_js_event (messageDelete) error: {:?}", err);
+                }
+            }
+            FullEvent::MessageDeleteBulk {
+                channel_id,
+                multiple_deleted_messages_ids,
+                guild_id,
+                ..
+            } => {
+                let payload = EventMessageDeleteBulk {
+                    ids: multiple_deleted_messages_ids
+                        .iter()
+                        .map(|id| id.get().to_string())
+                        .collect(),
+                    channel_id: channel_id.get().to_string(),
+                    guild_id: guild_id.map(|g| g.get().to_string()),
+                };
+                let guild_id = payload.guild_id.clone();
+                if guild_id.is_none() {
+                    return;
+                }
+
+                let value = match serde_json::to_value(payload) {
+                    Ok(value) => value,
+                    Err(err) => {
+                        error!("Failed to serialize message bulk delete payload: {:?}", err);
+                        return;
+                    }
+                };
+
+                if let Err(err) = self
+                    .runtime
+                    .dispatch_js_event("messageDeleteBulk", guild_id, value)
+                    .await
+                {
+                    error!("dispatch_js_event (messageDeleteBulk) error: {:?}", err);
+                }
+            }
+            FullEvent::InteractionCreate {
+                interaction,
+                ..
+            } => match interaction {
+                Interaction::Command(command) => {
+                    info!(
+                        target: "flora:discord",
+                        "slash command interaction guild={:?} channel={} name={}",
+                        command.guild_id,
+                        command.channel_id,
+                        command.data.name
+                    );
+
+                    let payload = EventInteractionCreate::from(command);
+                    let guild_id = payload.guild_id.clone();
+                    if guild_id.is_none() {
+                        return;
+                    }
+                    let value = match serde_json::to_value(payload) {
+                        Ok(value) => value,
+                        Err(err) => {
+                            error!("Failed to serialize interaction payload: {:?}", err);
+                            return;
+                        }
+                    };
+
+                    if let Err(err) = self
+                        .runtime
+                        .dispatch_js_event("interactionCreate", guild_id, value)
+                        .await
+                    {
+                        error!("dispatch_js_event (interactionCreate) error: {:?}", err);
+                    }
+                }
+                _ => {}
+            },
+            FullEvent::GuildCreate {
+                guild,
+                is_new: _,
+                ..
+            } => {
+                // Bootstrap a starter script when the bot joins a guild and no deployment exists yet.
+                if let Err(err) = self.bootstrap_default_script(guild.id).await {
+                    error!(target: "flora:deployments", guild_id = guild.id.get(), ?err, "failed to bootstrap default script on guild create");
                 }
             }
             _ => {}
-        }
-    }
-
-    async fn guild_create(&self, _ctx: Context, guild: Guild, _is_new: Option<bool>) {
-        // Bootstrap a starter script when the bot joins a guild and no deployment exists yet.
-        if let Err(err) = self.bootstrap_default_script(guild.id).await {
-            error!(target: "flora:deployments", guild_id = guild.id.get(), ?err, "failed to bootstrap default script on guild create");
         }
     }
 }
@@ -238,11 +248,11 @@ impl EventHandler for DiscordHandler {
 pub struct EventUser {
     #[expose(expr = "src.id.get().to_string()")]
     id: String,
-    #[expose(expr = "src.name.clone()")]
+    #[expose(expr = "src.name.to_string()")]
     username: String,
     #[expose(expr = "src.discriminator.map(|d| d.get())")]
     discriminator: Option<u16>,
-    #[expose(expr = "src.bot")]
+    #[expose(expr = "src.bot()")]
     bot: bool,
 }
 
@@ -277,23 +287,23 @@ impl From<&Message> for EventMessage {
         let member = msg.member.as_ref().map(|member| EventMember {
             user: EventUser {
                 id: msg.author.id.get().to_string(),
-                username: msg.author.name.clone(),
+                username: msg.author.name.to_string(),
                 discriminator: msg.author.discriminator.map(|d| d.get()),
-                bot: msg.author.bot,
+                bot: msg.author.bot(),
             },
-            nick: member.nick.clone(),
+            nick: member.nick.as_ref().map(|n| n.to_string()),
             avatar: None,
             roles: member
                 .roles
                 .iter()
                 .map(|role| role.get().to_string())
                 .collect(),
-            joined_at: member.joined_at.and_then(|ts| ts.to_rfc3339()),
+            joined_at: member.joined_at.map(|ts| ts.to_rfc3339()),
             premium_since: None,
-            deaf: member.deaf,
-            mute: member.mute,
+            deaf: member.deaf(),
+            mute: member.mute(),
             flags: 0,
-            pending: member.pending,
+            pending: member.pending(),
             permissions: None,
             communication_disabled_until: None,
         });
@@ -301,12 +311,12 @@ impl From<&Message> for EventMessage {
             id: msg.id.get().to_string(),
             channel_id: msg.channel_id.get().to_string(),
             guild_id: msg.guild_id.map(|g| g.get().to_string()),
-            content: msg.content.clone(),
+            content: msg.content.to_string(),
             author: EventUser {
                 id: msg.author.id.get().to_string(),
-                username: msg.author.name.clone(),
+                username: msg.author.name.to_string(),
                 discriminator: msg.author.discriminator.map(|d| d.get()),
-                bot: msg.author.bot,
+                bot: msg.author.bot(),
             },
             member,
         }
@@ -328,6 +338,7 @@ pub struct EventMessageUpdate {
 impl EventMessageUpdate {
     fn from_parts(old: Option<Message>, new: Option<Message>, event: &MessageUpdateEvent) -> Self {
         let guild_id = event
+            .message
             .guild_id
             .map(|g| g.get().to_string())
             .or_else(|| {
@@ -341,28 +352,24 @@ impl EventMessageUpdate {
                     .map(|g| g.get().to_string())
             });
 
-        let content = event
-            .content
-            .clone()
-            .or_else(|| new.as_ref().map(|m| m.content.clone()));
+        let content = Some(event.message.content.to_string())
+            .or_else(|| new.as_ref().map(|m| m.content.to_string()));
 
-        let author = event
-            .author
-            .as_ref()
-            .map(EventUser::from)
+        let author = Some(EventUser::from(&event.message.author))
             .or_else(|| new.as_ref().map(|m| EventUser::from(&m.author)));
 
         let edited_timestamp = event
+            .message
             .edited_timestamp
-            .and_then(|ts| ts.to_rfc3339())
+            .map(|ts| ts.to_rfc3339())
             .or_else(|| {
                 new.as_ref()
-                    .and_then(|m| m.edited_timestamp.and_then(|ts| ts.to_rfc3339()))
+                    .and_then(|m| m.edited_timestamp.map(|ts| ts.to_rfc3339()))
             });
 
         Self {
-            id: event.id.get().to_string(),
-            channel_id: event.channel_id.get().to_string(),
+            id: event.message.id.get().to_string(),
+            channel_id: event.message.channel_id.get().to_string(),
             guild_id,
             content,
             author,
@@ -413,31 +420,31 @@ impl From<&CommandInteraction> for EventInteractionCreate {
         let data = serde_json::to_value(&interaction.data).unwrap_or_default();
         Self {
             interaction_id: interaction.id.get().to_string(),
-            interaction_token: interaction.token.clone(),
+            interaction_token: interaction.token.to_string(),
             application_id: interaction.application_id.get().to_string(),
             guild_id: interaction.guild_id.map(|g| g.get().to_string()),
             channel_id: Some(interaction.channel_id.get().to_string()),
             user: EventUser::from(&interaction.user),
             member: interaction.member.as_ref().map(|m| EventMember {
                 user: EventUser::from(&interaction.user),
-                nick: m.nick.clone(),
+                nick: m.nick.as_ref().map(|n| n.to_string()),
                 avatar: m.avatar.map(|h| h.to_string()),
                 roles: m.roles.iter().map(|r| r.get().to_string()).collect(),
-                joined_at: m.joined_at.and_then(|ts| ts.to_rfc3339()),
-                premium_since: m.premium_since.and_then(|ts| ts.to_rfc3339()),
-                deaf: m.deaf,
-                mute: m.mute,
+                joined_at: m.joined_at.map(|ts| ts.to_rfc3339()),
+                premium_since: m.premium_since.map(|ts| ts.to_rfc3339()),
+                deaf: m.deaf(),
+                mute: m.mute(),
                 flags: m.flags.bits(),
-                pending: m.pending,
+                pending: m.pending(),
                 permissions: m.permissions.map(|p| format!("{:?}", p)),
                 communication_disabled_until: m
                     .communication_disabled_until
-                    .and_then(|ts| ts.to_rfc3339()),
+                    .map(|ts| ts.to_rfc3339()),
             }),
-            command_name: interaction.data.name.clone(),
+            command_name: interaction.data.name.to_string(),
             data,
-            locale: Some(interaction.locale.clone()),
-            guild_locale: interaction.guild_locale.clone(),
+            locale: Some(interaction.locale.to_string()),
+            guild_locale: interaction.guild_locale.as_ref().map(|l| l.to_string()),
         }
     }
 }
@@ -491,9 +498,9 @@ impl From<&Ready> for EventReady {
         Self {
             user: EventUser {
                 id: ready.user.id.get().to_string(),
-                username: ready.user.name.clone(),
+                username: ready.user.name.to_string(),
                 discriminator: ready.user.discriminator.map(|d| d.get()),
-                bot: ready.user.bot,
+                bot: ready.user.bot(),
             },
             guild_ids: ready
                 .guilds
