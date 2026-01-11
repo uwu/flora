@@ -565,11 +565,13 @@ async fn dispatch_to_worker(
     worker_id: usize,
 ) -> Result<(), AnyError> {
     let runtime = match guild_id {
-        Some(ref gid) => guild_runtimes.get_mut(gid),
-        None => None,
-    }
-    .or(default_runtime.as_mut())
-    .ok_or_else(|| AnyError::msg("No runtime available"))?;
+        Some(ref gid) => guild_runtimes
+            .get_mut(gid)
+            .ok_or_else(|| AnyError::msg("No runtime available for guild"))?,
+        None => default_runtime
+            .as_mut()
+            .ok_or_else(|| AnyError::msg("No default runtime available"))?,
+    };
 
     dispatch_into_runtime(runtime, event, payload, worker_id).await
 }
@@ -616,35 +618,35 @@ async fn dispatch_into_runtime(
     let isolate = js_state.runtime.v8_isolate();
     let _isolate_guard = IsolateEnterGuard::new(isolate);
 
-    {
+    let (event_value, payload_value) = {
         v8::scope_with_context!(scope, isolate, &context);
         let scope = scope;
-        let context = v8::Local::new(scope, &context);
-        let dispatch_fn = v8::Local::new(scope, dispatch_fn);
-        let this = context.global(scope);
         let event_value = serde_v8::to_v8(scope, &event)?;
         let payload_value = serde_v8::to_v8(scope, &payload)?;
+        (
+            v8::Global::new(scope, event_value),
+            v8::Global::new(scope, payload_value),
+        )
+    };
 
-        dispatch_fn
-            .call(scope, this.into(), &[event_value, payload_value])
-            .ok_or_else(|| AnyError::msg("Dispatch call failed"))?;
-    }
-
+    let call = js_state
+        .runtime
+        .call_with_args(dispatch_fn, &[event_value, payload_value]);
     let result = js_state
         .runtime
-        .run_event_loop(PollEventLoopOptions::default())
+        .with_event_loop_promise(call, PollEventLoopOptions::default())
         .await
         .map_err(|err| {
-            error!(target: "flora:runtime", ?err, "Event loop error");
+            error!(target: "flora:runtime", ?err, "Dispatch promise error");
             AnyError::from(err)
         });
 
     match &result {
-        Ok(()) => metrics().dispatch_success(start.elapsed()),
+        Ok(_) => metrics().dispatch_success(start.elapsed()),
         Err(_) => metrics().dispatch_error(),
     }
 
-    result
+    result.map(|_| ())
 }
 
 async fn load_script_from_path(

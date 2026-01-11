@@ -78,6 +78,9 @@ impl EventHandler for DiscordHandler {
         };
 
         let guild_id = msg.guild_id.map(|guild| guild.get().to_string());
+        if guild_id.is_none() {
+            return;
+        }
         if let Err(err) = self
             .runtime
             .dispatch_js_event("messageCreate", guild_id, value)
@@ -96,6 +99,9 @@ impl EventHandler for DiscordHandler {
     ) {
         let payload = EventMessageUpdate::from_parts(old, new, &event);
         let guild_id = payload.guild_id.clone();
+        if guild_id.is_none() {
+            return;
+        }
         let value = match serde_json::to_value(payload) {
             Ok(value) => value,
             Err(err) => {
@@ -126,6 +132,9 @@ impl EventHandler for DiscordHandler {
             guild_id: guild_id.map(|g| g.get().to_string()),
         };
         let guild_id = payload.guild_id.clone();
+        if guild_id.is_none() {
+            return;
+        }
 
         let value = match serde_json::to_value(payload) {
             Ok(value) => value,
@@ -160,6 +169,9 @@ impl EventHandler for DiscordHandler {
             guild_id: guild_id.map(|g| g.get().to_string()),
         };
         let guild_id = payload.guild_id.clone();
+        if guild_id.is_none() {
+            return;
+        }
 
         let value = match serde_json::to_value(payload) {
             Ok(value) => value,
@@ -191,6 +203,9 @@ impl EventHandler for DiscordHandler {
 
                 let payload = EventInteractionCreate::from(&command);
                 let guild_id = payload.guild_id.clone();
+                if guild_id.is_none() {
+                    return;
+                }
                 let value = match serde_json::to_value(payload) {
                     Ok(value) => value,
                     Err(err) => {
