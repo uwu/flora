@@ -2,6 +2,7 @@
     "recommendations": [
         "rust-lang.rust-analyzer",
         "fill-labs.dependi",
-        "gplane.dprint2"
+        "gplane.dprint2",
+        "vue.volar"
     ],
 }

@@ -1,9 +1,11 @@
+import UnoCSS from 'unocss/vite'
 import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: "flora",
-  description: "flora lets you focus on writing discord bots for your servers, not running infrastructure.",
+  title: 'flora',
+  description:
+    'flora lets you focus on writing discord bots for your servers, not running infrastructure.',
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
@@ -24,5 +26,9 @@ export default defineConfig({
     socialLinks: [
       { icon: 'github', link: 'https://github.com/vuejs/vitepress' }
     ]
+  },
+  vite: {
+    // @ts-expect-error: some weird types error again wow
+    plugins: [UnoCSS({ config: '../unocss.config.ts' })]
   }
 })

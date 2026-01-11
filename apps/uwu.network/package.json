@@ -1,5 +1,5 @@
 {
-  "name": "uwu.network",
+  "name": "@flora/uwu.network",
   "type": "module",
   "private": true,
   "devDependencies": {

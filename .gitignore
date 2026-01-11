@@ -7,3 +7,4 @@ dist
 /data
 bindings
 config.toml
+apps/www/.vitepress/cache/deps
