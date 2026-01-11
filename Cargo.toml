@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["apps/cli", "apps/runtime", "crates/*"]
+members = ["apps/cli", "apps/runtime", "crates/*", "t0x"]
 
 [workspace.dependencies]
 axum = "0.8.7"
