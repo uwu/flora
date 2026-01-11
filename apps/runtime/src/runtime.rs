@@ -18,7 +18,7 @@ use std::{
     hash::{Hash, Hasher},
     path::PathBuf,
     rc::Rc,
-    sync::Arc,
+    sync::{Arc, atomic::{AtomicUsize, Ordering}},
     thread,
     time::Instant,
 };
@@ -30,6 +30,8 @@ use tokio::{
 use tracing::{error, info};
 
 const MAX_WORKERS_LIMIT: usize = 64;
+const MAX_DROPPABLE_BACKLOG: usize = 2_000;
+const DROPPABLE_EVENTS: [&str; 2] = ["messageCreate", "messageUpdate"];
 const RUNTIME_PRELUDE: &str = include_str!("../../../runtime-dist/runtime_prelude.js");
 const SDK_BUNDLE_PATH: &str = "runtime-dist/runtime_sdk_bundle.js";
 const BOOTSTRAP_SPECIFIER: &str = "ext:flora_bootstrap/bootstrap.js";
@@ -93,47 +95,56 @@ struct Worker {
     id: usize,
     sender: mpsc::UnboundedSender<WorkerCommand>,
     handle: Option<thread::JoinHandle<()>>,
+    backlog: Arc<AtomicUsize>,
 }
 
 impl Worker {
+    fn send_cmd(&self, cmd: WorkerCommand) -> Result<(), AnyError> {
+        self.backlog.fetch_add(1, Ordering::Relaxed);
+        if self.sender.send(cmd).is_err() {
+            self.backlog.fetch_sub(1, Ordering::Relaxed);
+            return Err(AnyError::msg("worker unavailable"));
+        }
+        Ok(())
+    }
+
+    fn send_shutdown(&self) {
+        self.backlog.fetch_add(1, Ordering::Relaxed);
+        if self.sender.send(WorkerCommand::Shutdown).is_err() {
+            self.backlog.fetch_sub(1, Ordering::Relaxed);
+        }
+    }
+
     async fn initialize(&self) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
-        self.sender
-            .send(WorkerCommand::Initialize { respond_to: tx })
-            .map_err(|_| AnyError::msg("worker unavailable"))?;
+        self.send_cmd(WorkerCommand::Initialize { respond_to: tx })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 
     async fn load_sdk_bundle(&self, path: PathBuf) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
-        self.sender
-            .send(WorkerCommand::LoadSdkBundle {
-                path,
-                respond_to: tx,
-            })
-            .map_err(|_| AnyError::msg("worker unavailable"))?;
+        self.send_cmd(WorkerCommand::LoadSdkBundle {
+            path,
+            respond_to: tx,
+        })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 
     async fn load_user_script(&self, path: PathBuf) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
-        self.sender
-            .send(WorkerCommand::LoadUserScript {
-                path,
-                respond_to: tx,
-            })
-            .map_err(|_| AnyError::msg("worker unavailable"))?;
+        self.send_cmd(WorkerCommand::LoadUserScript {
+            path,
+            respond_to: tx,
+        })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 
     async fn deploy_guild(&self, deployment: Deployment) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
-        self.sender
-            .send(WorkerCommand::DeployGuild {
-                deployment,
-                respond_to: tx,
-            })
-            .map_err(|_| AnyError::msg("worker unavailable"))?;
+        self.send_cmd(WorkerCommand::DeployGuild {
+            deployment,
+            respond_to: tx,
+        })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 
@@ -144,26 +155,22 @@ impl Worker {
         payload: Value,
     ) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
-        self.sender
-            .send(WorkerCommand::DispatchEvent {
-                guild_id,
-                event,
-                payload,
-                respond_to: tx,
-            })
-            .map_err(|_| AnyError::msg("worker unavailable"))?;
+        self.send_cmd(WorkerCommand::DispatchEvent {
+            guild_id,
+            event,
+            payload,
+            respond_to: tx,
+        })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 
     async fn broadcast(&self, event: String, payload: Value) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
-        self.sender
-            .send(WorkerCommand::BroadcastEvent {
-                event,
-                payload,
-                respond_to: tx,
-            })
-            .map_err(|_| AnyError::msg("worker unavailable"))?;
+        self.send_cmd(WorkerCommand::BroadcastEvent {
+            event,
+            payload,
+            respond_to: tx,
+        })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 }
@@ -242,6 +249,20 @@ impl BotRuntime {
         match &guild_id {
             Some(gid) => {
                 let worker_idx = self.worker_for_guild(gid);
+                let worker = &self.workers[worker_idx];
+                if is_droppable_event(event)
+                    && worker.backlog.load(Ordering::Relaxed) >= MAX_DROPPABLE_BACKLOG
+                {
+                    info!(
+                        target: "flora:runtime",
+                        worker_id = worker.id,
+                        guild_id = gid,
+                        event,
+                        backlog = worker.backlog.load(Ordering::Relaxed),
+                        "dropping event due to backlog"
+                    );
+                    return Ok(());
+                }
                 self.workers[worker_idx]
                     .dispatch(guild_id, event.to_string(), payload)
                     .await
@@ -266,11 +287,15 @@ impl BotRuntime {
     }
 }
 
+fn is_droppable_event(event: &str) -> bool {
+    DROPPABLE_EVENTS.iter().any(|item| *item == event)
+}
+
 impl Drop for BotRuntime {
     fn drop(&mut self) {
         info!(target: "flora:runtime", "shutting down worker pool");
         for worker in &self.workers {
-            let _ = worker.sender.send(WorkerCommand::Shutdown);
+            worker.send_shutdown();
         }
         for worker in &mut self.workers {
             if let Some(handle) = worker.handle.take() {
@@ -282,12 +307,14 @@ impl Drop for BotRuntime {
 
 fn spawn_worker(id: usize, http: Arc<Http>, kv: KvService) -> Worker {
     let (tx, rx) = mpsc::unbounded_channel();
+    let backlog = Arc::new(AtomicUsize::new(0));
+    let backlog_handle = Arc::clone(&backlog);
 
     // Use a barrier to ensure all workers start together after V8 is ready
     let handle = thread::Builder::new()
         .name(format!("flora-worker-{}", id))
         .spawn(move || {
-            worker_thread(id, rx, http, kv);
+            worker_thread(id, rx, http, kv, backlog_handle);
         })
         .expect("failed to spawn worker thread");
 
@@ -295,6 +322,7 @@ fn spawn_worker(id: usize, http: Arc<Http>, kv: KvService) -> Worker {
         id,
         sender: tx,
         handle: Some(handle),
+        backlog,
     }
 }
 
@@ -303,6 +331,7 @@ fn worker_thread(
     mut receiver: mpsc::UnboundedReceiver<WorkerCommand>,
     http: Arc<Http>,
     kv: KvService,
+    backlog: Arc<AtomicUsize>,
 ) {
     let rt = Builder::new_current_thread()
         .enable_all()
@@ -316,6 +345,7 @@ fn worker_thread(
         info!(target: "flora:runtime", worker_id, "worker thread started");
 
         while let Some(cmd) = receiver.recv().await {
+            backlog.fetch_sub(1, Ordering::Relaxed);
             match cmd {
                 WorkerCommand::Initialize { respond_to } => {
                     let result =
