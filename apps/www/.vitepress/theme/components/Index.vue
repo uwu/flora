@@ -77,6 +77,7 @@
   left: 0;
   width: 1440px;
   height: 202px;
+  z-index: 2;
 }
 
 .logo {
@@ -134,6 +135,7 @@
   font-weight: 410;
   text-wrap: pretty;
   box-sizing: border-box;
+  z-index: 2;
 }
 
 .background-gif {
@@ -147,6 +149,8 @@
   background-position: center;
   background-size: cover;
   box-sizing: border-box;
+  z-index: 1;
+  pointer-events: none;
 }
 
 @media (max-width: 1440px) {
