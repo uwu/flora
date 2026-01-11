@@ -10,21 +10,26 @@ export default defineConfig({
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Examples', link: '/markdown-examples' }
+      { text: 'SDK', link: '/sdk' },
+      { text: 'Runtime', link: '/runtime' },
+      { text: 'CLI', link: '/cli' },
+      { text: 'Examples', link: '/examples' }
     ],
 
     sidebar: [
       {
-        text: 'Examples',
+        text: 'Docs',
         items: [
-          { text: 'Markdown Examples', link: '/markdown-examples' },
-          { text: 'Runtime API Examples', link: '/api-examples' }
+          { text: 'SDK', link: '/sdk' },
+          { text: 'Runtime', link: '/runtime' },
+          { text: 'CLI', link: '/cli' },
+          { text: 'Examples', link: '/examples' }
         ]
       }
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/vuejs/vitepress' }
+      { icon: 'github', link: 'https://github.com/uwu/flora' }
     ]
   },
   vite: {

@@ -22,6 +22,23 @@
       <a class="underline" href="https://github.com/uwu/flora">
         https://github.com/uwu/flora
       </a>
+      <br /><br />
+      Start here:
+      <a class="underline" href="/sdk">
+        SDK docs
+      </a>
+      ·
+      <a class="underline" href="/runtime">
+        Runtime docs
+      </a>
+      ·
+      <a class="underline" href="/cli">
+        CLI docs
+      </a>
+      ·
+      <a class="underline" href="/examples">
+        Examples
+      </a>
     </div>
 
       <div class="background-gif" />
@@ -80,8 +97,8 @@
   left: 0;
   translate: 163px 68px;
   color: #e1ecd9;
-  font-size: 60px;
-  line-height: 64px;
+  font-size: 52px;
+  line-height: 58px;
   letter-spacing: -0.01em;
   width: fit-content;
   height: fit-content;
@@ -94,8 +111,8 @@
   left: 0;
   translate: 982px 68px;
   color: #e1ecd9;
-  font-size: 40px;
-  line-height: 64px;
+  font-size: 34px;
+  line-height: 52px;
   letter-spacing: -0.01em;
   width: fit-content;
   height: fit-content;
@@ -110,8 +127,8 @@
   width: 1323px;
   height: 586px;
   color: #e1ecd9;
-  font-size: 40px;
-  line-height: 60px;
+  font-size: 34px;
+  line-height: 52px;
   letter-spacing: -0.01em;
   font-variation-settings: "wght" 410;
   font-weight: 410;
