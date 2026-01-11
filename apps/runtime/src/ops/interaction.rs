@@ -243,7 +243,7 @@ mod tests {
     use super::*;
 
     fn http() -> Arc<Http> {
-        Arc::new(Http::new("test"))
+        Arc::new(Http::without_token())
     }
 
     #[tokio::test]
