@@ -2,10 +2,10 @@ name: www-deploy
 
 on:
   push:
-    branches: ["main"]
+    branches: ['trunk']
     paths:
-      - "apps/www/**"
-      - ".github/workflows/www-deploy.yml"
+      - 'apps/www/**'
+      - '.github/workflows/www-deploy.yml'
 
 concurrency:
   group: www-deploy-${{ github.ref }}
@@ -24,7 +24,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
-          bun-version: "latest"
+          bun-version: 'latest'
 
       - name: Install deps
         run: bun install
