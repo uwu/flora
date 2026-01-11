@@ -7,4 +7,6 @@ dist
 /data
 bindings
 config.toml
-apps/www/.vitepress/cache/deps
+**/.vitepress/cache/deps
+**/.vitepress/dist
+**/.wrangler

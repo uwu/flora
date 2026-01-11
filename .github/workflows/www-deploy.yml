@@ -1,0 +1,38 @@
+name: www-deploy
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "apps/www/**"
+      - ".github/workflows/www-deploy.yml"
+
+concurrency:
+  group: www-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/www
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "latest"
+
+      - name: Install deps
+        run: bun install
+
+      - name: Build VitePress
+        run: bun run build
+
+      - name: Deploy to Cloudflare Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: bunx wrangler deploy
