@@ -15,23 +15,26 @@ use serenity::http::Http;
 use std::{
     borrow::Cow,
     collections::{HashMap, hash_map::DefaultHasher},
+    future::Future,
     hash::{Hash, Hasher},
     path::PathBuf,
     rc::Rc,
     sync::{Arc, atomic::{AtomicUsize, Ordering}},
     thread,
-    time::Instant,
+    time::{Duration, Instant},
 };
 use sys_traits::impls::RealSys;
 use tokio::{
     runtime::Builder,
     sync::{mpsc, oneshot},
+    time::timeout,
 };
 use tracing::{error, info};
 
 const MAX_WORKERS_LIMIT: usize = 64;
 const MAX_DROPPABLE_BACKLOG: usize = 2_000;
 const DROPPABLE_EVENTS: [&str; 2] = ["messageCreate", "messageUpdate"];
+const TERMINATION_GRACE_MS: u64 = 100;
 const RUNTIME_PRELUDE: &str = include_str!("../../../runtime-dist/runtime_prelude.js");
 const SDK_BUNDLE_PATH: &str = "runtime-dist/runtime_sdk_bundle.js";
 const BOOTSTRAP_SPECIFIER: &str = "ext:flora_bootstrap/bootstrap.js";
@@ -182,14 +185,42 @@ pub struct BotRuntime {
     num_workers: usize,
 }
 
+#[derive(Clone, Copy)]
+struct RuntimeLimits {
+    boot_timeout: Option<Duration>,
+    load_timeout: Option<Duration>,
+    dispatch_timeout: Option<Duration>,
+    max_script_bytes: usize,
+}
+
+impl RuntimeLimits {
+    fn from_config(config: &RuntimeConfig) -> Self {
+        Self {
+            boot_timeout: timeout_from_secs(config.boot_timeout_secs),
+            load_timeout: timeout_from_secs(config.load_timeout_secs),
+            dispatch_timeout: timeout_from_secs(config.dispatch_timeout_secs),
+            max_script_bytes: config.max_script_bytes,
+        }
+    }
+}
+
+fn timeout_from_secs(secs: u64) -> Option<Duration> {
+    if secs == 0 {
+        None
+    } else {
+        Some(Duration::from_secs(secs))
+    }
+}
+
 impl BotRuntime {
     /// Create a new runtime with a pool of worker threads.
     pub fn new(http: Arc<Http>, kv: KvService, config: RuntimeConfig) -> Self {
         let num_workers = config.max_workers.clamp(1, MAX_WORKERS_LIMIT);
         info!(target: "flora:runtime", num_workers, "spawning worker pool");
+        let limits = RuntimeLimits::from_config(&config);
 
         let workers: Vec<Worker> = (0..num_workers)
-            .map(|id| spawn_worker(id, http.clone(), kv.clone()))
+            .map(|id| spawn_worker(id, http.clone(), kv.clone(), limits))
             .collect();
 
         Self {
@@ -305,7 +336,7 @@ impl Drop for BotRuntime {
     }
 }
 
-fn spawn_worker(id: usize, http: Arc<Http>, kv: KvService) -> Worker {
+fn spawn_worker(id: usize, http: Arc<Http>, kv: KvService, limits: RuntimeLimits) -> Worker {
     let (tx, rx) = mpsc::unbounded_channel();
     let backlog = Arc::new(AtomicUsize::new(0));
     let backlog_handle = Arc::clone(&backlog);
@@ -314,7 +345,7 @@ fn spawn_worker(id: usize, http: Arc<Http>, kv: KvService) -> Worker {
     let handle = thread::Builder::new()
         .name(format!("flora-worker-{}", id))
         .spawn(move || {
-            worker_thread(id, rx, http, kv, backlog_handle);
+            worker_thread(id, rx, http, kv, limits, backlog_handle);
         })
         .expect("failed to spawn worker thread");
 
@@ -331,6 +362,7 @@ fn worker_thread(
     mut receiver: mpsc::UnboundedReceiver<WorkerCommand>,
     http: Arc<Http>,
     kv: KvService,
+    limits: RuntimeLimits,
     backlog: Arc<AtomicUsize>,
 ) {
     let rt = Builder::new_current_thread()
@@ -349,7 +381,13 @@ fn worker_thread(
             match cmd {
                 WorkerCommand::Initialize { respond_to } => {
                     let result =
-                        initialize_worker_default(&mut default_runtime, &http, &kv, worker_id)
+                        initialize_worker_default(
+                            &mut default_runtime,
+                            &http,
+                            &kv,
+                            worker_id,
+                            &limits,
+                        )
                             .await;
                     if let Err(ref err) = result {
                         error!(target: "flora:runtime", worker_id, ?err, "failed to initialize worker");
@@ -359,7 +397,7 @@ fn worker_thread(
 
                 WorkerCommand::LoadSdkBundle { path, respond_to } => {
                     let result = match default_runtime.as_mut() {
-                        Some(rt) => load_script_from_path(rt, path, worker_id).await,
+                        Some(rt) => load_script_from_path(rt, path, worker_id, &limits).await,
                         None => Err(AnyError::msg("default runtime not initialized")),
                     };
                     if let Err(ref err) = result {
@@ -370,7 +408,7 @@ fn worker_thread(
 
                 WorkerCommand::LoadUserScript { path, respond_to } => {
                     let result = match default_runtime.as_mut() {
-                        Some(rt) => load_script_from_path(rt, path, worker_id).await,
+                        Some(rt) => load_script_from_path(rt, path, worker_id, &limits).await,
                         None => Err(AnyError::msg("default runtime not initialized")),
                     };
                     if let Err(ref err) = result {
@@ -386,6 +424,7 @@ fn worker_thread(
                         &kv,
                         deployment,
                         worker_id,
+                        &limits,
                     )
                     .await;
                     if let Err(ref err) = result {
@@ -402,6 +441,7 @@ fn worker_thread(
                         event,
                         payload,
                         worker_id,
+                        &limits,
                     )
                     .await;
                     if let Err(ref err) = result {
@@ -417,6 +457,7 @@ fn worker_thread(
                         event,
                         payload,
                         worker_id,
+                        &limits,
                     )
                     .await;
                     if let Err(ref err) = result {
@@ -447,6 +488,12 @@ struct JsRuntimeState {
     dispatch_fn: Option<Global<v8::Function>>,
     #[allow(dead_code)]
     guild_id: Option<String>,
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("{stage} timed out")]
+struct RuntimeTimeout {
+    stage: &'static str,
 }
 
 impl Drop for JsRuntimeState {
@@ -498,16 +545,21 @@ async fn initialize_worker_default(
     http: &Arc<Http>,
     kv: &KvService,
     worker_id: usize,
+    limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
     let mut runtime = new_js_runtime(http.clone(), kv.clone(), None);
 
     runtime
         .runtime
         .execute_script("flora:bootstrap", RUNTIME_PRELUDE)?;
-    runtime
-        .runtime
-        .run_event_loop(PollEventLoopOptions::default())
-        .await?;
+    run_event_loop_with_timeout(
+        &mut runtime.runtime,
+        PollEventLoopOptions::default(),
+        limits.boot_timeout,
+        worker_id,
+        "bootstrap",
+    )
+    .await?;
 
     // Extract dispatch function - need to enter isolate first
     let context = runtime.runtime.main_context();
@@ -526,6 +578,7 @@ async fn deploy_guild_to_worker(
     kv: &KvService,
     deployment: Deployment,
     worker_id: usize,
+    limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
     let guild_id = deployment.guild_id.clone();
 
@@ -549,10 +602,14 @@ async fn deploy_guild_to_worker(
     runtime
         .runtime
         .execute_script("flora:bootstrap", RUNTIME_PRELUDE)?;
-    runtime
-        .runtime
-        .run_event_loop(PollEventLoopOptions::default())
-        .await?;
+    run_event_loop_with_timeout(
+        &mut runtime.runtime,
+        PollEventLoopOptions::default(),
+        limits.boot_timeout,
+        worker_id,
+        "bootstrap",
+    )
+    .await?;
 
     {
         let context = runtime.runtime.main_context();
@@ -562,7 +619,13 @@ async fn deploy_guild_to_worker(
     }
 
     info!(target: "flora:runtime", worker_id, guild_id, path = SDK_BUNDLE_PATH, "Loading SDK bundle");
-    load_script_from_path(&mut runtime, PathBuf::from(SDK_BUNDLE_PATH), worker_id).await?;
+    load_script_from_path(
+        &mut runtime,
+        PathBuf::from(SDK_BUNDLE_PATH),
+        worker_id,
+        limits,
+    )
+    .await?;
 
     let module_name = ModuleName::from(deployment.module_name());
     let script_name = module_name.as_str().to_string();
@@ -573,6 +636,7 @@ async fn deploy_guild_to_worker(
         deployment.bundle.clone(),
         script_name,
         worker_id,
+        limits,
     )
     .await?;
 
@@ -595,6 +659,7 @@ async fn dispatch_to_worker(
     event: String,
     payload: Value,
     worker_id: usize,
+    limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
     let runtime = match guild_id {
         Some(ref gid) => guild_runtimes
@@ -605,7 +670,7 @@ async fn dispatch_to_worker(
             .ok_or_else(|| AnyError::msg("No default runtime available"))?,
     };
 
-    dispatch_into_runtime(runtime, event, payload, worker_id).await
+    dispatch_into_runtime(runtime, event, payload, worker_id, limits).await
 }
 
 async fn broadcast_to_worker(
@@ -614,10 +679,11 @@ async fn broadcast_to_worker(
     event: String,
     payload: Value,
     worker_id: usize,
+    limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
     if let Some(runtime) = default_runtime {
         if let Err(err) =
-            dispatch_into_runtime(runtime, event.clone(), payload.clone(), worker_id).await
+            dispatch_into_runtime(runtime, event.clone(), payload.clone(), worker_id, limits).await
         {
             error!(target: "flora:runtime", worker_id, ?err, "Broadcast to default runtime failed");
         }
@@ -625,7 +691,7 @@ async fn broadcast_to_worker(
 
     for (guild_id, runtime) in guild_runtimes.iter_mut() {
         if let Err(err) =
-            dispatch_into_runtime(runtime, event.clone(), payload.clone(), worker_id).await
+            dispatch_into_runtime(runtime, event.clone(), payload.clone(), worker_id, limits).await
         {
             error!(target: "flora:runtime", worker_id, guild_id, ?err, "Broadcast dispatch failed");
         }
@@ -638,7 +704,8 @@ async fn dispatch_into_runtime(
     js_state: &mut JsRuntimeState,
     event: String,
     payload: Value,
-    _worker_id: usize,
+    worker_id: usize,
+    limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
     let start = Instant::now();
     let dispatch_fn = js_state
@@ -664,14 +731,28 @@ async fn dispatch_into_runtime(
     let call = js_state
         .runtime
         .call_with_args(dispatch_fn, &[event_value, payload_value]);
-    let result = js_state
-        .runtime
-        .with_event_loop_promise(call, PollEventLoopOptions::default())
-        .await
-        .map_err(|err| {
-            error!(target: "flora:runtime", ?err, "Dispatch promise error");
-            AnyError::from(err)
-        });
+    let result = with_timeout(
+        limits.dispatch_timeout,
+        async {
+            js_state
+                .runtime
+                .with_event_loop_promise(call, PollEventLoopOptions::default())
+                .await
+                .map_err(AnyError::from)
+        },
+        "dispatch",
+    )
+    .await
+    .map_err(|err| {
+        error!(target: "flora:runtime", ?err, "Dispatch promise error");
+        err
+    });
+
+    if let Err(ref err) = result {
+        if err.is::<RuntimeTimeout>() {
+            terminate_runtime(&mut js_state.runtime, worker_id, "dispatch").await;
+        }
+    }
 
     match &result {
         Ok(_) => metrics().dispatch_success(start.elapsed()),
@@ -685,7 +766,16 @@ async fn load_script_from_path(
     js_state: &mut JsRuntimeState,
     path: PathBuf,
     worker_id: usize,
+    limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
+    let metadata = tokio::fs::metadata(&path).await?;
+    let size = metadata.len() as usize;
+    if size > limits.max_script_bytes {
+        return Err(AnyError::msg(format!(
+            "script exceeds size limit (max {} bytes)",
+            limits.max_script_bytes
+        )));
+    }
     let source = tokio::fs::read_to_string(&path).await?;
     let name = path.to_string_lossy().to_string();
 
@@ -695,6 +785,7 @@ async fn load_script_from_path(
         source,
         name,
         worker_id,
+        limits,
     )
     .await
 }
@@ -705,7 +796,14 @@ async fn load_script_source(
     source: String,
     name: String,
     worker_id: usize,
+    limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
+    if source.len() > limits.max_script_bytes {
+        return Err(AnyError::msg(format!(
+            "script exceeds size limit (max {} bytes)",
+            limits.max_script_bytes
+        )));
+    }
     info!(target: "flora:runtime", worker_id, module = module_name.as_str(), "Executing module source");
     let _isolate_guard = enter_isolate(js_runtime);
 
@@ -715,12 +813,94 @@ async fn load_script_source(
     };
 
     js_runtime.execute_script(name, code)?;
-    js_runtime
-        .run_event_loop(PollEventLoopOptions::default())
-        .await?;
+    run_event_loop_with_timeout(
+        js_runtime,
+        PollEventLoopOptions::default(),
+        limits.load_timeout,
+        worker_id,
+        "module_load",
+    )
+    .await?;
 
     info!(target: "flora:runtime", worker_id, module = module_name.as_str(), "Module executed");
     Ok(())
+}
+
+async fn with_timeout<T>(
+    timeout_duration: Option<Duration>,
+    fut: impl Future<Output = Result<T, AnyError>>,
+    stage: &'static str,
+) -> Result<T, AnyError> {
+    match timeout_duration {
+        Some(duration) => match timeout(duration, fut).await {
+            Ok(result) => result,
+            Err(_) => Err(AnyError::from(RuntimeTimeout { stage })),
+        },
+        None => fut.await,
+    }
+}
+
+async fn run_event_loop_with_timeout(
+    runtime: &mut JsRuntime,
+    poll_options: PollEventLoopOptions,
+    timeout_duration: Option<Duration>,
+    worker_id: usize,
+    stage: &'static str,
+) -> Result<(), AnyError> {
+    let result = with_timeout(
+        timeout_duration,
+        async { runtime.run_event_loop(poll_options).await.map_err(AnyError::from) },
+        stage,
+    )
+    .await
+    .map_err(|err| {
+        error!(
+            target: "flora:runtime",
+            worker_id,
+            stage,
+            ?err,
+            "event loop error"
+        );
+        err
+    });
+
+    if let Err(ref err) = result {
+        if err.is::<RuntimeTimeout>() {
+            terminate_runtime(runtime, worker_id, stage).await;
+        }
+    }
+
+    result
+}
+
+async fn terminate_runtime(runtime: &mut JsRuntime, worker_id: usize, stage: &'static str) {
+    let isolate = runtime.v8_isolate();
+    let ok = isolate.terminate_execution();
+    if !ok {
+        error!(
+            target: "flora:runtime",
+            worker_id,
+            stage,
+            "failed to terminate execution"
+        );
+        return;
+    }
+
+    let _ = timeout(
+        Duration::from_millis(TERMINATION_GRACE_MS),
+        runtime.run_event_loop(PollEventLoopOptions::default()),
+    )
+    .await;
+
+    let ok = runtime.v8_isolate().cancel_terminate_execution();
+    if !ok {
+        error!(
+            target: "flora:runtime",
+            worker_id,
+            stage,
+            "failed to cancel termination"
+        );
+    }
 }
 
 fn extract_dispatch_fn_no_enter_impl(

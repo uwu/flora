@@ -80,6 +80,34 @@
 # Default value: 4
 #max_workers = 4
 
+# Timeout in seconds for runtime bootstrap (0 disables).
+#
+# Can also be specified via environment variable `RUNTIME_BOOT_TIMEOUT_SECS`.
+#
+# Default value: 5
+#boot_timeout_secs = 5
+
+# Timeout in seconds for script/module load (0 disables).
+#
+# Can also be specified via environment variable `RUNTIME_LOAD_TIMEOUT_SECS`.
+#
+# Default value: 10
+#load_timeout_secs = 10
+
+# Timeout in seconds for per-event dispatch (0 disables).
+#
+# Can also be specified via environment variable `RUNTIME_DISPATCH_TIMEOUT_SECS`.
+#
+# Default value: 3
+#dispatch_timeout_secs = 3
+
+# Max script size in bytes (SDK + deployment).
+#
+# Can also be specified via environment variable `RUNTIME_MAX_SCRIPT_BYTES`.
+#
+# Default value: 1048576
+#max_script_bytes = 1048576
+
 # API server config.
 [api]
 # Port to listen on.

@@ -78,6 +78,18 @@ pub struct RuntimeConfig {
     /// Max: 64
     #[config(env = "RUNTIME_MAX_WORKERS", default = 4)]
     pub max_workers: usize,
+    /// Timeout in seconds for runtime bootstrap (0 disables).
+    #[config(env = "RUNTIME_BOOT_TIMEOUT_SECS", default = 5)]
+    pub boot_timeout_secs: u64,
+    /// Timeout in seconds for script/module load (0 disables).
+    #[config(env = "RUNTIME_LOAD_TIMEOUT_SECS", default = 10)]
+    pub load_timeout_secs: u64,
+    /// Timeout in seconds for per-event dispatch (0 disables).
+    #[config(env = "RUNTIME_DISPATCH_TIMEOUT_SECS", default = 3)]
+    pub dispatch_timeout_secs: u64,
+    /// Max script size in bytes (SDK + deployment). Default: 1MB.
+    #[config(env = "RUNTIME_MAX_SCRIPT_BYTES", default = 1_048_576)]
+    pub max_script_bytes: usize,
 }
 
 /// API server configuration.
