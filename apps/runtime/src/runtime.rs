@@ -6,7 +6,9 @@ use deno_core::{
     serde_v8,
     v8::{self, Global},
 };
-use deno_permissions::{PermissionsContainer, RuntimePermissionDescriptorParser};
+use deno_permissions::{
+    Permissions, PermissionsContainer, PermissionsOptions, RuntimePermissionDescriptorParser,
+};
 use flora_config::RuntimeConfig;
 use serde_json::Value;
 use serenity::http::Http;
@@ -726,8 +728,19 @@ fn new_js_runtime(http: Arc<Http>, kv: KvService, guild_id: Option<String>) -> J
     metrics().isolate_created();
     let blob_store = Arc::new(deno_web::BlobStore::default());
     let broadcast_channel = deno_web::InMemoryBroadcastChannel::default();
-    let permissions =
-        PermissionsContainer::allow_all(Arc::new(RuntimePermissionDescriptorParser::new(RealSys)));
+    let descriptor_parser = Arc::new(RuntimePermissionDescriptorParser::new(RealSys));
+    let permissions = PermissionsContainer::new(
+        descriptor_parser.clone(),
+        Permissions::from_options(
+            descriptor_parser.as_ref(),
+            &PermissionsOptions {
+                allow_net: Some(vec![]),
+                prompt: false,
+                ..Default::default()
+            },
+        )
+        .expect("failed to build runtime permissions"),
+    );
     let runtime = JsRuntime::new(RuntimeOptions {
         extensions: vec![
             deno_telemetry::deno_telemetry::init(),
