@@ -1,5 +1,20 @@
 // Re-export all types from generated
-import type { EventInteractionCreate, EventMessage, EventMessageDelete, EventMessageDeleteBulk, EventMessageUpdate, RawAllowedMentions, RawAttachment, RawEmbed, RawEmbedField } from '../generated'
+import type {
+  EventComponentInteraction,
+  EventInteractionCreate,
+  EventMessage,
+  EventMessageDelete,
+  EventMessageDeleteBulk,
+  EventMessageUpdate,
+  EventModalSubmit,
+  EventReaction,
+  EventReactionRemoveAll,
+  RawAllowedMentions,
+  RawAttachment,
+  RawEmbed,
+  RawEmbedField
+} from '../generated'
+import type { JsonValue } from '../generated/serde_json/JsonValue'
 export type * from '../generated'
 
 export type Embed = RawEmbed
@@ -9,6 +24,7 @@ export type MessageReplyOptions = {
   content?: string
   embeds?: RawEmbed[]
   attachments?: RawAttachment[]
+  components?: JsonValue[]
   tts?: boolean
   allowedMentions?: RawAllowedMentions
   replyTo?: string | null
@@ -19,6 +35,7 @@ export type MessageReplyOptions = {
 export type MessageEditOptions = {
   content?: string
   embeds?: RawEmbed[]
+  components?: JsonValue[]
   allowedMentions?: RawAllowedMentions
   flags?: number
 }
@@ -33,6 +50,10 @@ export type MessageContext = BaseContext<EventMessage>
 export type MessageUpdateContext = BaseContext<EventMessageUpdate>
 export type MessageDeleteContext = BaseContext<EventMessageDelete>
 export type MessageDeleteBulkContext = BaseContext<EventMessageDeleteBulk>
+export type ComponentInteractionContext = BaseContext<EventComponentInteraction>
+export type ModalSubmitContext = BaseContext<EventModalSubmit>
+export type ReactionContext = BaseContext<EventReaction>
+export type ReactionRemoveAllContext = BaseContext<EventReactionRemoveAll>
 
 export type SlashCommandOptions = Record<
   string,

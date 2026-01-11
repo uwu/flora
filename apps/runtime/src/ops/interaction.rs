@@ -7,13 +7,14 @@ use serenity::{
     all::{CommandOptionType, CreateAttachment},
     builder::{
         CreateCommand, CreateCommandOption, CreateInteractionResponse,
-        CreateInteractionResponseMessage,
+        CreateInteractionResponseFollowup, CreateInteractionResponseMessage, EditInteractionResponse,
     },
     http::Http,
-    model::id::InteractionId,
+    model::{channel::MessageFlags, id::InteractionId},
 };
 use tracing::info;
 
+use super::components::parse_components;
 use super::message::{
     RawAllowedMentions, RawAttachment, RawEmbed, build_allowed_mentions, build_attachment,
     build_embed,
@@ -26,9 +27,11 @@ pub(crate) struct RawInteractionResponse {
     pub content: Option<String>,
     pub embeds: Option<Vec<RawEmbed>>,
     pub attachments: Option<Vec<RawAttachment>>,
+    pub components: Option<Vec<serde_json::Value>>,
     pub tts: Option<bool>,
     pub allowed_mentions: Option<RawAllowedMentions>,
     pub ephemeral: Option<bool>,
+    pub flags: Option<u64>,
 }
 
 #[expose_input]
@@ -83,6 +86,212 @@ pub async fn op_send_interaction_response(
     .await
     .map_err(|err| JsErrorBox::generic(err.to_string()))?;
 
+    Ok(())
+}
+
+#[expose_input]
+pub(crate) struct RawDeferInteractionResponse {
+    pub interaction_id: String,
+    pub token: String,
+    pub ephemeral: Option<bool>,
+}
+
+#[op2(async)]
+pub async fn op_defer_interaction_response(
+    state: Rc<RefCell<OpState>>,
+    #[serde] args: RawDeferInteractionResponse,
+) -> Result<(), JsErrorBox> {
+    let http = {
+        let state = state.borrow();
+        state.borrow::<Arc<Http>>().clone()
+    };
+    let interaction_id = args
+        .interaction_id
+        .parse::<u64>()
+        .map_err(|_| JsErrorBox::generic("Invalid interaction id"))?;
+    let mut message = CreateInteractionResponseMessage::new();
+    if let Some(ephemeral) = args.ephemeral {
+        message = message.ephemeral(ephemeral);
+    }
+    let response = CreateInteractionResponse::Defer(message);
+    http.create_interaction_response(
+        InteractionId::new(interaction_id),
+        &args.token,
+        &response,
+        Vec::new(),
+    )
+    .await
+    .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    Ok(())
+}
+
+#[expose_input]
+pub(crate) struct RawUpdateInteractionResponse {
+    pub interaction_id: String,
+    pub token: String,
+    pub content: Option<String>,
+    pub embeds: Option<Vec<RawEmbed>>,
+    pub attachments: Option<Vec<RawAttachment>>,
+    pub components: Option<Vec<serde_json::Value>>,
+    pub tts: Option<bool>,
+    pub allowed_mentions: Option<RawAllowedMentions>,
+    pub flags: Option<u64>,
+}
+
+#[op2(async)]
+pub async fn op_update_interaction_response(
+    state: Rc<RefCell<OpState>>,
+    #[serde] args: RawUpdateInteractionResponse,
+) -> Result<(), JsErrorBox> {
+    let http = {
+        let state = state.borrow();
+        state.borrow::<Arc<Http>>().clone()
+    };
+    let interaction_id = args
+        .interaction_id
+        .parse::<u64>()
+        .map_err(|_| JsErrorBox::generic("Invalid interaction id"))?;
+
+    let built = build_interaction_update(&http, args).await?;
+    let response = CreateInteractionResponse::UpdateMessage(built.message);
+    http.create_interaction_response(
+        InteractionId::new(interaction_id),
+        &built.token,
+        &response,
+        built.files,
+    )
+    .await
+    .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    Ok(())
+}
+
+#[expose_input]
+pub(crate) struct RawEditInteractionResponse {
+    pub token: String,
+    pub content: Option<String>,
+    pub embeds: Option<Vec<RawEmbed>>,
+    pub attachments: Option<Vec<RawAttachment>>,
+    pub components: Option<Vec<serde_json::Value>>,
+    pub allowed_mentions: Option<RawAllowedMentions>,
+    pub flags: Option<u64>,
+}
+
+#[op2(async)]
+#[serde]
+pub async fn op_edit_original_interaction_response(
+    state: Rc<RefCell<OpState>>,
+    #[serde] args: RawEditInteractionResponse,
+) -> Result<serde_json::Value, JsErrorBox> {
+    let http = {
+        let state = state.borrow();
+        state.borrow::<Arc<Http>>().clone()
+    };
+    let built = build_edit_interaction_response(&http, args).await?;
+    let message = http
+        .edit_original_interaction_response(&built.token, &built.message, built.files)
+        .await
+        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    serde_json::to_value(message).map_err(|err| JsErrorBox::generic(err.to_string()))
+}
+
+#[expose_input]
+pub(crate) struct RawDeleteInteractionResponse {
+    pub token: String,
+}
+
+#[op2(async)]
+pub async fn op_delete_original_interaction_response(
+    state: Rc<RefCell<OpState>>,
+    #[serde] args: RawDeleteInteractionResponse,
+) -> Result<(), JsErrorBox> {
+    let http = {
+        let state = state.borrow();
+        state.borrow::<Arc<Http>>().clone()
+    };
+    http.delete_original_interaction_response(&args.token)
+        .await
+        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    Ok(())
+}
+
+#[expose_input]
+pub(crate) struct RawFollowupMessage {
+    pub token: String,
+    pub message_id: Option<String>,
+    pub content: Option<String>,
+    pub embeds: Option<Vec<RawEmbed>>,
+    pub attachments: Option<Vec<RawAttachment>>,
+    pub components: Option<Vec<serde_json::Value>>,
+    pub tts: Option<bool>,
+    pub allowed_mentions: Option<RawAllowedMentions>,
+    pub flags: Option<u64>,
+}
+
+#[op2(async)]
+#[serde]
+pub async fn op_create_followup_message(
+    state: Rc<RefCell<OpState>>,
+    #[serde] args: RawFollowupMessage,
+) -> Result<serde_json::Value, JsErrorBox> {
+    let http = {
+        let state = state.borrow();
+        state.borrow::<Arc<Http>>().clone()
+    };
+    let built = build_followup_message(&http, args).await?;
+    let message = http
+        .create_followup_message(&built.token, &built.message, built.files)
+        .await
+        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    serde_json::to_value(message).map_err(|err| JsErrorBox::generic(err.to_string()))
+}
+
+#[op2(async)]
+#[serde]
+pub async fn op_edit_followup_message(
+    state: Rc<RefCell<OpState>>,
+    #[serde] args: RawFollowupMessage,
+) -> Result<serde_json::Value, JsErrorBox> {
+    let http = {
+        let state = state.borrow();
+        state.borrow::<Arc<Http>>().clone()
+    };
+    let message_id = args
+        .message_id
+        .as_ref()
+        .ok_or_else(|| JsErrorBox::generic("message_id required to edit followup"))?;
+    let message_id = message_id
+        .parse::<u64>()
+        .map_err(|_| JsErrorBox::generic("Invalid message id"))?;
+    let built = build_followup_message(&http, args).await?;
+    let message = http
+        .edit_followup_message(&built.token, serenity::model::id::MessageId::new(message_id), &built.message, built.files)
+        .await
+        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    serde_json::to_value(message).map_err(|err| JsErrorBox::generic(err.to_string()))
+}
+
+#[expose_input]
+pub(crate) struct RawDeleteFollowupMessage {
+    pub token: String,
+    pub message_id: String,
+}
+
+#[op2(async)]
+pub async fn op_delete_followup_message(
+    state: Rc<RefCell<OpState>>,
+    #[serde] args: RawDeleteFollowupMessage,
+) -> Result<(), JsErrorBox> {
+    let http = {
+        let state = state.borrow();
+        state.borrow::<Arc<Http>>().clone()
+    };
+    let message_id = args
+        .message_id
+        .parse::<u64>()
+        .map_err(|_| JsErrorBox::generic("Invalid message id"))?;
+    http.delete_followup_message(&args.token, serenity::model::id::MessageId::new(message_id))
+        .await
+        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
     Ok(())
 }
 
@@ -183,6 +392,7 @@ pub(crate) async fn build_interaction_response(
     let mut has_content = false;
     let mut has_embeds = false;
     let mut has_attachments = false;
+    let mut has_components = false;
     let mut upload_files = Vec::new();
 
     if let Some(content) = args.content {
@@ -203,6 +413,12 @@ pub(crate) async fn build_interaction_response(
         message = message.add_embeds(embeds);
     }
 
+    if let Some(components) = args.components {
+        let components = parse_components(components)?;
+        message = message.components(components);
+        has_components = true;
+    }
+
     if let Some(mentions) = args.allowed_mentions {
         message = message.allowed_mentions(build_allowed_mentions(mentions));
     }
@@ -211,6 +427,10 @@ pub(crate) async fn build_interaction_response(
         if ephemeral {
             message = message.ephemeral(true);
         }
+    }
+
+    if let Some(flags) = args.flags {
+        message = message.flags(MessageFlags::from_bits_truncate(flags));
     }
 
     if let Some(attachments) = args.attachments {
@@ -223,13 +443,228 @@ pub(crate) async fn build_interaction_response(
         message = message.add_files(files);
     }
 
-    if !has_content && !has_embeds && !has_attachments {
+    if !has_content && !has_embeds && !has_attachments && !has_components {
         return Err(JsErrorBox::generic(
-            "Response must include content, embeds, or attachments",
+            "Response must include content, embeds, attachments, or components",
         ));
     }
 
     Ok(BuiltInteractionResponse {
+        message,
+        token: args.token,
+        files: upload_files,
+    })
+}
+
+pub(crate) struct BuiltInteractionUpdate {
+    pub message: CreateInteractionResponseMessage<'static>,
+    pub token: String,
+    pub files: Vec<CreateAttachment<'static>>,
+}
+
+pub(crate) async fn build_interaction_update(
+    http: &Arc<Http>,
+    args: RawUpdateInteractionResponse,
+) -> Result<BuiltInteractionUpdate, JsErrorBox> {
+    let mut message = CreateInteractionResponseMessage::new();
+    let mut has_content = false;
+    let mut has_embeds = false;
+    let mut has_attachments = false;
+    let mut has_components = false;
+    let mut upload_files = Vec::new();
+
+    if let Some(content) = args.content {
+        message = message.content(content);
+        has_content = true;
+    }
+
+    if let Some(tts) = args.tts {
+        message = message.tts(tts);
+    }
+
+    if let Some(embeds) = args.embeds {
+        let embeds = embeds
+            .into_iter()
+            .map(build_embed)
+            .collect::<Result<Vec<_>, _>>()?;
+        has_embeds = !embeds.is_empty();
+        message = message.add_embeds(embeds);
+    }
+
+    if let Some(components) = args.components {
+        let components = parse_components(components)?;
+        message = message.components(components);
+        has_components = true;
+    }
+
+    if let Some(mentions) = args.allowed_mentions {
+        message = message.allowed_mentions(build_allowed_mentions(mentions));
+    }
+
+    if let Some(flags) = args.flags {
+        message = message.flags(MessageFlags::from_bits_truncate(flags));
+    }
+
+    if let Some(attachments) = args.attachments {
+        let mut files = Vec::with_capacity(attachments.len());
+        for attachment in attachments {
+            files.push(build_attachment(http, attachment).await?);
+        }
+        has_attachments = !files.is_empty();
+        upload_files = files.clone();
+        message = message.add_files(files);
+    }
+
+    if !has_content && !has_embeds && !has_attachments && !has_components {
+        return Err(JsErrorBox::generic(
+            "Response must include content, embeds, attachments, or components",
+        ));
+    }
+
+    Ok(BuiltInteractionUpdate {
+        message,
+        token: args.token,
+        files: upload_files,
+    })
+}
+
+pub(crate) struct BuiltEditInteractionResponse {
+    pub message: EditInteractionResponse<'static>,
+    pub token: String,
+    pub files: Vec<CreateAttachment<'static>>,
+}
+
+pub(crate) async fn build_edit_interaction_response(
+    http: &Arc<Http>,
+    args: RawEditInteractionResponse,
+) -> Result<BuiltEditInteractionResponse, JsErrorBox> {
+    let mut message = EditInteractionResponse::new();
+    let mut has_payload = false;
+    let mut upload_files = Vec::new();
+
+    if let Some(content) = args.content {
+        message = message.content(content);
+        has_payload = true;
+    }
+
+    if let Some(embeds) = args.embeds {
+        let embeds = embeds
+            .into_iter()
+            .map(build_embed)
+            .collect::<Result<Vec<_>, _>>()?;
+        message = message.embeds(embeds);
+        has_payload = true;
+    }
+
+    if let Some(components) = args.components {
+        let components = parse_components(components)?;
+        message = message.components(components);
+        has_payload = true;
+    }
+
+    if let Some(mentions) = args.allowed_mentions {
+        message = message.allowed_mentions(build_allowed_mentions(mentions));
+        has_payload = true;
+    }
+
+    if let Some(flags) = args.flags {
+        message = message.flags(MessageFlags::from_bits_truncate(flags));
+        has_payload = true;
+    }
+
+    if let Some(attachments) = args.attachments {
+        let mut files = Vec::with_capacity(attachments.len());
+        for attachment in attachments {
+            files.push(build_attachment(http, attachment).await?);
+        }
+        upload_files = files.clone();
+        let mut edit = serenity::builder::EditAttachments::new();
+        for file in files {
+            edit = edit.add(file);
+        }
+        message = message.attachments(edit);
+        has_payload = true;
+    }
+
+    if !has_payload {
+        return Err(JsErrorBox::generic(
+            "Edit response must include content, embeds, components, attachments, or flags",
+        ));
+    }
+
+    Ok(BuiltEditInteractionResponse {
+        message,
+        token: args.token,
+        files: upload_files,
+    })
+}
+
+pub(crate) struct BuiltFollowupMessage {
+    pub message: CreateInteractionResponseFollowup<'static>,
+    pub token: String,
+    pub files: Vec<CreateAttachment<'static>>,
+}
+
+pub(crate) async fn build_followup_message(
+    http: &Arc<Http>,
+    args: RawFollowupMessage,
+) -> Result<BuiltFollowupMessage, JsErrorBox> {
+    let mut message = CreateInteractionResponseFollowup::new();
+    let mut has_content = false;
+    let mut has_embeds = false;
+    let mut has_attachments = false;
+    let mut has_components = false;
+    let mut upload_files = Vec::new();
+
+    if let Some(content) = args.content {
+        message = message.content(content);
+        has_content = true;
+    }
+
+    if let Some(tts) = args.tts {
+        message = message.tts(tts);
+    }
+
+    if let Some(embeds) = args.embeds {
+        let embeds = embeds
+            .into_iter()
+            .map(build_embed)
+            .collect::<Result<Vec<_>, _>>()?;
+        has_embeds = !embeds.is_empty();
+        message = message.add_embeds(embeds);
+    }
+
+    if let Some(components) = args.components {
+        let components = parse_components(components)?;
+        message = message.components(components);
+        has_components = true;
+    }
+
+    if let Some(mentions) = args.allowed_mentions {
+        message = message.allowed_mentions(build_allowed_mentions(mentions));
+    }
+
+    if let Some(flags) = args.flags {
+        message = message.flags(MessageFlags::from_bits_truncate(flags));
+    }
+
+    if let Some(attachments) = args.attachments {
+        let mut files = Vec::with_capacity(attachments.len());
+        for attachment in attachments {
+            files.push(build_attachment(http, attachment).await?);
+        }
+        has_attachments = !files.is_empty();
+        upload_files = files.clone();
+        message = message.add_files(files);
+    }
+
+    if !has_content && !has_embeds && !has_attachments && !has_components {
+        return Err(JsErrorBox::generic(
+            "Followup must include content, embeds, attachments, or components",
+        ));
+    }
+
+    Ok(BuiltFollowupMessage {
         message,
         token: args.token,
         files: upload_files,
@@ -254,9 +689,11 @@ mod tests {
             content: None,
             embeds: None,
             attachments: None,
+            components: None,
             tts: None,
             allowed_mentions: None,
             ephemeral: None,
+            flags: None,
         };
 
         let result = build_interaction_response(&http(), args).await;
@@ -276,9 +713,11 @@ mod tests {
                 filename: "greet.txt".to_string(),
                 description: Some("greeting".to_string()),
             }]),
+            components: None,
             tts: Some(false),
             allowed_mentions: None,
             ephemeral: Some(true),
+            flags: None,
         };
 
         let built = build_interaction_response(&http(), args).await.unwrap();

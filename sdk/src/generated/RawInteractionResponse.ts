@@ -2,5 +2,6 @@
 import type { RawAllowedMentions } from "./RawAllowedMentions.ts";
 import type { RawAttachment } from "./RawAttachment.ts";
 import type { RawEmbed } from "./RawEmbed.ts";
+import type { JsonValue } from "./serde_json/JsonValue.ts";
 
-export type RawInteractionResponse = { interactionId: string, token: string, content?: string, embeds?: Array<RawEmbed>, attachments?: Array<RawAttachment>, tts?: boolean, allowedMentions?: RawAllowedMentions, ephemeral?: boolean, };
+export type RawInteractionResponse = { interactionId: string, token: string, content?: string, embeds?: Array<RawEmbed>, attachments?: Array<RawAttachment>, components?: Array<JsonValue>, tts?: boolean, allowedMentions?: RawAllowedMentions, ephemeral?: boolean, flags?: bigint, };

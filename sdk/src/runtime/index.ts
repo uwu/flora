@@ -1,6 +1,7 @@
 import type { FlattenedSlashCommand } from '../sdk/commands'
 import type {
   BaseContext,
+  ComponentInteractionContext,
   EventReady,
   InteractionContext,
   MessageContext,
@@ -8,7 +9,10 @@ import type {
   MessageDeleteContext,
   MessageEditOptions,
   MessageReplyOptions,
-  MessageUpdateContext
+  MessageUpdateContext,
+  ModalSubmitContext,
+  ReactionContext,
+  ReactionRemoveAllContext
 } from '../sdk/types'
 
 export interface FloraEventMap {
@@ -18,6 +22,12 @@ export interface FloraEventMap {
   messageDelete: MessageDeleteContext
   messageDeleteBulk: MessageDeleteBulkContext
   interactionCreate: InteractionContext
+  componentInteraction: ComponentInteractionContext
+  modalSubmit: ModalSubmitContext
+  reactionAdd: ReactionContext
+  reactionRemove: ReactionContext
+  reactionRemoveEmoji: ReactionContext
+  reactionRemoveAll: ReactionRemoveAllContext
 }
 
 export type FloraEventHandler<E extends keyof FloraEventMap> = (
@@ -48,9 +58,11 @@ declare const Deno: {
 
 type AnyPayload = {
   id?: string
+  messageId?: string
   channelId?: string
   interactionId?: string
   interactionToken?: string
+  token?: string
   [key: string]: unknown
 }
 
@@ -115,9 +127,10 @@ function normalizeReply(
   }
 
   const base = { channelId: payload.channelId }
+  const replyId = payload.id ?? payload.messageId
 
   if (typeof message === 'string') {
-    return { ...base, messageId: payload.id, content: message }
+    return { ...base, messageId: replyId, content: message }
   }
 
   if (message && typeof message === 'object') {
@@ -128,8 +141,8 @@ function normalizeReply(
       delete normalized.messageId
     } else if (explicitReplyTo !== undefined) {
       normalized.messageId = explicitReplyTo
-    } else if (payload?.id) {
-      normalized.messageId = payload.id
+    } else if (replyId) {
+      normalized.messageId = replyId
     }
 
     delete normalized.replyTo
@@ -137,18 +150,19 @@ function normalizeReply(
     return normalized
   }
 
-  return { ...base, messageId: payload.id, content: String(message) }
+  return { ...base, messageId: replyId, content: String(message) }
 }
 
 function normalizeEdit(
   message: string | MessageEditOptions,
   payload: AnyPayload
 ): Record<string, unknown> {
-  if (!payload?.id || !payload?.channelId) {
+  const messageId = payload.id ?? payload.messageId
+  if (!messageId || !payload?.channelId) {
     throw new Error('Message edit requires a message payload')
   }
 
-  const base = { channelId: payload.channelId, messageId: payload.id }
+  const base = { channelId: payload.channelId, messageId }
 
   if (typeof message === 'string') {
     return { ...base, content: message }

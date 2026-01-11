@@ -4,4 +4,4 @@ import type { RawAttachment } from "./RawAttachment.ts";
 import type { RawEmbed } from "./RawEmbed.ts";
 import type { JsonValue } from "./serde_json/JsonValue.ts";
 
-export type RawSendMessage = { channelId: string, content?: string, embeds?: Array<RawEmbed>, attachments?: Array<RawAttachment>, components?: Array<JsonValue>, tts?: boolean, allowedMentions?: RawAllowedMentions, flags?: bigint, messageId?: string, replyTo?: string, };
+export type RawUpdateInteractionResponse = { interactionId: string, token: string, content?: string, embeds?: Array<RawEmbed>, attachments?: Array<RawAttachment>, components?: Array<JsonValue>, tts?: boolean, allowedMentions?: RawAllowedMentions, flags?: bigint, };

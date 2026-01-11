@@ -101,7 +101,7 @@
 # Default value: 3
 #dispatch_timeout_secs = 3
 
-# Max script size in bytes (SDK + deployment).
+# Max script size in bytes (SDK + deployment). Default: 1MB.
 #
 # Can also be specified via environment variable `RUNTIME_MAX_SCRIPT_BYTES`.
 #

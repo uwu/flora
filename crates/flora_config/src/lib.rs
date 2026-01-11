@@ -121,7 +121,7 @@ mod config {
     #[test]
     fn generate_config_template() -> Result<(), Box<dyn std::error::Error>> {
         let toml = confique::toml::template::<AppConfig>(FormatOptions::default());
-        std::fs::write("../config.template.toml", toml)?;
+        std::fs::write("../../config.template.toml", toml)?;
         Ok(())
     }
 }

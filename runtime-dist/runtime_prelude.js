@@ -40,10 +40,11 @@ function normalizeReply(message, payload) {
 		return normalizeInteractionReply(message, payload);
 	}
 	const base = { channelId: payload.channelId };
+	const replyId = payload.id ?? payload.messageId;
 	if (typeof message === "string") {
 		return {
 			...base,
-			messageId: payload.id,
+			messageId: replyId,
 			content: message
 		};
 	}
@@ -57,8 +58,8 @@ function normalizeReply(message, payload) {
 			delete normalized.messageId;
 		} else if (explicitReplyTo !== undefined) {
 			normalized.messageId = explicitReplyTo;
-		} else if (payload?.id) {
-			normalized.messageId = payload.id;
+		} else if (replyId) {
+			normalized.messageId = replyId;
 		}
 		delete normalized.replyTo;
 		delete normalized.reply_to;
@@ -66,17 +67,18 @@ function normalizeReply(message, payload) {
 	}
 	return {
 		...base,
-		messageId: payload.id,
+		messageId: replyId,
 		content: String(message)
 	};
 }
 function normalizeEdit(message, payload) {
-	if (!payload?.id || !payload?.channelId) {
+	const messageId = payload.id ?? payload.messageId;
+	if (!messageId || !payload?.channelId) {
 		throw new Error("Message edit requires a message payload");
 	}
 	const base = {
 		channelId: payload.channelId,
-		messageId: payload.id
+		messageId
 	};
 	if (typeof message === "string") {
 		return {

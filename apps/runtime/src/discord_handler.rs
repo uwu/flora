@@ -3,8 +3,9 @@ use std::sync::Arc;
 use color_eyre::{Report, eyre::eyre};
 use flora_macros::expose_payload;
 use serenity::all::{
-    ApplicationId, CommandInteraction, Context, EventHandler, FullEvent, GuildId, Interaction,
-    Message, MessageUpdateEvent, Ready, async_trait,
+    ApplicationId, CommandInteraction, ComponentInteraction, Context, EventHandler, FullEvent,
+    GuildId, Interaction, Message, MessageUpdateEvent, ModalInteraction, Reaction, Ready,
+    async_trait,
 };
 use tracing::{error, info};
 
@@ -227,8 +228,152 @@ impl EventHandler for DiscordHandler {
                         error!("dispatch_js_event (interactionCreate) error: {:?}", err);
                     }
                 }
+                Interaction::Component(component) => {
+                    let payload = EventComponentInteraction::from(component);
+                    let guild_id = payload.guild_id.clone();
+                    if guild_id.is_none() {
+                        return;
+                    }
+                    let value = match serde_json::to_value(payload) {
+                        Ok(value) => value,
+                        Err(err) => {
+                            error!("Failed to serialize component payload: {:?}", err);
+                            return;
+                        }
+                    };
+                    if let Err(err) = self
+                        .runtime
+                        .dispatch_js_event("componentInteraction", guild_id, value)
+                        .await
+                    {
+                        error!("dispatch_js_event (componentInteraction) error: {:?}", err);
+                    }
+                }
+                Interaction::Modal(modal) => {
+                    let payload = EventModalSubmit::from(modal);
+                    let guild_id = payload.guild_id.clone();
+                    if guild_id.is_none() {
+                        return;
+                    }
+                    let value = match serde_json::to_value(payload) {
+                        Ok(value) => value,
+                        Err(err) => {
+                            error!("Failed to serialize modal payload: {:?}", err);
+                            return;
+                        }
+                    };
+                    if let Err(err) = self
+                        .runtime
+                        .dispatch_js_event("modalSubmit", guild_id, value)
+                        .await
+                    {
+                        error!("dispatch_js_event (modalSubmit) error: {:?}", err);
+                    }
+                }
                 _ => {}
             },
+            FullEvent::ReactionAdd {
+                add_reaction: reaction,
+                ..
+            } => {
+                let payload = EventReaction::from(reaction);
+                let guild_id = payload.guild_id.clone();
+                if guild_id.is_none() {
+                    return;
+                }
+                let value = match serde_json::to_value(payload) {
+                    Ok(value) => value,
+                    Err(err) => {
+                        error!("Failed to serialize reaction payload: {:?}", err);
+                        return;
+                    }
+                };
+                if let Err(err) = self
+                    .runtime
+                    .dispatch_js_event("reactionAdd", guild_id, value)
+                    .await
+                {
+                    error!("dispatch_js_event (reactionAdd) error: {:?}", err);
+                }
+            }
+            FullEvent::ReactionRemove {
+                removed_reaction: reaction,
+                ..
+            } => {
+                let payload = EventReaction::from(reaction);
+                let guild_id = payload.guild_id.clone();
+                if guild_id.is_none() {
+                    return;
+                }
+                let value = match serde_json::to_value(payload) {
+                    Ok(value) => value,
+                    Err(err) => {
+                        error!("Failed to serialize reaction payload: {:?}", err);
+                        return;
+                    }
+                };
+                if let Err(err) = self
+                    .runtime
+                    .dispatch_js_event("reactionRemove", guild_id, value)
+                    .await
+                {
+                    error!("dispatch_js_event (reactionRemove) error: {:?}", err);
+                }
+            }
+            FullEvent::ReactionRemoveAll {
+                guild_id,
+                channel_id,
+                removed_from_message_id,
+                ..
+            } => {
+                let payload = EventReactionRemoveAll {
+                    message_id: removed_from_message_id.get().to_string(),
+                    channel_id: channel_id.get().to_string(),
+                    guild_id: guild_id.map(|g| g.get().to_string()),
+                };
+                let guild_id = payload.guild_id.clone();
+                if guild_id.is_none() {
+                    return;
+                }
+                let value = match serde_json::to_value(payload) {
+                    Ok(value) => value,
+                    Err(err) => {
+                        error!("Failed to serialize reaction payload: {:?}", err);
+                        return;
+                    }
+                };
+                if let Err(err) = self
+                    .runtime
+                    .dispatch_js_event("reactionRemoveAll", guild_id, value)
+                    .await
+                {
+                    error!("dispatch_js_event (reactionRemoveAll) error: {:?}", err);
+                }
+            }
+            FullEvent::ReactionRemoveEmoji {
+                removed_reactions: reaction,
+                ..
+            } => {
+                let payload = EventReaction::from(reaction);
+                let guild_id = payload.guild_id.clone();
+                if guild_id.is_none() {
+                    return;
+                }
+                let value = match serde_json::to_value(payload) {
+                    Ok(value) => value,
+                    Err(err) => {
+                        error!("Failed to serialize reaction payload: {:?}", err);
+                        return;
+                    }
+                };
+                if let Err(err) = self
+                    .runtime
+                    .dispatch_js_event("reactionRemoveEmoji", guild_id, value)
+                    .await
+                {
+                    error!("dispatch_js_event (reactionRemoveEmoji) error: {:?}", err);
+                }
+            }
             FullEvent::GuildCreate {
                 guild,
                 is_new: _,
@@ -447,6 +592,135 @@ impl From<&CommandInteraction> for EventInteractionCreate {
             guild_locale: interaction.guild_locale.as_ref().map(|l| l.to_string()),
         }
     }
+}
+
+#[expose_payload]
+pub struct EventComponentInteraction {
+    interaction_id: String,
+    interaction_token: String,
+    application_id: String,
+    guild_id: Option<String>,
+    channel_id: Option<String>,
+    user: EventUser,
+    member: Option<EventMember>,
+    data: serde_json::Value,
+    locale: Option<String>,
+    guild_locale: Option<String>,
+    message_id: Option<String>,
+}
+
+impl From<&ComponentInteraction> for EventComponentInteraction {
+    fn from(interaction: &ComponentInteraction) -> Self {
+        let data = serde_json::to_value(&interaction.data).unwrap_or_default();
+        Self {
+            interaction_id: interaction.id.get().to_string(),
+            interaction_token: interaction.token.to_string(),
+            application_id: interaction.application_id.get().to_string(),
+            guild_id: interaction.guild_id.map(|g| g.get().to_string()),
+            channel_id: Some(interaction.channel_id.get().to_string()),
+            user: EventUser::from(&interaction.user),
+            member: interaction.member.as_ref().map(|m| EventMember {
+                user: EventUser::from(&interaction.user),
+                nick: m.nick.as_ref().map(|n| n.to_string()),
+                avatar: m.avatar.map(|h| h.to_string()),
+                roles: m.roles.iter().map(|r| r.get().to_string()).collect(),
+                joined_at: m.joined_at.map(|ts| ts.to_rfc3339()),
+                premium_since: m.premium_since.map(|ts| ts.to_rfc3339()),
+                deaf: m.deaf(),
+                mute: m.mute(),
+                flags: m.flags.bits(),
+                pending: m.pending(),
+                permissions: m.permissions.map(|p| format!("{:?}", p)),
+                communication_disabled_until: m
+                    .communication_disabled_until
+                    .map(|ts| ts.to_rfc3339()),
+            }),
+            data,
+            locale: Some(interaction.locale.to_string()),
+            guild_locale: interaction.guild_locale.as_ref().map(|l| l.to_string()),
+            message_id: Some(interaction.message.id.get().to_string()),
+        }
+    }
+}
+
+#[expose_payload]
+pub struct EventModalSubmit {
+    interaction_id: String,
+    interaction_token: String,
+    application_id: String,
+    guild_id: Option<String>,
+    channel_id: Option<String>,
+    user: EventUser,
+    member: Option<EventMember>,
+    data: serde_json::Value,
+    locale: Option<String>,
+    guild_locale: Option<String>,
+    message_id: Option<String>,
+}
+
+impl From<&ModalInteraction> for EventModalSubmit {
+    fn from(interaction: &ModalInteraction) -> Self {
+        let data = serde_json::to_value(&interaction.data).unwrap_or_default();
+        Self {
+            interaction_id: interaction.id.get().to_string(),
+            interaction_token: interaction.token.to_string(),
+            application_id: interaction.application_id.get().to_string(),
+            guild_id: interaction.guild_id.map(|g| g.get().to_string()),
+            channel_id: Some(interaction.channel_id.get().to_string()),
+            user: EventUser::from(&interaction.user),
+            member: interaction.member.as_ref().map(|m| EventMember {
+                user: EventUser::from(&interaction.user),
+                nick: m.nick.as_ref().map(|n| n.to_string()),
+                avatar: m.avatar.map(|h| h.to_string()),
+                roles: m.roles.iter().map(|r| r.get().to_string()).collect(),
+                joined_at: m.joined_at.map(|ts| ts.to_rfc3339()),
+                premium_since: m.premium_since.map(|ts| ts.to_rfc3339()),
+                deaf: m.deaf(),
+                mute: m.mute(),
+                flags: m.flags.bits(),
+                pending: m.pending(),
+                permissions: m.permissions.map(|p| format!("{:?}", p)),
+                communication_disabled_until: m
+                    .communication_disabled_until
+                    .map(|ts| ts.to_rfc3339()),
+            }),
+            data,
+            locale: Some(interaction.locale.to_string()),
+            guild_locale: interaction.guild_locale.as_ref().map(|l| l.to_string()),
+            message_id: interaction.message.as_ref().map(|m| m.id.get().to_string()),
+        }
+    }
+}
+
+#[expose_payload]
+pub struct EventReaction {
+    user_id: Option<String>,
+    channel_id: String,
+    message_id: String,
+    guild_id: Option<String>,
+    emoji: serde_json::Value,
+    burst: bool,
+}
+
+impl From<&Reaction> for EventReaction {
+    fn from(reaction: &Reaction) -> Self {
+        let emoji = serde_json::to_value(&reaction.emoji).unwrap_or_default();
+        Self {
+            user_id: reaction.user_id.map(|u| u.get().to_string()),
+            channel_id: reaction.channel_id.get().to_string(),
+            message_id: reaction.message_id.get().to_string(),
+            guild_id: reaction.guild_id.map(|g| g.get().to_string()),
+            emoji,
+            burst: reaction.burst,
+        }
+    }
+}
+
+#[expose_payload]
+pub struct EventReactionRemoveAll {
+    message_id: String,
+    channel_id: String,
+    guild_id: Option<String>,
 }
 
 impl DiscordHandler {

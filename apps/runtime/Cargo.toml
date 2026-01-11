@@ -59,5 +59,8 @@ utoipa.workspace = true
 utoipa-scalar.workspace = true
 uuid.workspace = true
 
+[package.metadata.ts-rs]
+export_dir = "../../sdk/src/generated"
+
 [dev-dependencies]
 tempfile = "3"
