@@ -96,7 +96,7 @@ declare global {
 
   const kv: { store: (name: string) => KvStore; };
 
-  const rest: { sendMessage: (args: RawSendMessage) => Promise<void>; editMessage: (args: RawEditMessage) => Promise<void>; deleteMessage: (args: RawDeleteMessage) => Promise<void>; bulkDeleteMessages: (args: RawBulkDeleteMessages) => Promise<void>; pinMessage: (args: RawPinMessage) => Promise<void>; unpinMessage: (args: RawPinMessage) => Promise<void>; crosspostMessage: (args: RawCrosspostMessage) => Promise<JsonValue>; fetchMessage: (args: RawFetchMessage) => Promise<JsonValue>; fetchMessages: (args: RawFetchMessages) => Promise<JsonValue[]>; addReaction: (args: RawReaction) => Promise<void>; removeReaction: (args: RawReaction) => Promise<void>; clearReactions: (args: RawClearReactions) => Promise<void>; sendInteractionResponse: (args: RawInteractionResponse) => Promise<void>; deferInteractionResponse: (args: RawDeferInteractionResponse) => Promise<void>; updateInteractionResponse: (args: RawUpdateInteractionResponse) => Promise<void>; editOriginalInteractionResponse: (args: RawEditInteractionResponse) => Promise<JsonValue>; deleteOriginalInteractionResponse: (args: RawDeleteInteractionResponse) => Promise<void>; createFollowupMessage: (args: RawFollowupMessage) => Promise<JsonValue>; editFollowupMessage: (args: RawFollowupMessage) => Promise<JsonValue>; deleteFollowupMessage: (args: RawDeleteFollowupMessage) => Promise<void>; upsertGuildCommands: (args: RawUpsertGuildCommands) => Promise<void>; upsertGlobalCommands: (args: RawUpsertGlobalCommands) => Promise<JsonValue[]>; createGlobalCommand: (args: RawCreateGlobalCommand) => Promise<JsonValue>; editGlobalCommand: (args: RawEditGlobalCommand) => Promise<JsonValue>; deleteGlobalCommand: (args: RawDeleteGlobalCommand) => Promise<void>; getGlobalCommands: () => Promise<JsonValue[]>; getGlobalCommand: (args: RawGetGlobalCommand) => Promise<JsonValue>; createGuildCommand: (args: RawCreateGuildCommand) => Promise<JsonValue>; editGuildCommand: (args: RawEditGuildCommand) => Promise<JsonValue>; deleteGuildCommand: (args: RawDeleteGuildCommand) => Promise<void>; getGuildCommands: (args: RawGuildId) => Promise<JsonValue[]>; getGuildCommand: (args: RawGetGuildCommand) => Promise<JsonValue>; editGuildCommandPermissions: (args: RawCommandPermissions) => Promise<JsonValue>; getGuildCommandsPermissions: (args: RawGuildId) => Promise<JsonValue[]>; getGuildCommandPermissions: (args: RawGetGuildCommand) => Promise<JsonValue>; kickMember: (args: RawGuildUser) => Promise<void>; banMember: (args: RawBanMember) => Promise<void>; unbanMember: (args: RawGuildUser) => Promise<void>; addMemberRole: (args: RawMemberRole) => Promise<void>; removeMemberRole: (args: RawMemberRole) => Promise<void>; editMember: (args: RawEditMember) => Promise<JsonValue>; createChannel: (args: RawCreateChannel) => Promise<JsonValue>; editChannel: (args: RawEditChannel) => Promise<JsonValue>; deleteChannel: (args: RawDeleteChannel) => Promise<JsonValue>; createThread: (args: RawCreateThread) => Promise<JsonValue>; createThreadFromMessage: (args: RawCreateThreadFromMessage) => Promise<JsonValue>; joinThread: (args: RawThreadId) => Promise<void>; leaveThread: (args: RawThreadId) => Promise<void>; addThreadMember: (args: RawThreadMember) => Promise<void>; removeThreadMember: (args: RawThreadMember) => Promise<void>; executeWebhook: (args: RawExecuteWebhook) => Promise<JsonValue | null>; editWebhook: (args: RawEditWebhook) => Promise<JsonValue>; deleteWebhook: (args: RawDeleteWebhook) => Promise<void>; };
+  const rest: { sendMessage: (args: RawSendMessage) => Promise<void>; editMessage: (args: RawEditMessage) => Promise<void>; deleteMessage: (args: RawDeleteMessage) => Promise<void>; bulkDeleteMessages: (args: RawBulkDeleteMessages) => Promise<void>; pinMessage: (args: RawPinMessage) => Promise<void>; unpinMessage: (args: RawPinMessage) => Promise<void>; crosspostMessage: (args: RawCrosspostMessage) => Promise<JsonValue>; fetchMessage: (args: RawFetchMessage) => Promise<JsonValue>; fetchMessages: (args: RawFetchMessages) => Promise<JsonValue[]>; addReaction: (args: RawReaction) => Promise<void>; removeReaction: (args: RawReaction) => Promise<void>; clearReactions: (args: RawClearReactions) => Promise<void>; sendInteractionResponse: (args: RawInteractionResponse) => Promise<void>; deferInteractionResponse: (args: RawDeferInteractionResponse) => Promise<void>; updateInteractionResponse: (args: RawUpdateInteractionResponse) => Promise<void>; editOriginalInteractionResponse: (args: RawEditInteractionResponse) => Promise<JsonValue>; deleteOriginalInteractionResponse: (args: RawDeleteInteractionResponse) => Promise<void>; createFollowupMessage: (args: RawFollowupMessage) => Promise<JsonValue>; editFollowupMessage: (args: RawFollowupMessage) => Promise<JsonValue>; deleteFollowupMessage: (args: RawDeleteFollowupMessage) => Promise<void>; upsertGuildCommands: (args: RawUpsertGuildCommands) => Promise<void>; createGuildCommand: (args: RawCreateGuildCommand) => Promise<JsonValue>; editGuildCommand: (args: RawEditGuildCommand) => Promise<JsonValue>; deleteGuildCommand: (args: RawDeleteGuildCommand) => Promise<void>; getGuildCommands: (args: RawGuildId) => Promise<JsonValue[]>; getGuildCommand: (args: RawGetGuildCommand) => Promise<JsonValue>; editGuildCommandPermissions: (args: RawCommandPermissions) => Promise<JsonValue>; getGuildCommandsPermissions: (args: RawGuildId) => Promise<JsonValue[]>; getGuildCommandPermissions: (args: RawGetGuildCommand) => Promise<JsonValue>; kickMember: (args: RawGuildUser) => Promise<void>; banMember: (args: RawBanMember) => Promise<void>; unbanMember: (args: RawGuildUser) => Promise<void>; addMemberRole: (args: RawMemberRole) => Promise<void>; removeMemberRole: (args: RawMemberRole) => Promise<void>; editMember: (args: RawEditMember) => Promise<JsonValue>; createChannel: (args: RawCreateChannel) => Promise<JsonValue>; editChannel: (args: RawEditChannel) => Promise<JsonValue>; deleteChannel: (args: RawDeleteChannel) => Promise<JsonValue>; createThread: (args: RawCreateThread) => Promise<JsonValue>; createThreadFromMessage: (args: RawCreateThreadFromMessage) => Promise<JsonValue>; joinThread: (args: RawThreadId) => Promise<void>; leaveThread: (args: RawThreadId) => Promise<void>; addThreadMember: (args: RawThreadMember) => Promise<void>; removeThreadMember: (args: RawThreadMember) => Promise<void>; executeWebhook: (args: RawExecuteWebhook) => Promise<JsonValue | null>; editWebhook: (args: RawEditWebhook) => Promise<JsonValue>; deleteWebhook: (args: RawDeleteWebhook) => Promise<void>; };
 
   type Embed = { title?: string; description?: string; url?: string; color?: number; timestamp?: string; footer?: RawEmbedFooter; image?: RawEmbedMedia; thumbnail?: RawEmbedMedia; author?: RawEmbedAuthor; fields?: Array<RawEmbedField>; };
 
@@ -164,8 +164,6 @@ declare global {
 
   type RawCreateChannel = { guildId: string; payload: JsonValue; reason?: string; };
 
-  type RawCreateGlobalCommand = { command: RawSlashCommand; };
-
   type RawCreateGuildCommand = { guildId: string; command: RawSlashCommand; };
 
   type RawCreateThread = { channelId: string; payload: JsonValue; reason?: string; };
@@ -180,8 +178,6 @@ declare global {
 
   type RawDeleteFollowupMessage = { token: string; messageId: string; };
 
-  type RawDeleteGlobalCommand = { commandId: string; };
-
   type RawDeleteGuildCommand = { guildId: string; commandId: string; };
 
   type RawDeleteInteractionResponse = { token: string; };
@@ -191,8 +187,6 @@ declare global {
   type RawDeleteWebhook = { webhookId: string; token?: string; reason?: string; };
 
   type RawEditChannel = { channelId: string; payload: JsonValue; reason?: string; };
-
-  type RawEditGlobalCommand = { commandId: string; command: RawSlashCommand; };
 
   type RawEditGuildCommand = { guildId: string; commandId: string; command: RawSlashCommand; };
 
@@ -221,8 +215,6 @@ declare global {
   type RawFetchMessages = { channelId: string; limit?: number; before?: string; after?: string; around?: string; };
 
   type RawFollowupMessage = { token: string; messageId?: string; content?: string; embeds?: Array<RawEmbed>; attachments?: Array<RawAttachment>; components?: Array<JsonValue>; tts?: boolean; allowedMentions?: RawAllowedMentions; flags?: bigint; };
-
-  type RawGetGlobalCommand = { commandId: string; };
 
   type RawGetGuildCommand = { guildId: string; commandId: string; };
 
@@ -259,8 +251,6 @@ declare global {
   type RawThreadMember = { threadId: string; userId: string; };
 
   type RawUpdateInteractionResponse = { interactionId: string; token: string; content?: string; embeds?: Array<RawEmbed>; attachments?: Array<RawAttachment>; components?: Array<JsonValue>; tts?: boolean; allowedMentions?: RawAllowedMentions; flags?: bigint; };
-
-  type RawUpsertGlobalCommands = { commands: Array<RawSlashCommand>; };
 
   type RawUpsertGuildCommands = { guildId: string; commands: Array<RawSlashCommand>; };
 

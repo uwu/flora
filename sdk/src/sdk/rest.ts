@@ -7,7 +7,6 @@ import type {
   RawClearReactions,
   RawCommandPermissions,
   RawCreateChannel,
-  RawCreateGlobalCommand,
   RawCreateGuildCommand,
   RawCreateThread,
   RawCreateThreadFromMessage,
@@ -15,13 +14,11 @@ import type {
   RawDeferInteractionResponse,
   RawDeleteChannel,
   RawDeleteFollowupMessage,
-  RawDeleteGlobalCommand,
   RawDeleteGuildCommand,
   RawDeleteInteractionResponse,
   RawDeleteMessage,
   RawDeleteWebhook,
   RawEditChannel,
-  RawEditGlobalCommand,
   RawEditGuildCommand,
   RawEditInteractionResponse,
   RawEditMember,
@@ -31,7 +28,6 @@ import type {
   RawFetchMessage,
   RawFetchMessages,
   RawFollowupMessage,
-  RawGetGlobalCommand,
   RawGetGuildCommand,
   RawGuildId,
   RawGuildUser,
@@ -43,7 +39,6 @@ import type {
   RawThreadId,
   RawThreadMember,
   RawUpdateInteractionResponse,
-  RawUpsertGlobalCommands,
   RawUpsertGuildCommands
 } from '../generated'
 
@@ -98,17 +93,6 @@ export const rest = {
 
   upsertGuildCommands: (args: RawUpsertGuildCommands): Promise<void> =>
     ops.op_upsert_guild_commands(args),
-  upsertGlobalCommands: (args: RawUpsertGlobalCommands): Promise<JsonValue[]> =>
-    ops.op_upsert_global_commands(args),
-  createGlobalCommand: (args: RawCreateGlobalCommand): Promise<JsonValue> =>
-    ops.op_create_global_command(args),
-  editGlobalCommand: (args: RawEditGlobalCommand): Promise<JsonValue> =>
-    ops.op_edit_global_command(args),
-  deleteGlobalCommand: (args: RawDeleteGlobalCommand): Promise<void> =>
-    ops.op_delete_global_command(args),
-  getGlobalCommands: (): Promise<JsonValue[]> => ops.op_get_global_commands(),
-  getGlobalCommand: (args: RawGetGlobalCommand): Promise<JsonValue> =>
-    ops.op_get_global_command(args),
   createGuildCommand: (args: RawCreateGuildCommand): Promise<JsonValue> =>
     ops.op_create_guild_command(args),
   editGuildCommand: (args: RawEditGuildCommand): Promise<JsonValue> =>

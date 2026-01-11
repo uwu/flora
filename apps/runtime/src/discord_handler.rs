@@ -40,10 +40,6 @@ impl EventHandler for DiscordHandler {
                 self.http.set_application_id(ready.application.id);
 
                 for guild in &ready.guilds {
-                    if let Err(err) = self.register_guild_commands(guild.id).await {
-                        error!("failed to register guild commands {}: {:?}", guild.id, err);
-                    }
-
                     if let Err(err) = self.bootstrap_default_script(guild.id).await {
                         error!(
                             "failed to bootstrap default script for guild {}: {:?}",
@@ -811,12 +807,6 @@ pub struct EventReactionRemoveAll {
 }
 
 impl DiscordHandler {
-    async fn register_guild_commands(&self, _guild_id: GuildId) -> serenity::Result<()> {
-        // TODO: register user-provided slash commands once surfaced from the JS runtime or
-        // deployment metadata. For now, do nothing to avoid polluting guild command space.
-        Ok(())
-    }
-
     async fn bootstrap_default_script(&self, guild_id: GuildId) -> Result<(), Report> {
         let guild_str = guild_id.get().to_string();
         if self.deployments.get_deployment(&guild_str).await?.is_some() {
