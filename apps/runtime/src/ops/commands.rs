@@ -11,8 +11,10 @@ use serenity::{
 
 use super::interaction::{RawSlashCommand, RawSlashCommandOption};
 
+/// Arguments for bulk-upserting global application commands.
 #[expose_input]
 pub(crate) struct RawUpsertGlobalCommands {
+    /// The commands to register globally.
     pub commands: Vec<RawSlashCommand>,
 }
 
@@ -37,8 +39,10 @@ pub async fn op_upsert_global_commands(
         .collect()
 }
 
+/// Arguments for creating a single global application command.
 #[expose_input]
 pub(crate) struct RawCreateGlobalCommand {
+    /// The command to create.
     pub command: RawSlashCommand,
 }
 
@@ -60,9 +64,12 @@ pub async fn op_create_global_command(
     serde_json::to_value(created).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for editing a global application command.
 #[expose_input]
 pub(crate) struct RawEditGlobalCommand {
+    /// The command's snowflake ID.
     pub command_id: String,
+    /// Updated command data.
     pub command: RawSlashCommand,
 }
 
@@ -85,8 +92,10 @@ pub async fn op_edit_global_command(
     serde_json::to_value(updated).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for deleting a global application command.
 #[expose_input]
 pub(crate) struct RawDeleteGlobalCommand {
+    /// The command's snowflake ID.
     pub command_id: String,
 }
 
@@ -125,8 +134,10 @@ pub async fn op_get_global_commands(
         .collect()
 }
 
+/// Arguments for fetching a global application command.
 #[expose_input]
 pub(crate) struct RawGetGlobalCommand {
+    /// The command's snowflake ID.
     pub command_id: String,
 }
 
@@ -148,9 +159,12 @@ pub async fn op_get_global_command(
     serde_json::to_value(command).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for creating a guild application command.
 #[expose_input]
 pub(crate) struct RawCreateGuildCommand {
+    /// The guild's snowflake ID.
     pub guild_id: String,
+    /// The command to create.
     pub command: RawSlashCommand,
 }
 
@@ -173,10 +187,14 @@ pub async fn op_create_guild_command(
     serde_json::to_value(created).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for editing a guild application command.
 #[expose_input]
 pub(crate) struct RawEditGuildCommand {
+    /// The guild's snowflake ID.
     pub guild_id: String,
+    /// The command's snowflake ID.
     pub command_id: String,
+    /// Updated command data.
     pub command: RawSlashCommand,
 }
 
@@ -200,9 +218,12 @@ pub async fn op_edit_guild_command(
     serde_json::to_value(updated).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for deleting a guild application command.
 #[expose_input]
 pub(crate) struct RawDeleteGuildCommand {
+    /// The guild's snowflake ID.
     pub guild_id: String,
+    /// The command's snowflake ID.
     pub command_id: String,
 }
 
@@ -223,9 +244,12 @@ pub async fn op_delete_guild_command(
     Ok(())
 }
 
+/// Arguments for fetching a guild application command.
 #[expose_input]
 pub(crate) struct RawGetGuildCommand {
+    /// The guild's snowflake ID.
     pub guild_id: String,
+    /// The command's snowflake ID.
     pub command_id: String,
 }
 
@@ -269,10 +293,14 @@ pub async fn op_get_guild_command(
     serde_json::to_value(command).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for editing guild command permissions.
 #[expose_input]
 pub(crate) struct RawCommandPermissions {
+    /// The guild's snowflake ID.
     pub guild_id: String,
+    /// The command's snowflake ID.
     pub command_id: String,
+    /// New permissions payload.
     pub permissions: serde_json::Value,
 }
 
@@ -295,8 +323,10 @@ pub async fn op_edit_guild_command_permissions(
     serde_json::to_value(permissions).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments containing only a guild ID.
 #[expose_input]
 pub(crate) struct RawGuildId {
+    /// The guild's snowflake ID.
     pub guild_id: String,
 }
 

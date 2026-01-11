@@ -22,98 +22,158 @@ use url::Url;
 
 use super::components::parse_components;
 
-// Note: RawAttachment is an enum, so we keep manual derives
+/// Attachment to include in a message (either URL or base64-encoded data).
 #[derive(Debug, Deserialize, TS)]
 #[serde(rename_all = "camelCase", untagged)]
 #[ts(export, export_to = "RawAttachment.ts")]
 pub enum RawAttachment {
+    /// Attachment from a URL.
     Url {
+        /// The URL to fetch the attachment from.
         url: String,
+        /// Override filename for the attachment.
         filename: Option<String>,
+        /// Alt text / description for the attachment.
         description: Option<String>,
     },
+    /// Attachment from base64-encoded data.
     Base64 {
+        /// Base64-encoded file data.
         data: String,
+        /// Filename for the attachment.
         filename: String,
+        /// Alt text / description for the attachment.
         description: Option<String>,
     },
 }
 
+/// Media (image/video) for an embed.
 #[expose_input]
 #[derive(Default)]
 pub struct RawEmbedMedia {
+    /// URL of the media.
     url: Option<String>,
 }
 
+/// Footer for an embed.
 #[expose_input]
 #[derive(Default)]
 pub struct RawEmbedFooter {
+    /// Footer text.
     text: Option<String>,
+    /// URL of the footer icon.
     icon_url: Option<String>,
 }
 
+/// Author for an embed.
 #[expose_input]
 #[derive(Default)]
 pub struct RawEmbedAuthor {
+    /// Author name.
     name: Option<String>,
+    /// URL when clicking the author name.
     url: Option<String>,
+    /// URL of the author icon.
     icon_url: Option<String>,
 }
 
+/// A field in an embed.
 #[expose_input]
 pub struct RawEmbedField {
+    /// Field name (title).
     name: String,
+    /// Field value (content).
     value: String,
+    /// Whether to display inline with other fields.
     #[serde(default)]
     inline: bool,
 }
 
+/// A rich embed for a message.
+///
+/// [Discord docs](https://discord.com/developers/docs/resources/message#embed-object).
 #[expose_input]
 #[derive(Default)]
 pub struct RawEmbed {
+    /// Embed title.
     title: Option<String>,
+    /// Embed description.
     description: Option<String>,
+    /// URL when clicking the title.
     url: Option<String>,
+    /// Color code (decimal integer).
     color: Option<u32>,
+    /// ISO8601 timestamp for the embed.
     timestamp: Option<String>,
+    /// Footer information.
     footer: Option<RawEmbedFooter>,
+    /// Image to display.
     image: Option<RawEmbedMedia>,
+    /// Thumbnail to display.
     thumbnail: Option<RawEmbedMedia>,
+    /// Author information.
     author: Option<RawEmbedAuthor>,
+    /// Fields to display.
     fields: Option<Vec<RawEmbedField>>,
 }
 
+/// Configuration for which mentions are allowed.
+///
+/// [Discord docs](https://discord.com/developers/docs/resources/message#allowed-mentions-object).
 #[expose_input]
 #[derive(Default)]
 pub struct RawAllowedMentions {
+    /// Types of mentions to parse ("everyone", "users", "roles").
     parse: Option<Vec<String>>,
+    /// Specific user IDs allowed to be mentioned.
     users: Option<Vec<String>>,
+    /// Specific role IDs allowed to be mentioned.
     roles: Option<Vec<String>>,
+    /// Whether to mention the user being replied to.
     replied_user: Option<bool>,
 }
 
+/// Arguments for sending a message.
 #[expose_input]
 pub struct RawSendMessage {
+    /// The channel to send the message to.
     pub channel_id: String,
+    /// Message content.
     pub content: Option<String>,
+    /// Embeds to include.
     pub embeds: Option<Vec<RawEmbed>>,
+    /// Attachments to include.
     pub attachments: Option<Vec<RawAttachment>>,
+    /// Message components.
     pub components: Option<Vec<serde_json::Value>>,
+    /// Whether the message should be text-to-speech.
     pub tts: Option<bool>,
+    /// Allowed mentions configuration.
     pub allowed_mentions: Option<RawAllowedMentions>,
+    /// Message flags bitmask.
     pub flags: Option<u64>,
+    /// Deprecated: use reply_to instead.
     pub message_id: Option<String>,
+    /// Message ID to reply to.
     pub reply_to: Option<String>,
 }
 
+/// Arguments for editing a message.
 #[expose_input]
 pub struct RawEditMessage {
+    /// The channel containing the message.
     pub channel_id: String,
+    /// The message to edit.
     pub message_id: String,
+    /// New message content.
     pub content: Option<String>,
+    /// Embeds to include.
     pub embeds: Option<Vec<RawEmbed>>,
+    /// Message components.
     pub components: Option<Vec<serde_json::Value>>,
+    /// Allowed mentions configuration.
     pub allowed_mentions: Option<RawAllowedMentions>,
+    /// Message flags bitmask.
     pub flags: Option<u64>,
 }
 
@@ -303,9 +363,12 @@ pub async fn op_edit_message(
     Ok(())
 }
 
+/// Arguments for deleting a message.
 #[expose_input]
 pub struct RawDeleteMessage {
+    /// The channel containing the message.
     pub channel_id: String,
+    /// The message to delete.
     pub message_id: String,
 }
 
@@ -328,9 +391,12 @@ pub async fn op_delete_message(
     Ok(())
 }
 
+/// Arguments for bulk deleting messages.
 #[expose_input]
 pub struct RawBulkDeleteMessages {
+    /// The channel containing the messages.
     pub channel_id: String,
+    /// IDs of messages to delete (2-100).
     pub message_ids: Vec<String>,
 }
 
@@ -357,9 +423,12 @@ pub async fn op_bulk_delete_messages(
     Ok(())
 }
 
+/// Arguments for pinning or unpinning a message.
 #[expose_input]
 pub struct RawPinMessage {
+    /// The channel containing the message.
     pub channel_id: String,
+    /// The message to pin/unpin.
     pub message_id: String,
 }
 
@@ -401,9 +470,12 @@ pub async fn op_unpin_message(
     Ok(())
 }
 
+/// Arguments for crossposting a message to followers.
 #[expose_input]
 pub struct RawCrosspostMessage {
+    /// The announcement channel containing the message.
     pub channel_id: String,
+    /// The message to crosspost.
     pub message_id: String,
 }
 
@@ -426,9 +498,12 @@ pub async fn op_crosspost_message(
     serde_json::to_value(message).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for fetching a single message.
 #[expose_input]
 pub struct RawFetchMessage {
+    /// The channel containing the message.
     pub channel_id: String,
+    /// The message to fetch.
     pub message_id: String,
 }
 
@@ -451,12 +526,18 @@ pub async fn op_fetch_message(
     serde_json::to_value(message).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for fetching multiple messages from a channel.
 #[expose_input]
 pub struct RawFetchMessages {
+    /// The channel to fetch messages from.
     pub channel_id: String,
+    /// Maximum number of messages to return (1-100).
     pub limit: Option<u8>,
+    /// Fetch messages before this message ID.
     pub before: Option<String>,
+    /// Fetch messages after this message ID.
     pub after: Option<String>,
+    /// Fetch messages around this message ID.
     pub around: Option<String>,
 }
 
@@ -495,11 +576,16 @@ pub async fn op_fetch_messages(
         .collect()
 }
 
+/// Arguments for adding or removing a reaction.
 #[expose_input]
 pub struct RawReaction {
+    /// The channel containing the message.
     pub channel_id: String,
+    /// The message to react to.
     pub message_id: String,
+    /// The emoji to use (unicode or custom format).
     pub emoji: String,
+    /// User ID to remove reaction from (for remove only).
     pub user_id: Option<String>,
 }
 
@@ -551,10 +637,14 @@ pub async fn op_remove_reaction(
     Ok(())
 }
 
+/// Arguments for clearing reactions from a message.
 #[expose_input]
 pub struct RawClearReactions {
+    /// The channel containing the message.
     pub channel_id: String,
+    /// The message to clear reactions from.
     pub message_id: String,
+    /// Specific emoji to clear (if omitted, clears all reactions).
     pub emoji: Option<String>,
 }
 

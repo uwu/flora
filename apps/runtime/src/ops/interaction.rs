@@ -20,41 +20,65 @@ use super::message::{
     build_embed,
 };
 
+/// Arguments for sending an initial interaction response.
 #[expose_input]
 pub(crate) struct RawInteractionResponse {
+    /// The interaction's snowflake ID.
     pub interaction_id: String,
+    /// Token for this interaction.
     pub token: String,
+    /// Message content.
     pub content: Option<String>,
+    /// Embeds to include.
     pub embeds: Option<Vec<RawEmbed>>,
+    /// Attachments to include.
     pub attachments: Option<Vec<RawAttachment>>,
+    /// Message components (buttons, select menus).
     pub components: Option<Vec<serde_json::Value>>,
+    /// Whether the message should be text-to-speech.
     pub tts: Option<bool>,
+    /// Allowed mentions configuration.
     pub allowed_mentions: Option<RawAllowedMentions>,
+    /// Whether the response should be ephemeral (only visible to invoker).
     pub ephemeral: Option<bool>,
+    /// Message flags bitmask.
     pub flags: Option<u64>,
 }
 
+/// Arguments for bulk-upserting guild application commands.
 #[expose_input]
 pub(crate) struct RawUpsertGuildCommands {
+    /// The guild's snowflake ID.
     pub guild_id: String,
+    /// The commands to register.
     pub commands: Vec<RawSlashCommand>,
 }
 
+/// Definition of a slash command.
 #[expose_input]
 pub(crate) struct RawSlashCommand {
+    /// The command name (1-32 chars, lowercase).
     pub name: String,
+    /// The command description (1-100 chars).
     pub description: Option<String>,
+    /// Options/arguments for the command.
     pub options: Option<Vec<RawSlashCommandOption>>,
 }
 
+/// Definition of a slash command option.
 #[expose_input]
 pub(crate) struct RawSlashCommandOption {
+    /// The option name.
     pub name: String,
+    /// The option description.
     pub description: String,
+    /// The option type (string, integer, boolean, etc.).
     #[serde(rename = "type", default)]
     pub kind: Option<String>,
+    /// Whether this option is required.
     #[serde(default)]
     pub required: Option<bool>,
+    /// Nested options (for subcommands/subcommand groups).
     #[serde(default)]
     pub options: Option<Vec<RawSlashCommandOption>>,
 }
@@ -89,10 +113,14 @@ pub async fn op_send_interaction_response(
     Ok(())
 }
 
+/// Arguments for deferring an interaction response.
 #[expose_input]
 pub(crate) struct RawDeferInteractionResponse {
+    /// The interaction's snowflake ID.
     pub interaction_id: String,
+    /// Token for this interaction.
     pub token: String,
+    /// Whether the deferred response should be ephemeral.
     pub ephemeral: Option<bool>,
 }
 
@@ -125,16 +153,26 @@ pub async fn op_defer_interaction_response(
     Ok(())
 }
 
+/// Arguments for updating a component interaction's message.
 #[expose_input]
 pub(crate) struct RawUpdateInteractionResponse {
+    /// The interaction's snowflake ID.
     pub interaction_id: String,
+    /// Token for this interaction.
     pub token: String,
+    /// New message content.
     pub content: Option<String>,
+    /// Embeds to include.
     pub embeds: Option<Vec<RawEmbed>>,
+    /// Attachments to include.
     pub attachments: Option<Vec<RawAttachment>>,
+    /// Message components.
     pub components: Option<Vec<serde_json::Value>>,
+    /// Whether the message should be text-to-speech.
     pub tts: Option<bool>,
+    /// Allowed mentions configuration.
     pub allowed_mentions: Option<RawAllowedMentions>,
+    /// Message flags bitmask.
     pub flags: Option<u64>,
 }
 
@@ -165,14 +203,22 @@ pub async fn op_update_interaction_response(
     Ok(())
 }
 
+/// Arguments for editing the original interaction response.
 #[expose_input]
 pub(crate) struct RawEditInteractionResponse {
+    /// Token for this interaction.
     pub token: String,
+    /// New message content.
     pub content: Option<String>,
+    /// Embeds to include.
     pub embeds: Option<Vec<RawEmbed>>,
+    /// Attachments to include.
     pub attachments: Option<Vec<RawAttachment>>,
+    /// Message components.
     pub components: Option<Vec<serde_json::Value>>,
+    /// Allowed mentions configuration.
     pub allowed_mentions: Option<RawAllowedMentions>,
+    /// Message flags bitmask.
     pub flags: Option<u64>,
 }
 
@@ -194,8 +240,10 @@ pub async fn op_edit_original_interaction_response(
     serde_json::to_value(message).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for deleting the original interaction response.
 #[expose_input]
 pub(crate) struct RawDeleteInteractionResponse {
+    /// Token for this interaction.
     pub token: String,
 }
 
@@ -214,16 +262,26 @@ pub async fn op_delete_original_interaction_response(
     Ok(())
 }
 
+/// Arguments for creating or editing a followup message.
 #[expose_input]
 pub(crate) struct RawFollowupMessage {
+    /// Token for this interaction.
     pub token: String,
+    /// Message ID (required when editing a followup).
     pub message_id: Option<String>,
+    /// Message content.
     pub content: Option<String>,
+    /// Embeds to include.
     pub embeds: Option<Vec<RawEmbed>>,
+    /// Attachments to include.
     pub attachments: Option<Vec<RawAttachment>>,
+    /// Message components.
     pub components: Option<Vec<serde_json::Value>>,
+    /// Whether the message should be text-to-speech.
     pub tts: Option<bool>,
+    /// Allowed mentions configuration.
     pub allowed_mentions: Option<RawAllowedMentions>,
+    /// Message flags bitmask.
     pub flags: Option<u64>,
 }
 

@@ -8,10 +8,14 @@ use serenity::{
     model::id::{ChannelId, GuildId, MessageId, ThreadId, UserId},
 };
 
+/// Arguments for creating a guild channel.
 #[expose_input]
 pub(crate) struct RawCreateChannel {
+    /// The guild's snowflake ID.
     pub guild_id: String,
+    /// JSON payload with channel properties.
     pub payload: serde_json::Value,
+    /// Audit log reason for this action.
     pub reason: Option<String>,
 }
 
@@ -33,10 +37,14 @@ pub async fn op_create_channel(
     serde_json::to_value(channel).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for editing a channel.
 #[expose_input]
 pub(crate) struct RawEditChannel {
+    /// The channel's snowflake ID.
     pub channel_id: String,
+    /// JSON payload with updated properties.
     pub payload: serde_json::Value,
+    /// Audit log reason for this action.
     pub reason: Option<String>,
 }
 
@@ -58,9 +66,12 @@ pub async fn op_edit_channel(
     serde_json::to_value(channel).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for deleting a channel.
 #[expose_input]
 pub(crate) struct RawDeleteChannel {
+    /// The channel's snowflake ID.
     pub channel_id: String,
+    /// Audit log reason for this action.
     pub reason: Option<String>,
 }
 
@@ -82,10 +93,14 @@ pub async fn op_delete_channel(
     serde_json::to_value(channel).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for creating a thread.
 #[expose_input]
 pub(crate) struct RawCreateThread {
+    /// The parent channel's snowflake ID.
     pub channel_id: String,
+    /// JSON payload with thread properties.
     pub payload: serde_json::Value,
+    /// Audit log reason for this action.
     pub reason: Option<String>,
 }
 
@@ -107,11 +122,16 @@ pub async fn op_create_thread(
     serde_json::to_value(thread).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for creating a thread from a message.
 #[expose_input]
 pub(crate) struct RawCreateThreadFromMessage {
+    /// The parent channel's snowflake ID.
     pub channel_id: String,
+    /// The message to start the thread from.
     pub message_id: String,
+    /// JSON payload with thread properties.
     pub payload: serde_json::Value,
+    /// Audit log reason for this action.
     pub reason: Option<String>,
 }
 
@@ -134,8 +154,10 @@ pub async fn op_create_thread_from_message(
     serde_json::to_value(thread).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments containing only a thread ID.
 #[expose_input]
 pub(crate) struct RawThreadId {
+    /// The thread's snowflake ID.
     pub thread_id: String,
 }
 
@@ -171,9 +193,12 @@ pub async fn op_leave_thread(
     Ok(())
 }
 
+/// Arguments for adding or removing a thread member.
 #[expose_input]
 pub(crate) struct RawThreadMember {
+    /// The thread's snowflake ID.
     pub thread_id: String,
+    /// The user's snowflake ID.
     pub user_id: String,
 }
 

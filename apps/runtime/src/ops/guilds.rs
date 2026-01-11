@@ -8,10 +8,14 @@ use serenity::{
     model::id::{GuildId, RoleId, UserId},
 };
 
+/// Arguments for operations targeting a user in a guild.
 #[expose_input]
 pub(crate) struct RawGuildUser {
+    /// The guild's snowflake ID.
     pub guild_id: String,
+    /// The user's snowflake ID.
     pub user_id: String,
+    /// Audit log reason for this action.
     pub reason: Option<String>,
 }
 
@@ -32,11 +36,16 @@ pub async fn op_kick_member(
     Ok(())
 }
 
+/// Arguments for banning a member from a guild.
 #[expose_input]
 pub(crate) struct RawBanMember {
+    /// The guild's snowflake ID.
     pub guild_id: String,
+    /// The user's snowflake ID.
     pub user_id: String,
+    /// Seconds of message history to delete (0-604800).
     pub delete_message_seconds: Option<u32>,
+    /// Audit log reason for this action.
     pub reason: Option<String>,
 }
 
@@ -75,11 +84,16 @@ pub async fn op_unban_member(
     Ok(())
 }
 
+/// Arguments for adding or removing a role from a member.
 #[expose_input]
 pub(crate) struct RawMemberRole {
+    /// The guild's snowflake ID.
     pub guild_id: String,
+    /// The user's snowflake ID.
     pub user_id: String,
+    /// The role's snowflake ID.
     pub role_id: String,
+    /// Audit log reason for this action.
     pub reason: Option<String>,
 }
 
@@ -119,11 +133,16 @@ pub async fn op_remove_member_role(
     Ok(())
 }
 
+/// Arguments for editing a guild member.
 #[expose_input]
 pub(crate) struct RawEditMember {
+    /// The guild's snowflake ID.
     pub guild_id: String,
+    /// The user's snowflake ID.
     pub user_id: String,
+    /// JSON payload with fields to update.
     pub payload: serde_json::Value,
+    /// Audit log reason for this action.
     pub reason: Option<String>,
 }
 

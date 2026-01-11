@@ -25,9 +25,12 @@ pub async fn op_kv_get(
         .map_err(|e| JsErrorBox::generic(e.to_string()))
 }
 
+/// Options for setting a KV key.
 #[expose_input]
 pub struct RawKvSetOptions {
+    /// Unix timestamp (seconds) when this key should expire.
     expiration: Option<i64>,
+    /// Arbitrary JSON metadata to attach to the key.
     metadata: Option<serde_json::Value>,
 }
 
@@ -72,10 +75,14 @@ pub async fn op_kv_delete(
         .map_err(|e| JsErrorBox::generic(e.to_string()))
 }
 
+/// Options for listing keys in a KV store.
 #[expose_input]
 pub struct RawKvListKeysOptions {
+    /// Only return keys starting with this prefix.
     prefix: Option<String>,
+    /// Maximum number of keys to return.
     limit: Option<i64>,
+    /// Cursor from a previous list operation for pagination.
     cursor: Option<String>,
 }
 

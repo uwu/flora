@@ -389,41 +389,72 @@ impl EventHandler for DiscordHandler {
     }
 }
 
+/// A Discord user.
+///
+/// [Discord docs](https://discord.com/developers/docs/resources/user#user-object).
 #[expose_payload(from = "serenity::all::User")]
 pub struct EventUser {
+    /// The user's unique snowflake ID.
     #[expose(expr = "src.id.get().to_string()")]
     id: String,
+    /// The user's username (not unique across Discord).
     #[expose(expr = "src.name.to_string()")]
     username: String,
+    /// The user's Discord-tag (discriminator), if any.
     #[expose(expr = "src.discriminator.map(|d| d.get())")]
     discriminator: Option<u16>,
+    /// Whether this user is a bot account.
     #[expose(expr = "src.bot()")]
     bot: bool,
 }
 
+/// A member of a guild.
+///
+/// [Discord docs](https://discord.com/developers/docs/resources/guild#guild-member-object).
 #[expose_payload]
 pub struct EventMember {
+    /// The user this member represents.
     user: EventUser,
+    /// The member's guild-specific nickname.
     nick: Option<String>,
+    /// The member's guild-specific avatar hash.
     avatar: Option<String>,
+    /// Role IDs assigned to this member.
     roles: Vec<String>,
+    /// ISO8601 timestamp when the member joined the guild.
     joined_at: Option<String>,
+    /// ISO8601 timestamp when the member started boosting the guild.
     premium_since: Option<String>,
+    /// Whether the member is deafened in voice channels.
     deaf: bool,
+    /// Whether the member is muted in voice channels.
     mute: bool,
+    /// Guild member flags.
     flags: u32,
+    /// Whether the member has not yet passed the guild's membership screening.
     pending: bool,
+    /// Total permissions of the member in the channel (only in interactions).
     permissions: Option<String>,
+    /// ISO8601 timestamp when the member's timeout expires.
     communication_disabled_until: Option<String>,
 }
 
+/// A message sent in a channel.
+///
+/// [Discord docs](https://discord.com/developers/docs/resources/message#message-object).
 #[expose_payload]
 pub struct EventMessage {
+    /// The message's unique snowflake ID.
     id: String,
+    /// The channel the message was sent in.
     channel_id: String,
+    /// The guild the message was sent in (if applicable).
     guild_id: Option<String>,
+    /// The message content.
     content: String,
+    /// The author of the message.
     author: EventUser,
+    /// Member properties of the author (if sent in a guild).
     member: Option<EventMember>,
 }
 
@@ -468,15 +499,26 @@ impl From<&Message> for EventMessage {
     }
 }
 
+/// Payload for a message update event.
+///
+/// [Discord docs](https://discord.com/developers/docs/events/gateway-events#message-update).
 #[expose_payload]
 pub struct EventMessageUpdate {
+    /// The message's unique snowflake ID.
     id: String,
+    /// The channel the message was sent in.
     channel_id: String,
+    /// The guild the message was sent in (if applicable).
     guild_id: Option<String>,
+    /// The new message content.
     content: Option<String>,
+    /// The author of the message.
     author: Option<EventUser>,
+    /// ISO8601 timestamp when the message was edited.
     edited_timestamp: Option<String>,
+    /// The cached old message before the update (if available).
     old: Option<EventMessage>,
+    /// The full new message after the update (if available).
     new: Option<EventMessage>,
 }
 
@@ -525,38 +567,69 @@ impl EventMessageUpdate {
     }
 }
 
+/// Payload for a message delete event.
+///
+/// [Discord docs](https://discord.com/developers/docs/events/gateway-events#message-delete).
 #[expose_payload]
 pub struct EventMessageDelete {
+    /// The deleted message's ID.
     id: String,
+    /// The channel the message was in.
     channel_id: String,
+    /// The guild the message was in (if applicable).
     guild_id: Option<String>,
 }
 
+/// Payload for a bulk message delete event.
+///
+/// [Discord docs](https://discord.com/developers/docs/events/gateway-events#message-delete-bulk).
 #[expose_payload]
 pub struct EventMessageDeleteBulk {
+    /// IDs of the deleted messages.
     ids: Vec<String>,
+    /// The channel the messages were in.
     channel_id: String,
+    /// The guild the messages were in (if applicable).
     guild_id: Option<String>,
 }
 
+/// Payload for the ready event, fired when the bot connects to the gateway.
+///
+/// [Discord docs](https://discord.com/developers/docs/events/gateway-events#ready).
 #[expose_payload]
 pub struct EventReady {
+    /// The bot user.
     user: EventUser,
+    /// IDs of guilds the bot is a member of.
     guild_ids: Vec<String>,
 }
 
+/// Payload for an application command interaction.
+///
+/// [Discord docs](https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object).
 #[expose_payload]
 pub struct EventInteractionCreate {
+    /// The interaction's unique snowflake ID.
     interaction_id: String,
+    /// Token for responding to this interaction.
     interaction_token: String,
+    /// The application's ID.
     application_id: String,
+    /// The guild the interaction was triggered in.
     guild_id: Option<String>,
+    /// The channel the interaction was triggered in.
     channel_id: Option<String>,
+    /// The user who triggered the interaction.
     user: EventUser,
+    /// Member properties of the user (if triggered in a guild).
     member: Option<EventMember>,
+    /// Name of the invoked command.
     command_name: String,
+    /// Raw interaction data payload.
     data: serde_json::Value,
+    /// The user's locale.
     locale: Option<String>,
+    /// The guild's preferred locale.
     guild_locale: Option<String>,
 }
 
@@ -594,18 +667,32 @@ impl From<&CommandInteraction> for EventInteractionCreate {
     }
 }
 
+/// Payload for a message component interaction (buttons, select menus).
+///
+/// [Discord docs](https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object).
 #[expose_payload]
 pub struct EventComponentInteraction {
+    /// The interaction's unique snowflake ID.
     interaction_id: String,
+    /// Token for responding to this interaction.
     interaction_token: String,
+    /// The application's ID.
     application_id: String,
+    /// The guild the interaction was triggered in.
     guild_id: Option<String>,
+    /// The channel the interaction was triggered in.
     channel_id: Option<String>,
+    /// The user who triggered the interaction.
     user: EventUser,
+    /// Member properties of the user (if triggered in a guild).
     member: Option<EventMember>,
+    /// Raw component interaction data payload.
     data: serde_json::Value,
+    /// The user's locale.
     locale: Option<String>,
+    /// The guild's preferred locale.
     guild_locale: Option<String>,
+    /// ID of the message the component is attached to.
     message_id: Option<String>,
 }
 

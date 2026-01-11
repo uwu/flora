@@ -15,22 +15,38 @@ use super::message::{
     build_embed,
 };
 
+/// Arguments for executing a webhook.
 #[expose_input]
 pub(crate) struct RawExecuteWebhook {
+    /// The webhook's snowflake ID.
     pub webhook_id: String,
+    /// The webhook token.
     pub token: String,
+    /// Whether to wait for message creation and return it.
     pub wait: Option<bool>,
+    /// Thread ID to send the message to (if in a forum/thread channel).
     pub thread_id: Option<String>,
+    /// Whether to include components (requires specific permissions).
     pub with_components: Option<bool>,
+    /// Message content.
     pub content: Option<String>,
+    /// Override the webhook's default username.
     pub username: Option<String>,
+    /// Override the webhook's default avatar.
     pub avatar_url: Option<String>,
+    /// Whether the message should be text-to-speech.
     pub tts: Option<bool>,
+    /// Embeds to include.
     pub embeds: Option<Vec<RawEmbed>>,
+    /// Attachments to include.
     pub attachments: Option<Vec<RawAttachment>>,
+    /// Message components.
     pub components: Option<Vec<serde_json::Value>>,
+    /// Allowed mentions configuration.
     pub allowed_mentions: Option<RawAllowedMentions>,
+    /// Message flags bitmask.
     pub flags: Option<u64>,
+    /// Name for the created thread (forum channels).
     pub thread_name: Option<String>,
 }
 
@@ -133,11 +149,16 @@ pub async fn op_execute_webhook(
     }
 }
 
+/// Arguments for editing a webhook.
 #[expose_input]
 pub(crate) struct RawEditWebhook {
+    /// The webhook's snowflake ID.
     pub webhook_id: String,
+    /// The webhook token (if using tokenized endpoint).
     pub token: Option<String>,
+    /// JSON payload with updated properties.
     pub payload: serde_json::Value,
+    /// Audit log reason for this action.
     pub reason: Option<String>,
 }
 
@@ -163,10 +184,14 @@ pub async fn op_edit_webhook(
     serde_json::to_value(webhook).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for deleting a webhook.
 #[expose_input]
 pub(crate) struct RawDeleteWebhook {
+    /// The webhook's snowflake ID.
     pub webhook_id: String,
+    /// The webhook token (if using tokenized endpoint).
     pub token: Option<String>,
+    /// Audit log reason for this action.
     pub reason: Option<String>,
 }
 
