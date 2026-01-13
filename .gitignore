@@ -1,7 +1,12 @@
-/target
+**/target
 .env
 trash
 node_modules
 dist
 *env
 /data
+bindings
+config.toml
+**/.vitepress/cache/deps
+**/.vitepress/dist
+**/.wrangler

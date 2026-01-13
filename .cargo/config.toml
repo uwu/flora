@@ -1,0 +1,25 @@
+[env]
+TS_RS_EXPORT_DIR = "../../../sdk/src/generated"
+TS_RS_IMPORT_EXTENSION = "ts"
+
+[build]
+rustc-wrapper = "sccache"
+
+[profile.dev]
+opt-level = 0
+debug = 1
+split-debuginfo = "unpacked"
+incremental = true
+codegen-units = 256
+panic = "abort"
+
+[profile.dev.package."*"]
+opt-level = 0
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+
+[net]
+git-fetch-with-cli = true

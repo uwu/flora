@@ -1,0 +1,21 @@
+{
+  "name": "@flora/www",
+  "private": true,
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "sass": "^1.97.2",
+    "typescript": "^5",
+    "unocss": "^66.5.12",
+    "wrangler": "^4.58.0"
+  },
+  "dependencies": {
+    "@vueuse/core": "^14.1.0",
+    "vitepress": "^1.6.4",
+    "vue": "^3.5.26"
+  }
+}

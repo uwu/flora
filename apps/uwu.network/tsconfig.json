@@ -1,0 +1,5 @@
+{
+  "extends": "sdk/tsconfig",
+  "include": ["src/**/*.ts", "node_modules/sdk/global-types.d.ts"],
+  "exclude": ["dist"]
+}

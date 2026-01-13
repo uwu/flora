@@ -1,0 +1,15 @@
+[package]
+name = "flora_macros"
+version = "0.1.0"
+edition = "2024"
+description = "Procedural macros for exposing Serenity types to Flora SDK"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2.workspace = true
+quote.workspace = true
+syn.workspace = true
+t0x.workspace = true
+t0x-macros.workspace = true

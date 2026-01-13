@@ -1,22 +1,21 @@
 {
   "name": "sdk",
-  "module": "src/index.ts",
+  "exports": {
+    "./tsconfig": "./tsconfig.json",
+    "./*": "./dist/*"
+  },
   "type": "module",
   "private": true,
-  "types": "./src/index.ts",
-  "exports": {
-    ".": "./src/index.ts",
-    "./global-types": "./src/global-types.d.ts"
-  },
+  "types": "./global-types.d.ts",
   "scripts": {
-    "build:types": "bun x tsc -p tsconfig.types.json",
+    "typecheck": "tsgo --noEmit",
+    "build": "rolldown -c ./rolldown.config.ts",
     "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "rolldown": "^1.0.0-beta.53"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
+    "@typescript/native-preview": "^7.0.0-dev.20260105.1",
+    "rolldown": "^1.0.0-beta.53",
+    "typescript": "^5.9.3"
   }
 }

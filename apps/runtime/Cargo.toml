@@ -1,0 +1,64 @@
+[package]
+name = "flora"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum.workspace = true
+base64.workspace = true
+chrono.workspace = true
+color-eyre.workspace = true
+confique.workspace = true
+cookie.workspace = true
+deno_core.workspace = true
+deno_error.workspace = true
+deno_fetch.workspace = true
+deno_net.workspace = true
+deno_permissions.workspace = true
+deno_telemetry.workspace = true
+deno_tls.workspace = true
+deno_web.workspace = true
+deno_webidl.workspace = true
+dotenvy.workspace = true
+eyre.workspace = true
+flora_config = { path = "../../crates/flora_config" }
+flora_macros = { path = "../../crates/flora_macros" }
+fred = "10.1.0"
+futures.workspace = true
+futures-util.workspace = true
+hex.workspace = true
+hmac.workspace = true
+num_cpus.workspace = true
+openssl.workspace = true
+oxc.workspace = true
+oxc_sourcemap.workspace = true
+parking_lot.workspace = true
+rand.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serenity.workspace = true
+sha2.workspace = true
+sled.workspace = true
+sqlx.workspace = true
+sys_traits.workspace = true
+t0x.workspace = true
+t0x-macros.workspace = true
+thiserror.workspace = true
+time.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+tower-http.workspace = true
+tower-layer.workspace = true
+tower-service.workspace = true
+tracing.workspace = true
+tracing-error.workspace = true
+tracing-subscriber.workspace = true
+url.workspace = true
+urlencoding.workspace = true
+utoipa.workspace = true
+utoipa-scalar.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

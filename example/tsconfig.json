@@ -1,8 +1,4 @@
 {
-  "extends": "../tsconfig.json",
-  "compilerOptions": {
-    "types": ["sdk/global-types"],
-    "noEmit": true
-  },
-  "include": ["./bot.ts"]
+  "extends": "../sdk/tsconfig.flora.json",
+  "include": ["src/**/*.ts", "../sdk/dist/flora-globals.d.ts"]
 }

@@ -1,0 +1,12 @@
+{
+  "name": "@flora/uwu.network",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "sdk": "workspace:*",
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
