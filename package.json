@@ -8,6 +8,7 @@
   "devDependencies": {
     "@types/bun": "latest",
     "dprint": "^0.51.1",
+    "lefthook": "^2.0.15",
     "typescript": "^5.7.2"
   }
 }
