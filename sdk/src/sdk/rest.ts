@@ -47,11 +47,11 @@ import type {
 
 declare const Deno: {
   core: {
-    ops: Record<string, (...args: any[]) => any>
+    ops: any
   }
 }
 
-const ops = Deno.core.ops
+const ops = Deno.core.ops as any
 
 export const rest = {
   sendMessage: (args: RawSendMessage): Promise<void> => ops.op_send_message(args),
@@ -63,14 +63,11 @@ export const rest = {
   unpinMessage: (args: RawPinMessage): Promise<void> => ops.op_unpin_message(args),
   crosspostMessage: (args: RawCrosspostMessage): Promise<JsonValue> =>
     ops.op_crosspost_message(args),
-  fetchMessage: (args: RawFetchMessage): Promise<JsonValue> =>
-    ops.op_fetch_message(args),
-  fetchMessages: (args: RawFetchMessages): Promise<JsonValue[]> =>
-    ops.op_fetch_messages(args),
+  fetchMessage: (args: RawFetchMessage): Promise<JsonValue> => ops.op_fetch_message(args),
+  fetchMessages: (args: RawFetchMessages): Promise<JsonValue[]> => ops.op_fetch_messages(args),
   addReaction: (args: RawReaction): Promise<void> => ops.op_add_reaction(args),
   removeReaction: (args: RawReaction): Promise<void> => ops.op_remove_reaction(args),
-  clearReactions: (args: RawClearReactions): Promise<void> =>
-    ops.op_clear_reactions(args),
+  clearReactions: (args: RawClearReactions): Promise<void> => ops.op_clear_reactions(args),
 
   sendInteractionResponse: (args: RawInteractionResponse): Promise<void> =>
     ops.op_send_interaction_response(args),
@@ -99,10 +96,8 @@ export const rest = {
     ops.op_edit_guild_command(args),
   deleteGuildCommand: (args: RawDeleteGuildCommand): Promise<void> =>
     ops.op_delete_guild_command(args),
-  getGuildCommands: (args: RawGuildId): Promise<JsonValue[]> =>
-    ops.op_get_guild_commands(args),
-  getGuildCommand: (args: RawGetGuildCommand): Promise<JsonValue> =>
-    ops.op_get_guild_command(args),
+  getGuildCommands: (args: RawGuildId): Promise<JsonValue[]> => ops.op_get_guild_commands(args),
+  getGuildCommand: (args: RawGetGuildCommand): Promise<JsonValue> => ops.op_get_guild_command(args),
   editGuildCommandPermissions: (
     args: RawCommandPermissions
   ): Promise<JsonValue> => ops.op_edit_guild_command_permissions(args),
@@ -114,28 +109,20 @@ export const rest = {
   kickMember: (args: RawGuildUser): Promise<void> => ops.op_kick_member(args),
   banMember: (args: RawBanMember): Promise<void> => ops.op_ban_member(args),
   unbanMember: (args: RawGuildUser): Promise<void> => ops.op_unban_member(args),
-  addMemberRole: (args: RawMemberRole): Promise<void> =>
-    ops.op_add_member_role(args),
-  removeMemberRole: (args: RawMemberRole): Promise<void> =>
-    ops.op_remove_member_role(args),
+  addMemberRole: (args: RawMemberRole): Promise<void> => ops.op_add_member_role(args),
+  removeMemberRole: (args: RawMemberRole): Promise<void> => ops.op_remove_member_role(args),
   editMember: (args: RawEditMember): Promise<JsonValue> => ops.op_edit_member(args),
 
-  createChannel: (args: RawCreateChannel): Promise<JsonValue> =>
-    ops.op_create_channel(args),
-  editChannel: (args: RawEditChannel): Promise<JsonValue> =>
-    ops.op_edit_channel(args),
-  deleteChannel: (args: RawDeleteChannel): Promise<JsonValue> =>
-    ops.op_delete_channel(args),
-  createThread: (args: RawCreateThread): Promise<JsonValue> =>
-    ops.op_create_thread(args),
+  createChannel: (args: RawCreateChannel): Promise<JsonValue> => ops.op_create_channel(args),
+  editChannel: (args: RawEditChannel): Promise<JsonValue> => ops.op_edit_channel(args),
+  deleteChannel: (args: RawDeleteChannel): Promise<JsonValue> => ops.op_delete_channel(args),
+  createThread: (args: RawCreateThread): Promise<JsonValue> => ops.op_create_thread(args),
   createThreadFromMessage: (args: RawCreateThreadFromMessage): Promise<JsonValue> =>
     ops.op_create_thread_from_message(args),
   joinThread: (args: RawThreadId): Promise<void> => ops.op_join_thread(args),
   leaveThread: (args: RawThreadId): Promise<void> => ops.op_leave_thread(args),
-  addThreadMember: (args: RawThreadMember): Promise<void> =>
-    ops.op_add_thread_member(args),
-  removeThreadMember: (args: RawThreadMember): Promise<void> =>
-    ops.op_remove_thread_member(args),
+  addThreadMember: (args: RawThreadMember): Promise<void> => ops.op_add_thread_member(args),
+  removeThreadMember: (args: RawThreadMember): Promise<void> => ops.op_remove_thread_member(args),
 
   executeWebhook: (args: RawExecuteWebhook): Promise<JsonValue | null> =>
     ops.op_execute_webhook(args),

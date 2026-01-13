@@ -16,7 +16,15 @@
   "toml": {},
   "malva": {},
   "markup": {},
-  "excludes": ["**/node_modules", "**/*-lock.json", "**/bun.lock"],
+  "excludes": [
+    "**/node_modules",
+    "**/*-lock.json",
+    "**/bun.lock",
+    "**/submodules",
+    "**/dist",
+    "**/trash",
+    "**/target"
+  ],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.95.10.wasm",
     "https://plugins.dprint.dev/json-0.20.0.wasm",

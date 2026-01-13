@@ -26,5 +26,5 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "exclude": ["trash","submodules"]
+  "exclude": ["trash", "submodules"]
 }

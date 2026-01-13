@@ -150,7 +150,9 @@ on('messageCreate', async (ctx) => {
       embed.title = `${owner}/${repo}`
       embed.description = json.description ?? undefined
       embed.footer = {
-        text: `stars: ${json.stargazers_count ?? 0} | forks: ${json.forks_count ?? 0} | open issues: ${json.open_issues_count ?? 0}`
+        text: `stars: ${json.stargazers_count ?? 0} | forks: ${
+          json.forks_count ?? 0
+        } | open issues: ${json.open_issues_count ?? 0}`
       }
       embed.author = {
         name: json.owner?.login,
@@ -164,10 +166,9 @@ on('messageCreate', async (ctx) => {
 
   if (embeds.length > 0) {
     const limited = embeds.slice(0, 10)
-    const content =
-      embeds.length > 10
-        ? `Showing ${limited.length} of ${embeds.length} GitHub links.`
-        : undefined
+    const content = embeds.length > 10
+      ? `Showing ${limited.length} of ${embeds.length} GitHub links.`
+      : undefined
     await ctx.reply({ embeds: limited, content })
     await ctx.edit({ flags: SUPPRESS_EMBEDS })
   }

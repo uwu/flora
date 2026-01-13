@@ -128,4 +128,3 @@ List keys:
 ```bash
 flora kv list-keys --guild 123456789012345678 --store settings --prefix user: --limit 100
 ```
-

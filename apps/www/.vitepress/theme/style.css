@@ -51,23 +51,23 @@
 
   --vp-c-brand-1: color-mix(
     in srgb,
-    theme('colors.green.500') 55%,
-    theme('colors.slate.200')
+    theme("colors.green.500") 55%,
+    theme("colors.slate.200")
   );
   --vp-c-brand-2: color-mix(
     in srgb,
-    theme('colors.green.400') 55%,
-    theme('colors.slate.100')
+    theme("colors.green.400") 55%,
+    theme("colors.slate.100")
   );
   --vp-c-brand-3: color-mix(
     in srgb,
-    theme('colors.green.300') 60%,
-    theme('colors.slate.50')
+    theme("colors.green.300") 60%,
+    theme("colors.slate.50")
   );
   --vp-c-brand-soft: color-mix(
     in srgb,
-    theme('colors.green.300') 22%,
-    theme('colors.slate.100') 18%,
+    theme("colors.green.300") 22%,
+    theme("colors.slate.100") 18%,
     transparent
   );
 
@@ -78,45 +78,45 @@
 
   --vp-c-warning-1: color-mix(
     in srgb,
-    theme('colors.amber.500') 60%,
-    theme('colors.slate.200')
+    theme("colors.amber.500") 60%,
+    theme("colors.slate.200")
   );
   --vp-c-warning-2: color-mix(
     in srgb,
-    theme('colors.amber.400') 60%,
-    theme('colors.slate.100')
+    theme("colors.amber.400") 60%,
+    theme("colors.slate.100")
   );
   --vp-c-warning-3: color-mix(
     in srgb,
-    theme('colors.amber.300') 65%,
-    theme('colors.slate.50')
+    theme("colors.amber.300") 65%,
+    theme("colors.slate.50")
   );
   --vp-c-warning-soft: color-mix(
     in srgb,
-    theme('colors.amber.300') 20%,
-    theme('colors.slate.100') 18%,
+    theme("colors.amber.300") 20%,
+    theme("colors.slate.100") 18%,
     transparent
   );
 
   --vp-c-danger-1: color-mix(
     in srgb,
-    theme('colors.red.500') 60%,
-    theme('colors.slate.200')
+    theme("colors.red.500") 60%,
+    theme("colors.slate.200")
   );
   --vp-c-danger-2: color-mix(
     in srgb,
-    theme('colors.red.400') 60%,
-    theme('colors.slate.100')
+    theme("colors.red.400") 60%,
+    theme("colors.slate.100")
   );
   --vp-c-danger-3: color-mix(
     in srgb,
-    theme('colors.red.300') 65%,
-    theme('colors.slate.50')
+    theme("colors.red.300") 65%,
+    theme("colors.slate.50")
   );
   --vp-c-danger-soft: color-mix(
     in srgb,
-    theme('colors.red.300') 20%,
-    theme('colors.slate.100') 18%,
+    theme("colors.red.300") 20%,
+    theme("colors.slate.100") 18%,
     transparent
   );
 }
@@ -147,13 +147,13 @@
     120deg,
     color-mix(
       in srgb,
-      theme('colors.emerald.400') 60%,
-      theme('colors.slate.200')
+      theme("colors.emerald.400") 60%,
+      theme("colors.slate.200")
     ) 30%,
     color-mix(
       in srgb,
-      theme('colors.green.300') 55%,
-      theme('colors.slate.100')
+      theme("colors.green.300") 55%,
+      theme("colors.slate.100")
     )
   );
 
@@ -161,13 +161,13 @@
     -45deg,
     color-mix(
       in srgb,
-      theme('colors.emerald.300') 55%,
-      theme('colors.slate.100')
+      theme("colors.emerald.300") 55%,
+      theme("colors.slate.100")
     ) 50%,
     color-mix(
       in srgb,
-      theme('colors.green.200') 55%,
-      theme('colors.slate.50')
+      theme("colors.green.200") 55%,
+      theme("colors.slate.50")
     ) 50%
   );
   --vp-home-hero-image-filter: blur(44px);

@@ -8,15 +8,14 @@
       </header>
 
       <section class="description">
-        flora is a fast runtime that lets you write discord bots for your
-        servers, with a rich TypeScript SDK, without worrying about running
-        infrastructure.
+        flora is a fast runtime that lets you write discord bots for your servers, with a rich
+        TypeScript SDK, without worrying about running infrastructure.
         <br /><br />
-        You deploy scripts on a per-guild basis through a single bot, handled
-        through the V8 JavaScript engine using V8 Isolates.
+        You deploy scripts on a per-guild basis through a single bot, handled through the V8
+        JavaScript engine using V8 Isolates.
         <br /><br />
-        This is still taking shape, and will have a proper release soon. To stay
-        up to date on flora's progress, check out its repository:
+        This is still taking shape, and will have a proper release soon. To stay up to date on
+        flora's progress, check out its repository:
         <a class="underline" href="https://github.com/uwu/flora">
           https://github.com/uwu/flora
         </a>

@@ -65,4 +65,3 @@ Optional:
 
 The runtime exposes logs via the HTTP API and supports streaming logs via SSE,
 which the CLI can follow in real time.
-

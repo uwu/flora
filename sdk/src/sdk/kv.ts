@@ -5,8 +5,14 @@
  * Supports cursor-based pagination and optional metadata on keys.
  */
 
-import type { RawKvKeyMetadata, RawKvKeyInfo, RawKvListKeysOptions, RawKvListKeysResult, RawKvSetOptions } from '../generated'
-import type { JsonValue } from '../generated/serde_json/JsonValue'
+import type {
+  JsonValue,
+  RawKvKeyInfo,
+  RawKvKeyMetadata,
+  RawKvListKeysOptions,
+  RawKvListKeysResult,
+  RawKvSetOptions
+} from '../generated'
 
 export type RawKvGetResult = {
   value: string | null

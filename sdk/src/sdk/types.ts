@@ -9,12 +9,12 @@ import type {
   EventModalSubmit,
   EventReaction,
   EventReactionRemoveAll,
+  JsonValue,
   RawAllowedMentions,
   RawAttachment,
   RawEmbed,
   RawEmbedField
 } from '../generated'
-import type { JsonValue } from '../generated/serde_json/JsonValue'
 export type * from '../generated'
 
 export type Embed = RawEmbed

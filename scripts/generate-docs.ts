@@ -9,7 +9,7 @@
  * Output: docs/api.md
  */
 
-import { readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
 
 const RUSTDOC_JSON = 'target/doc/flora.json'
@@ -41,7 +41,9 @@ function main() {
     doc = JSON.parse(readFileSync(RUSTDOC_JSON, 'utf-8'))
   } catch (e) {
     console.error(`Error reading ${RUSTDOC_JSON}. Run this first:`)
-    console.error('  RUSTDOCFLAGS="-Z unstable-options --output-format json" cargo +nightly doc --no-deps')
+    console.error(
+      '  RUSTDOCFLAGS="-Z unstable-options --output-format json" cargo +nightly doc --no-deps'
+    )
     process.exit(1)
   }
 
@@ -55,7 +57,13 @@ function main() {
   const payloadTypes = findItemsByPattern(doc, 'Payload', ['discord_handler'])
   const opInputTypes = findItemsByPattern(doc, 'Input', ['ops'])
   const opArgsTypes = findItemsByPattern(doc, 'Args', ['ops'])
-  const kvTypes = findItemsByPattern(doc, ['KvKeyInfo', 'KvKeyMetadata', 'ListKeysResult', 'SetOptions', 'ListKeysOptions'], ['kv', 'ops'])
+  const kvTypes = findItemsByPattern(doc, [
+    'KvKeyInfo',
+    'KvKeyMetadata',
+    'ListKeysResult',
+    'SetOptions',
+    'ListKeysOptions'
+  ], ['kv', 'ops'])
 
   // Document Event Payloads
   lines.push('## Event Payloads')
@@ -93,7 +101,11 @@ function main() {
   console.log(`Documentation written to ${OUTPUT_FILE}`)
 }
 
-function findItemsByPattern(doc: RustdocJson, pattern: string | string[], modules: string[]): Item[] {
+function findItemsByPattern(
+  doc: RustdocJson,
+  pattern: string | string[],
+  modules: string[]
+): Item[] {
   const patterns = Array.isArray(pattern) ? pattern : [pattern]
   const items: Item[] = []
 

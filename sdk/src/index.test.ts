@@ -32,12 +32,12 @@ describe('createBot slash commands', () => {
         data: {
           options: [
             { name: 'text', value: 'hello' },
-            { name: 'count', value: 2 },
-          ],
+            { name: 'count', value: 2 }
+          ]
         },
-        user: { id: 'u', username: 'u', bot: false },
+        user: { id: 'u', username: 'u', bot: false }
       },
-      reply,
+      reply
     } as unknown as InteractionContext)
 
     expect(run).toHaveBeenCalled()
