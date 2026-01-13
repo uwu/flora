@@ -19,7 +19,10 @@ use std::{
     hash::{Hash, Hasher},
     path::PathBuf,
     rc::Rc,
-    sync::{Arc, atomic::{AtomicUsize, Ordering}},
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
     thread,
     time::{Duration, Instant},
 };
@@ -849,7 +852,12 @@ async fn run_event_loop_with_timeout(
 ) -> Result<(), AnyError> {
     let result = with_timeout(
         timeout_duration,
-        async { runtime.run_event_loop(poll_options).await.map_err(AnyError::from) },
+        async {
+            runtime
+                .run_event_loop(poll_options)
+                .await
+                .map_err(AnyError::from)
+        },
         stage,
     )
     .await

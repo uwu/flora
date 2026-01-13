@@ -4,14 +4,14 @@ use serenity::http::Http;
 
 use crate::kv::KvService;
 
+pub mod channels;
+pub mod commands;
+mod components;
+pub mod guilds;
 pub mod interaction;
 pub mod kv;
 pub mod message;
 mod tls;
-mod components;
-pub mod commands;
-pub mod guilds;
-pub mod channels;
 pub mod webhooks;
 
 deno_core::extension!(

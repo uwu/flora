@@ -6,7 +6,6 @@ describe('createBot slash commands', () => {
   it('routes interactionCreate to matching slash command', async () => {
     const handlers: Record<string, (ctx: InteractionContext) => void | Promise<void>> = {}
     // mock global on
-    // @ts-expect-error
     globalThis.on = (event: string, handler: (ctx: InteractionContext) => void | Promise<void>) => {
       handlers[event] = handler
     }

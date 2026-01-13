@@ -8,15 +8,13 @@ use serenity::builder::{
     CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, CreateSeparator,
     CreateTextDisplay, CreateThumbnail, CreateUnfurledMediaItem, Spacing,
 };
+use serenity::model::Colour;
 use serenity::model::application::{ButtonStyle, InputTextStyle};
 use serenity::model::channel::ChannelType;
 use serenity::model::id::{GenericChannelId, RoleId, SkuId, UserId};
 use serenity::model::prelude::ReactionType;
-use serenity::model::Colour;
 
-pub fn parse_components(
-    raw: Vec<Value>,
-) -> Result<Vec<CreateComponent<'static>>, JsErrorBox> {
+pub fn parse_components(raw: Vec<Value>) -> Result<Vec<CreateComponent<'static>>, JsErrorBox> {
     raw.into_iter().map(parse_component).collect()
 }
 
@@ -57,9 +55,9 @@ fn parse_component(value: Value) -> Result<CreateComponent<'static>, JsErrorBox>
         2 => Ok(CreateComponent::ActionRow(CreateActionRow::Buttons(
             vec![parse_button(value)?].into(),
         ))),
-        3 | 5 | 6 | 7 | 8 => Ok(CreateComponent::ActionRow(
-            CreateActionRow::SelectMenu(parse_select_menu(value)?),
-        )),
+        3 | 5 | 6 | 7 | 8 => Ok(CreateComponent::ActionRow(CreateActionRow::SelectMenu(
+            parse_select_menu(value)?,
+        ))),
         9 => Ok(CreateComponent::Section(parse_section(value)?)),
         10 => Ok(CreateComponent::TextDisplay(parse_text_display(value)?)),
         11 => Err(JsErrorBox::generic(
@@ -108,8 +106,8 @@ struct RawButton {
 }
 
 fn parse_button(value: Value) -> Result<CreateButton<'static>, JsErrorBox> {
-    let raw: RawButton = serde_json::from_value(value)
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let raw: RawButton =
+        serde_json::from_value(value).map_err(|err| JsErrorBox::generic(err.to_string()))?;
     let style = raw.style.unwrap_or(1);
     let mut button = match style {
         5 => {
@@ -203,8 +201,8 @@ struct RawSelectOption {
 
 fn parse_select_menu(value: Value) -> Result<CreateSelectMenu<'static>, JsErrorBox> {
     let kind = component_kind(&value)?;
-    let raw: RawSelectMenu = serde_json::from_value(value)
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let raw: RawSelectMenu =
+        serde_json::from_value(value).map_err(|err| JsErrorBox::generic(err.to_string()))?;
 
     let mut default_users: Vec<UserId> = Vec::new();
     let mut default_roles: Vec<RoleId> = Vec::new();
@@ -348,8 +346,8 @@ struct RawTextDisplay {
 }
 
 fn parse_text_display(value: Value) -> Result<CreateTextDisplay<'static>, JsErrorBox> {
-    let raw: RawTextDisplay = serde_json::from_value(value)
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let raw: RawTextDisplay =
+        serde_json::from_value(value).map_err(|err| JsErrorBox::generic(err.to_string()))?;
     Ok(CreateTextDisplay::new(raw.content))
 }
 
@@ -360,8 +358,8 @@ struct RawSection {
 }
 
 fn parse_section(value: Value) -> Result<CreateSection<'static>, JsErrorBox> {
-    let raw: RawSection = serde_json::from_value(value)
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let raw: RawSection =
+        serde_json::from_value(value).map_err(|err| JsErrorBox::generic(err.to_string()))?;
     let components = raw
         .components
         .into_iter()
@@ -401,8 +399,8 @@ fn parse_media_item(raw: RawMediaItem) -> CreateUnfurledMediaItem<'static> {
 }
 
 fn parse_thumbnail(value: Value) -> Result<CreateThumbnail<'static>, JsErrorBox> {
-    let raw: RawThumbnail = serde_json::from_value(value)
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let raw: RawThumbnail =
+        serde_json::from_value(value).map_err(|err| JsErrorBox::generic(err.to_string()))?;
     let mut thumb = CreateThumbnail::new(parse_media_item(raw.media));
     if let Some(description) = raw.description {
         thumb = thumb.description(description);
@@ -428,8 +426,8 @@ struct RawMediaGalleryItem {
 }
 
 fn parse_media_gallery(value: Value) -> Result<CreateMediaGallery<'static>, JsErrorBox> {
-    let raw: RawMediaGallery = serde_json::from_value(value)
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let raw: RawMediaGallery =
+        serde_json::from_value(value).map_err(|err| JsErrorBox::generic(err.to_string()))?;
     let items = raw
         .items
         .into_iter()
@@ -455,8 +453,8 @@ struct RawFile {
 }
 
 fn parse_file(value: Value) -> Result<CreateFile<'static>, JsErrorBox> {
-    let raw: RawFile = serde_json::from_value(value)
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let raw: RawFile =
+        serde_json::from_value(value).map_err(|err| JsErrorBox::generic(err.to_string()))?;
     let mut file = CreateFile::new(parse_media_item(raw.file));
     if let Some(spoiler) = raw.spoiler {
         file = file.spoiler(spoiler);
@@ -479,8 +477,8 @@ enum RawSpacing {
 }
 
 fn parse_separator(value: Value) -> Result<CreateSeparator, JsErrorBox> {
-    let raw: RawSeparator = serde_json::from_value(value)
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let raw: RawSeparator =
+        serde_json::from_value(value).map_err(|err| JsErrorBox::generic(err.to_string()))?;
     let mut separator = CreateSeparator::new(raw.divider);
     if let Some(spacing) = raw.spacing {
         let spacing = match spacing {
@@ -508,8 +506,8 @@ struct RawContainer {
 }
 
 fn parse_container(value: Value) -> Result<CreateContainer<'static>, JsErrorBox> {
-    let raw: RawContainer = serde_json::from_value(value)
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let raw: RawContainer =
+        serde_json::from_value(value).map_err(|err| JsErrorBox::generic(err.to_string()))?;
     let components = raw
         .components
         .into_iter()
@@ -561,8 +559,12 @@ fn parse_container_component(
             }
         }
         9 => Ok(CreateContainerComponent::Section(parse_section(value)?)),
-        10 => Ok(CreateContainerComponent::TextDisplay(parse_text_display(value)?)),
-        12 => Ok(CreateContainerComponent::MediaGallery(parse_media_gallery(value)?)),
+        10 => Ok(CreateContainerComponent::TextDisplay(parse_text_display(
+            value,
+        )?)),
+        12 => Ok(CreateContainerComponent::MediaGallery(parse_media_gallery(
+            value,
+        )?)),
         13 => Ok(CreateContainerComponent::File(parse_file(value)?)),
         14 => Ok(CreateContainerComponent::Separator(parse_separator(value)?)),
         other => Err(JsErrorBox::generic(format!(
@@ -580,8 +582,8 @@ struct RawLabel {
 }
 
 fn parse_label(value: Value) -> Result<CreateLabel<'static>, JsErrorBox> {
-    let raw: RawLabel = serde_json::from_value(value)
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let raw: RawLabel =
+        serde_json::from_value(value).map_err(|err| JsErrorBox::generic(err.to_string()))?;
     let mut label = match component_kind(&raw.component)? {
         3 | 5 | 6 | 7 | 8 => CreateLabel::select_menu(raw.label, parse_select_menu(raw.component)?),
         4 => CreateLabel::input_text(raw.label, parse_input_text(raw.component)?),
@@ -616,8 +618,8 @@ struct RawInputText {
 }
 
 fn parse_input_text(value: Value) -> Result<CreateInputText<'static>, JsErrorBox> {
-    let raw: RawInputText = serde_json::from_value(value)
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let raw: RawInputText =
+        serde_json::from_value(value).map_err(|err| JsErrorBox::generic(err.to_string()))?;
     let style = match raw.style.unwrap_or(1) {
         1 => InputTextStyle::Short,
         2 => InputTextStyle::Paragraph,
@@ -654,8 +656,8 @@ struct RawFileUpload {
 }
 
 fn parse_file_upload(value: Value) -> Result<CreateFileUpload<'static>, JsErrorBox> {
-    let raw: RawFileUpload = serde_json::from_value(value)
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let raw: RawFileUpload =
+        serde_json::from_value(value).map_err(|err| JsErrorBox::generic(err.to_string()))?;
     let mut upload = CreateFileUpload::new(raw.custom_id);
     if let Some(min) = raw.min_values {
         upload = upload.min_values(min);
@@ -674,6 +676,5 @@ fn parse_reaction_type(value: &Value) -> Result<ReactionType, JsErrorBox> {
         return ReactionType::try_from(text)
             .map_err(|_| JsErrorBox::generic("Invalid emoji string"));
     }
-    serde_json::from_value(value.clone())
-        .map_err(|err| JsErrorBox::generic(err.to_string()))
+    serde_json::from_value(value.clone()).map_err(|err| JsErrorBox::generic(err.to_string()))
 }

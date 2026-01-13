@@ -10,8 +10,8 @@ describe('createBot slash registration', () => {
     }
 
     const register = mock(() => Promise.resolve())
+        // @ts-expect-error
     globalThis.slash = register
-    // @ts-expect-error
     globalThis.__floraGuildId = '123'
 
     createBot({

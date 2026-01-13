@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, Fields, Lit};
+use syn::{DeriveInput, Fields, Lit, parse_macro_input};
 
 /// Main entry point for the expose_payload attribute macro.
 pub fn attr_macro(args: TokenStream, input: TokenStream) -> TokenStream {

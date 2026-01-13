@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, Fields};
+use syn::{DeriveInput, Fields, parse_macro_input};
 
 /// Main entry point for the expose_input attribute macro.
 pub fn attr_macro(_args: TokenStream, input: TokenStream) -> TokenStream {
