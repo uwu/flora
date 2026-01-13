@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, Fields, parse_macro_input};
+use syn::{parse_macro_input, DeriveInput, Fields};
 
 /// Main entry point for the expose_input attribute macro.
 pub fn attr_macro(_args: TokenStream, input: TokenStream) -> TokenStream {
@@ -88,9 +88,8 @@ fn attr_impl(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
 
             quote! {
                 #(#other_attrs)*
-                #[derive(Debug, serde::Deserialize, ts_rs::TS, #extra_derives)]
+                #[derive(Debug, serde::Deserialize, T0x, #extra_derives)]
                 #[serde(rename_all = "camelCase")]
-                #[ts(export, optional_fields)]
                 #vis struct #name #impl_generics #where_clause {
                     #(#field_defs),*
                 }
@@ -125,9 +124,8 @@ fn attr_impl(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
 
             quote! {
                 #(#other_attrs)*
-                #[derive(Debug, serde::Deserialize, ts_rs::TS, #extra_derives)]
+                #[derive(Debug, serde::Deserialize, T0x, #extra_derives)]
                 #[serde(rename_all = "camelCase")]
-                #[ts(export, optional_fields)]
                 #vis struct #name #impl_generics #where_clause (
                     #(#field_defs),*
                 );
@@ -142,9 +140,8 @@ fn attr_impl(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
 
             quote! {
                 #(#other_attrs)*
-                #[derive(Debug, serde::Deserialize, ts_rs::TS, #extra_derives)]
+                #[derive(Debug, serde::Deserialize, T0x, #extra_derives)]
                 #[serde(rename_all = "camelCase")]
-                #[ts(export, optional_fields)]
                 #vis struct #name #impl_generics #where_clause;
             }
         }

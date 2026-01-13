@@ -1,5 +1,8 @@
-use std::sync::Arc;
-
+use crate::{
+    bundler::{DeploymentFile, bundle_files},
+    deployments::DeploymentService,
+    runtime::BotRuntime,
+};
 use color_eyre::{Report, eyre::eyre};
 use flora_macros::expose_payload;
 use serenity::all::{
@@ -7,13 +10,9 @@ use serenity::all::{
     GuildId, Interaction, Message, MessageUpdateEvent, ModalInteraction, Reaction, Ready,
     async_trait,
 };
+use std::sync::Arc;
+use t0x::T0x;
 use tracing::{error, info};
-
-use crate::{
-    bundler::{DeploymentFile, bundle_files},
-    deployments::DeploymentService,
-    runtime::BotRuntime,
-};
 
 #[derive(Clone)]
 pub struct DiscordHandler {
@@ -62,8 +61,7 @@ impl EventHandler for DiscordHandler {
                 }
             }
             FullEvent::Message {
-                new_message: msg,
-                ..
+                new_message: msg, ..
             } => {
                 info!(
                     target: "flora:discord",
@@ -190,10 +188,7 @@ impl EventHandler for DiscordHandler {
                     error!("dispatch_js_event (messageDeleteBulk) error: {:?}", err);
                 }
             }
-            FullEvent::InteractionCreate {
-                interaction,
-                ..
-            } => match interaction {
+            FullEvent::InteractionCreate { interaction, .. } => match interaction {
                 Interaction::Command(command) => {
                     info!(
                         target: "flora:discord",
@@ -371,9 +366,7 @@ impl EventHandler for DiscordHandler {
                 }
             }
             FullEvent::GuildCreate {
-                guild,
-                is_new: _,
-                ..
+                guild, is_new: _, ..
             } => {
                 // Bootstrap a starter script when the bot joins a guild and no deployment exists yet.
                 if let Err(err) = self.bootstrap_default_script(guild.id).await {

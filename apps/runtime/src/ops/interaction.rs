@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc, sync::Arc};
-
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
@@ -7,11 +5,14 @@ use serenity::{
     all::{CommandOptionType, CreateAttachment},
     builder::{
         CreateCommand, CreateCommandOption, CreateInteractionResponse,
-        CreateInteractionResponseFollowup, CreateInteractionResponseMessage, EditInteractionResponse,
+        CreateInteractionResponseFollowup, CreateInteractionResponseMessage,
+        EditInteractionResponse,
     },
     http::Http,
     model::{channel::MessageFlags, id::InteractionId},
 };
+use std::{cell::RefCell, rc::Rc, sync::Arc};
+use t0x::T0x;
 use tracing::info;
 
 use super::components::parse_components;
@@ -22,7 +23,7 @@ use super::message::{
 
 /// Arguments for sending an initial interaction response.
 #[expose_input]
-pub(crate) struct RawInteractionResponse {
+pub struct RawInteractionResponse {
     /// The interaction's snowflake ID.
     pub interaction_id: String,
     /// Token for this interaction.
@@ -47,7 +48,7 @@ pub(crate) struct RawInteractionResponse {
 
 /// Arguments for bulk-upserting guild application commands.
 #[expose_input]
-pub(crate) struct RawUpsertGuildCommands {
+pub struct RawUpsertGuildCommands {
     /// The guild's snowflake ID.
     pub guild_id: String,
     /// The commands to register.
@@ -56,7 +57,7 @@ pub(crate) struct RawUpsertGuildCommands {
 
 /// Definition of a slash command.
 #[expose_input]
-pub(crate) struct RawSlashCommand {
+pub struct RawSlashCommand {
     /// The command name (1-32 chars, lowercase).
     pub name: String,
     /// The command description (1-100 chars).
@@ -67,7 +68,7 @@ pub(crate) struct RawSlashCommand {
 
 /// Definition of a slash command option.
 #[expose_input]
-pub(crate) struct RawSlashCommandOption {
+pub struct RawSlashCommandOption {
     /// The option name.
     pub name: String,
     /// The option description.
@@ -80,6 +81,7 @@ pub(crate) struct RawSlashCommandOption {
     pub required: Option<bool>,
     /// Nested options (for subcommands/subcommand groups).
     #[serde(default)]
+    #[t0x(type = "RawSlashCommandOption[]")]
     pub options: Option<Vec<RawSlashCommandOption>>,
 }
 
@@ -115,7 +117,7 @@ pub async fn op_send_interaction_response(
 
 /// Arguments for deferring an interaction response.
 #[expose_input]
-pub(crate) struct RawDeferInteractionResponse {
+pub struct RawDeferInteractionResponse {
     /// The interaction's snowflake ID.
     pub interaction_id: String,
     /// Token for this interaction.
@@ -155,7 +157,7 @@ pub async fn op_defer_interaction_response(
 
 /// Arguments for updating a component interaction's message.
 #[expose_input]
-pub(crate) struct RawUpdateInteractionResponse {
+pub struct RawUpdateInteractionResponse {
     /// The interaction's snowflake ID.
     pub interaction_id: String,
     /// Token for this interaction.
@@ -205,7 +207,7 @@ pub async fn op_update_interaction_response(
 
 /// Arguments for editing the original interaction response.
 #[expose_input]
-pub(crate) struct RawEditInteractionResponse {
+pub struct RawEditInteractionResponse {
     /// Token for this interaction.
     pub token: String,
     /// New message content.
@@ -242,7 +244,7 @@ pub async fn op_edit_original_interaction_response(
 
 /// Arguments for deleting the original interaction response.
 #[expose_input]
-pub(crate) struct RawDeleteInteractionResponse {
+pub struct RawDeleteInteractionResponse {
     /// Token for this interaction.
     pub token: String,
 }
@@ -264,7 +266,7 @@ pub async fn op_delete_original_interaction_response(
 
 /// Arguments for creating or editing a followup message.
 #[expose_input]
-pub(crate) struct RawFollowupMessage {
+pub struct RawFollowupMessage {
     /// Token for this interaction.
     pub token: String,
     /// Message ID (required when editing a followup).
@@ -322,14 +324,19 @@ pub async fn op_edit_followup_message(
         .map_err(|_| JsErrorBox::generic("Invalid message id"))?;
     let built = build_followup_message(&http, args).await?;
     let message = http
-        .edit_followup_message(&built.token, serenity::model::id::MessageId::new(message_id), &built.message, built.files)
+        .edit_followup_message(
+            &built.token,
+            serenity::model::id::MessageId::new(message_id),
+            &built.message,
+            built.files,
+        )
         .await
         .map_err(|err| JsErrorBox::generic(err.to_string()))?;
     serde_json::to_value(message).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
 #[expose_input]
-pub(crate) struct RawDeleteFollowupMessage {
+pub struct RawDeleteFollowupMessage {
     pub token: String,
     pub message_id: String,
 }

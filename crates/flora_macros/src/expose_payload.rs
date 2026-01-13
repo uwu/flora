@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, Fields, Lit, parse_macro_input};
+use syn::{parse_macro_input, DeriveInput, Fields, Lit};
 
 /// Main entry point for the expose_payload attribute macro.
 pub fn attr_macro(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -230,9 +230,8 @@ fn generate_struct_def(
 
             Ok(quote! {
                 #(#other_attrs)*
-                #[derive(Debug, serde::Serialize, ts_rs::TS, #extra_derives)]
+                #[derive(Debug, serde::Serialize, T0x, #extra_derives)]
                 #[serde(rename_all = "camelCase")]
-                #[ts(export, optional_fields)]
                 #vis struct #name #impl_generics #where_clause {
                     #(#field_defs),*
                 }
@@ -261,9 +260,8 @@ fn generate_struct_def(
 
             Ok(quote! {
                 #(#other_attrs)*
-                #[derive(Debug, serde::Serialize, ts_rs::TS, #extra_derives)]
+                #[derive(Debug, serde::Serialize, T0x, #extra_derives)]
                 #[serde(rename_all = "camelCase")]
-                #[ts(export, optional_fields)]
                 #vis struct #name #impl_generics #where_clause (
                     #(#field_defs),*
                 );
@@ -271,9 +269,8 @@ fn generate_struct_def(
         }
         Fields::Unit => Ok(quote! {
             #(#other_attrs)*
-            #[derive(Debug, serde::Serialize, ts_rs::TS, #extra_derives)]
+            #[derive(Debug, serde::Serialize, T0x, #extra_derives)]
             #[serde(rename_all = "camelCase")]
-            #[ts(export, optional_fields)]
             #vis struct #name #impl_generics #where_clause;
         }),
     }

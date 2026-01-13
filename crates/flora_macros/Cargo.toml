@@ -11,3 +11,5 @@ proc-macro = true
 proc-macro2.workspace = true
 quote.workspace = true
 syn.workspace = true
+t0x.workspace = true
+t0x-macros.workspace = true

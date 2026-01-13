@@ -1,5 +1,4 @@
-use std::{cell::RefCell, rc::Rc, sync::Arc};
-
+use super::interaction::{RawSlashCommand, RawSlashCommandOption};
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
@@ -8,12 +7,12 @@ use serenity::{
     http::Http,
     model::id::{CommandId, GuildId},
 };
-
-use super::interaction::{RawSlashCommand, RawSlashCommandOption};
+use std::{cell::RefCell, rc::Rc, sync::Arc};
+use t0x::T0x;
 
 /// Arguments for creating a guild application command.
 #[expose_input]
-pub(crate) struct RawCreateGuildCommand {
+pub struct RawCreateGuildCommand {
     /// The guild's snowflake ID.
     pub guild_id: String,
     /// The command to create.
@@ -41,7 +40,7 @@ pub async fn op_create_guild_command(
 
 /// Arguments for editing a guild application command.
 #[expose_input]
-pub(crate) struct RawEditGuildCommand {
+pub struct RawEditGuildCommand {
     /// The guild's snowflake ID.
     pub guild_id: String,
     /// The command's snowflake ID.
@@ -72,7 +71,7 @@ pub async fn op_edit_guild_command(
 
 /// Arguments for deleting a guild application command.
 #[expose_input]
-pub(crate) struct RawDeleteGuildCommand {
+pub struct RawDeleteGuildCommand {
     /// The guild's snowflake ID.
     pub guild_id: String,
     /// The command's snowflake ID.
@@ -98,7 +97,7 @@ pub async fn op_delete_guild_command(
 
 /// Arguments for fetching a guild application command.
 #[expose_input]
-pub(crate) struct RawGetGuildCommand {
+pub struct RawGetGuildCommand {
     /// The guild's snowflake ID.
     pub guild_id: String,
     /// The command's snowflake ID.
@@ -147,7 +146,7 @@ pub async fn op_get_guild_command(
 
 /// Arguments for editing guild command permissions.
 #[expose_input]
-pub(crate) struct RawCommandPermissions {
+pub struct RawCommandPermissions {
     /// The guild's snowflake ID.
     pub guild_id: String,
     /// The command's snowflake ID.
@@ -177,7 +176,7 @@ pub async fn op_edit_guild_command_permissions(
 
 /// Arguments containing only a guild ID.
 #[expose_input]
-pub(crate) struct RawGuildId {
+pub struct RawGuildId {
     /// The guild's snowflake ID.
     pub guild_id: String,
 }
@@ -249,9 +248,7 @@ fn build_command(cmd: RawSlashCommand) -> Result<CreateCommand<'static>, JsError
     Ok(builder)
 }
 
-fn build_option(
-    opt: RawSlashCommandOption,
-) -> Result<CreateCommandOption<'static>, JsErrorBox> {
+fn build_option(opt: RawSlashCommandOption) -> Result<CreateCommandOption<'static>, JsErrorBox> {
     let opt_type = match opt.kind.as_deref() {
         Some("integer") => serenity::all::CommandOptionType::Integer,
         Some("number") => serenity::all::CommandOptionType::Number,

@@ -1,5 +1,8 @@
-use std::{cell::RefCell, rc::Rc, sync::Arc};
-
+use super::components::parse_components;
+use super::message::{
+    RawAllowedMentions, RawAttachment, RawEmbed, build_allowed_mentions, build_attachment,
+    build_embed,
+};
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
@@ -8,16 +11,12 @@ use serenity::{
     http::Http,
     model::id::{ThreadId, WebhookId},
 };
-
-use super::components::parse_components;
-use super::message::{
-    RawAllowedMentions, RawAttachment, RawEmbed, build_allowed_mentions, build_attachment,
-    build_embed,
-};
+use std::{cell::RefCell, rc::Rc, sync::Arc};
+use t0x::T0x;
 
 /// Arguments for executing a webhook.
 #[expose_input]
-pub(crate) struct RawExecuteWebhook {
+pub struct RawExecuteWebhook {
     /// The webhook's snowflake ID.
     pub webhook_id: String,
     /// The webhook token.
@@ -104,7 +103,9 @@ pub async fn op_execute_webhook(
         message = message.allowed_mentions(build_allowed_mentions(mentions));
     }
     if let Some(flags) = args.flags {
-        message = message.flags(serenity::model::channel::MessageFlags::from_bits_truncate(flags));
+        message = message.flags(serenity::model::channel::MessageFlags::from_bits_truncate(
+            flags,
+        ));
     }
     if let Some(thread_name) = args.thread_name {
         message = message.thread_name(thread_name.into());
@@ -151,7 +152,7 @@ pub async fn op_execute_webhook(
 
 /// Arguments for editing a webhook.
 #[expose_input]
-pub(crate) struct RawEditWebhook {
+pub struct RawEditWebhook {
     /// The webhook's snowflake ID.
     pub webhook_id: String,
     /// The webhook token (if using tokenized endpoint).
@@ -186,7 +187,7 @@ pub async fn op_edit_webhook(
 
 /// Arguments for deleting a webhook.
 #[expose_input]
-pub(crate) struct RawDeleteWebhook {
+pub struct RawDeleteWebhook {
     /// The webhook's snowflake ID.
     pub webhook_id: String,
     /// The webhook token (if using tokenized endpoint).

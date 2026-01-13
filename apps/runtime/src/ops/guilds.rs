@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc, sync::Arc};
-
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
@@ -7,10 +5,12 @@ use serenity::{
     http::Http,
     model::id::{GuildId, RoleId, UserId},
 };
+use std::{cell::RefCell, rc::Rc, sync::Arc};
+use t0x::T0x;
 
 /// Arguments for operations targeting a user in a guild.
 #[expose_input]
-pub(crate) struct RawGuildUser {
+pub struct RawGuildUser {
     /// The guild's snowflake ID.
     pub guild_id: String,
     /// The user's snowflake ID.
@@ -38,7 +38,7 @@ pub async fn op_kick_member(
 
 /// Arguments for banning a member from a guild.
 #[expose_input]
-pub(crate) struct RawBanMember {
+pub struct RawBanMember {
     /// The guild's snowflake ID.
     pub guild_id: String,
     /// The user's snowflake ID.
@@ -86,7 +86,7 @@ pub async fn op_unban_member(
 
 /// Arguments for adding or removing a role from a member.
 #[expose_input]
-pub(crate) struct RawMemberRole {
+pub struct RawMemberRole {
     /// The guild's snowflake ID.
     pub guild_id: String,
     /// The user's snowflake ID.
@@ -135,7 +135,7 @@ pub async fn op_remove_member_role(
 
 /// Arguments for editing a guild member.
 #[expose_input]
-pub(crate) struct RawEditMember {
+pub struct RawEditMember {
     /// The guild's snowflake ID.
     pub guild_id: String,
     /// The user's snowflake ID.

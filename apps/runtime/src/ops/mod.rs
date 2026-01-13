@@ -4,15 +4,15 @@ use serenity::http::Http;
 
 use crate::kv::KvService;
 
-mod interaction;
-mod kv;
-mod message;
+pub mod interaction;
+pub mod kv;
+pub mod message;
 mod tls;
 mod components;
-mod commands;
-mod guilds;
-mod channels;
-mod webhooks;
+pub mod commands;
+pub mod guilds;
+pub mod channels;
+pub mod webhooks;
 
 deno_core::extension!(
     flora_ops,

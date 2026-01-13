@@ -16,16 +16,14 @@ use serenity::{
     },
 };
 use std::{cell::RefCell, rc::Rc, sync::Arc};
+use t0x::T0x;
 use tracing::info;
-use ts_rs::TS;
 use url::Url;
 
 use super::components::parse_components;
 
 /// Attachment to include in a message (either URL or base64-encoded data).
-#[derive(Debug, Deserialize, TS)]
-#[serde(rename_all = "camelCase", untagged)]
-#[ts(export, export_to = "RawAttachment.ts")]
+#[derive(Debug, Deserialize, T0x)]
 pub enum RawAttachment {
     /// Attachment from a URL.
     Url {
@@ -676,9 +674,7 @@ pub async fn op_clear_reactions(
     Ok(())
 }
 
-pub(crate) fn build_allowed_mentions(
-    input: RawAllowedMentions,
-) -> CreateAllowedMentions<'static> {
+pub(crate) fn build_allowed_mentions(input: RawAllowedMentions) -> CreateAllowedMentions<'static> {
     let mut allowed = CreateAllowedMentions::new();
 
     if let Some(parse) = input.parse {

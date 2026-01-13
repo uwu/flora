@@ -42,6 +42,8 @@ sha2.workspace = true
 sled.workspace = true
 sqlx.workspace = true
 sys_traits.workspace = true
+t0x.workspace = true
+t0x-macros.workspace = true
 thiserror.workspace = true
 time.workspace = true
 tokio.workspace = true
@@ -52,15 +54,11 @@ tower-service.workspace = true
 tracing.workspace = true
 tracing-error.workspace = true
 tracing-subscriber.workspace = true
-ts-rs.workspace = true
 url.workspace = true
 urlencoding.workspace = true
 utoipa.workspace = true
 utoipa-scalar.workspace = true
 uuid.workspace = true
-
-[package.metadata.ts-rs]
-export_dir = "../../sdk/src/generated"
 
 [dev-dependencies]
 tempfile = "3"
