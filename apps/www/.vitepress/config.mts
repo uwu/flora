@@ -35,5 +35,6 @@ export default defineConfig({
   vite: {
     // @ts-expect-error: some weird types error again wow
     plugins: [UnoCSS({ config: '../unocss.config.ts' })]
-  }
+  },
+  cleanUrls: true
 })
