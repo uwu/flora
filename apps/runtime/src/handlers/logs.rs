@@ -1,7 +1,5 @@
 //! Log streaming endpoint using Server-Sent Events (SSE).
 
-use std::convert::Infallible;
-
 use axum::{
     Json,
     extract::{Path, Query},
@@ -11,6 +9,7 @@ use axum::{
     },
 };
 use serde::Deserialize;
+use std::convert::Infallible;
 use tokio_stream::StreamExt as _;
 use utoipa::{IntoParams, OpenApi, ToSchema};
 

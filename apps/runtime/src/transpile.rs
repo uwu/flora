@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use deno_core::{ModuleCodeString, ModuleName, SourceMapData};
 use deno_error::JsErrorBox;
 use oxc::{
@@ -9,6 +7,7 @@ use oxc::{
     span::SourceType,
     transformer::TransformOptions,
 };
+use std::path::Path;
 
 pub struct TranspileOutput {
     pub code: ModuleCodeString,

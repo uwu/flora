@@ -5566,7 +5566,9 @@ dependencies = [
 
 [[package]]
 name = "t0x"
-version = "0.1.3"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "645e0b49c24f29a5a4ea6db77fe116757392480c6cdef5869694df543320cf02"
 dependencies = [
  "oxc_allocator",
  "oxc_ast",
@@ -5578,7 +5580,9 @@ dependencies = [
 
 [[package]]
 name = "t0x-macros"
-version = "0.1.3"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f917aa1ec04d6a499e95a71af9c27064ae2860a9e8a91deded507409eeecc7b"
 dependencies = [
  "proc-macro2",
  "quote",

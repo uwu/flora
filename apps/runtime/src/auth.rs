@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use axum::http::Uri;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, Duration, Utc};
@@ -14,6 +12,7 @@ use rand::{Rng, distributions::Alphanumeric};
 use reqwest::Client as HttpClient;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
+use std::sync::Arc;
 use time::Duration as TimeDuration;
 use tracing::warn;
 

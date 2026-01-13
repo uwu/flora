@@ -1,10 +1,9 @@
-use std::sync::Arc;
-
 use chrono::{DateTime, Utc};
 use color_eyre::eyre::Result;
 use fred::{prelude::*, types::ConnectHandle};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Pool, Postgres};
+use std::sync::Arc;
 use tracing::{info, warn};
 use utoipa::ToSchema;
 

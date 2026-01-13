@@ -216,19 +216,18 @@ pub async fn require_identity(
     state: &AppState,
     headers: &HeaderMap,
 ) -> Result<IdentityContext, ApiError> {
-    if let Some(bearer) = bearer_token(headers) {
-        if let Some(token) = state
+    if let Some(bearer) = bearer_token(headers)
+        && let Some(token) = state
             .tokens
             .validate_token(bearer)
             .await
             .map_err(ApiError::internal)?
-        {
-            return Ok(IdentityContext {
-                user_id: token.user_id,
-                access_token: None,
-                session: None,
-            });
-        }
+    {
+        return Ok(IdentityContext {
+            user_id: token.user_id,
+            access_token: None,
+            session: None,
+        });
     }
 
     let session = require_session(&state.auth, headers).await?;

@@ -475,10 +475,8 @@ fn collect_binding_names(pattern: &BindingPattern<'_>, out: &mut Vec<String>) {
             }
         }
         BindingPatternKind::ArrayPattern(arr) => {
-            for item in arr.elements.iter() {
-                if let Some(pat) = item {
-                    collect_binding_names(pat, out);
-                }
+            for pat in arr.elements.iter().flatten() {
+                collect_binding_names(pat, out);
             }
             if let Some(rest) = &arr.rest {
                 collect_binding_names(&rest.argument, out);

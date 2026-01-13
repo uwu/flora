@@ -55,7 +55,7 @@ pub async fn list_guilds_handler(
         .auth
         .fetch_user_guilds(&access_token)
         .await
-        .map_err(|err| ApiError::internal(err))?;
+        .map_err(ApiError::internal)?;
 
     let mut allowed = Vec::new();
     for guild in guilds {
