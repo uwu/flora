@@ -20,7 +20,7 @@
     "**/node_modules",
     "**/*-lock.json",
     "**/bun.lock",
-    "**/submodules",
+    "**/submodules/**",
     "**/dist",
     "**/trash",
     "**/target"
