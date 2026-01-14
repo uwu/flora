@@ -13,7 +13,8 @@ export default defineConfig({
       { text: 'SDK', link: '/sdk' },
       { text: 'Runtime', link: '/runtime' },
       { text: 'CLI', link: '/cli' },
-      { text: 'Examples', link: '/examples' }
+      { text: 'Examples', link: '/examples' },
+      { text: 'Limitations', link: '/limitations' }
     ],
 
     sidebar: [
@@ -23,7 +24,8 @@ export default defineConfig({
           { text: 'SDK', link: '/sdk' },
           { text: 'Runtime', link: '/runtime' },
           { text: 'CLI', link: '/cli' },
-          { text: 'Examples', link: '/examples' }
+          { text: 'Examples', link: '/examples' },
+          { text: 'Limitations', link: '/limitations' }
         ]
       }
     ],
