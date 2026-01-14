@@ -108,6 +108,20 @@
 # Default value: 1048576
 # max_script_bytes = 1048576
 
+# Maximum number of cron jobs per guild (or default runtime).
+#
+# Can also be specified via environment variable `RUNTIME_MAX_CRON_JOBS`.
+#
+# Default value: 32
+# max_cron_jobs = 32
+
+# Timeout in seconds for cron handler execution (0 disables).
+#
+# Can also be specified via environment variable `RUNTIME_CRON_TIMEOUT_SECS`.
+#
+# Default value: 5
+# cron_timeout_secs = 5
+
 # API server config.
 [api]
 # Port to listen on.

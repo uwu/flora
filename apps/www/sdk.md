@@ -178,6 +178,45 @@ if (!page.list_complete) {
 }
 ```
 
+## Cron jobs
+
+Schedule tasks to run at fixed times or intervals using cron expressions. All times are evaluated in UTC.
+
+```ts
+// Run every minute
+cron('heartbeat', '* * * * *', (ctx) => {
+  console.log(`Heartbeat at ${ctx.scheduledAt}`)
+})
+
+// Run daily at midnight UTC
+cron('daily-cleanup', '0 0 * * *', async (ctx) => {
+  console.log(`Running ${ctx.name}`)
+  // cleanup logic here
+})
+
+// Run every hour at minute 30
+cron('hourly-report', '30 * * * *', (ctx) => {
+  console.log('Generating hourly report')
+})
+
+// Run at 9am on weekdays
+cron('weekday-reminder', '0 9 * * 1-5', (ctx) => {
+  console.log('Good morning!')
+})
+```
+
+The cron context provides:
+
+- `name`: The cron job name you specified
+- `scheduledAt`: ISO 8601 timestamp of when the job was scheduled to run
+
+Cron expressions follow standard 5-field format: `minute hour day-of-month month day-of-week`.
+
+Limits:
+
+- Max cron jobs per guild: 32 (configurable via `max_cron_jobs`)
+- Handler timeout: 5 seconds (configurable via `cron_timeout_secs`)
+
 ## Utilities
 
 ```ts

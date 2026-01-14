@@ -1,3 +1,4 @@
+use crate::ops::{CronRegistry, SharedCronRegistry};
 use crate::{deployments::Deployment, kv::KvService, metrics::metrics, ops};
 use deno_core::{
     Extension, ExtensionFileSource, FastStaticString, FastString, FsModuleLoader, JsRuntime,
@@ -193,7 +194,9 @@ struct RuntimeLimits {
     boot_timeout: Option<Duration>,
     load_timeout: Option<Duration>,
     dispatch_timeout: Option<Duration>,
+    cron_timeout: Option<Duration>,
     max_script_bytes: usize,
+    max_cron_jobs: usize,
 }
 
 impl RuntimeLimits {
@@ -202,7 +205,9 @@ impl RuntimeLimits {
             boot_timeout: timeout_from_secs(config.boot_timeout_secs),
             load_timeout: timeout_from_secs(config.load_timeout_secs),
             dispatch_timeout: timeout_from_secs(config.dispatch_timeout_secs),
+            cron_timeout: timeout_from_secs(config.cron_timeout_secs),
             max_script_bytes: config.max_script_bytes,
+            max_cron_jobs: config.max_cron_jobs,
         }
     }
 }
@@ -344,11 +349,14 @@ fn spawn_worker(id: usize, http: Arc<Http>, kv: KvService, limits: RuntimeLimits
     let backlog = Arc::new(AtomicUsize::new(0));
     let backlog_handle = Arc::clone(&backlog);
 
-    // Use a barrier to ensure all workers start together after V8 is ready
+    let cron_registry = Arc::new(parking_lot::Mutex::new(CronRegistry::new(
+        limits.max_cron_jobs,
+    )));
+
     let handle = thread::Builder::new()
         .name(format!("flora-worker-{}", id))
         .spawn(move || {
-            worker_thread(id, rx, http, kv, limits, backlog_handle);
+            worker_thread(id, rx, http, kv, limits, backlog_handle, cron_registry);
         })
         .expect("failed to spawn worker thread");
 
@@ -367,6 +375,7 @@ fn worker_thread(
     kv: KvService,
     limits: RuntimeLimits,
     backlog: Arc<AtomicUsize>,
+    cron_registry: SharedCronRegistry,
 ) {
     let rt = Builder::new_current_thread()
         .enable_all()
@@ -376,114 +385,277 @@ fn worker_thread(
     rt.block_on(async move {
         let mut guild_runtimes: HashMap<String, JsRuntimeState> = HashMap::new();
         let mut default_runtime: Option<JsRuntimeState> = None;
+        let mut cron_interval = tokio::time::interval(Duration::from_secs(1));
 
         info!(target: "flora:runtime", worker_id, "worker thread started");
 
-        while let Some(cmd) = receiver.recv().await {
-            backlog.fetch_sub(1, Ordering::Relaxed);
-            match cmd {
-                WorkerCommand::Initialize { respond_to } => {
-                    let result =
-                        initialize_worker_default(
-                            &mut default_runtime,
-                            &http,
-                            &kv,
-                            worker_id,
-                            &limits,
-                        )
+        loop {
+            tokio::select! {
+                _ = cron_interval.tick() => {
+                    run_cron_tick(
+                        &cron_registry,
+                        &mut guild_runtimes,
+                        &mut default_runtime,
+                        worker_id,
+                        &limits,
+                    ).await;
+                }
+                cmd = receiver.recv() => {
+                    let Some(cmd) = cmd else {
+                        break;
+                    };
+                    backlog.fetch_sub(1, Ordering::Relaxed);
+                    match cmd {
+                        WorkerCommand::Initialize { respond_to } => {
+                            let result =
+                                initialize_worker_default(
+                                    &mut default_runtime,
+                                    &http,
+                                    &kv,
+                                    worker_id,
+                                    &limits,
+                                    cron_registry.clone(),
+                                )
+                                    .await;
+                            if let Err(ref err) = result {
+                                error!(target: "flora:runtime", worker_id, ?err, "failed to initialize worker");
+                            }
+                            let _ = respond_to.send(result);
+                        }
+
+                        WorkerCommand::LoadSdkBundle { path, respond_to } => {
+                            let result = match default_runtime.as_mut() {
+                                Some(rt) => load_script_from_path(rt, path, worker_id, &limits).await,
+                                None => Err(AnyError::msg("default runtime not initialized")),
+                            };
+                            if let Err(ref err) = result {
+                                error!(target: "flora:runtime", worker_id, ?err, "failed to load SDK bundle");
+                            }
+                            let _ = respond_to.send(result);
+                        }
+
+                        WorkerCommand::LoadUserScript { path, respond_to } => {
+                            let result = match default_runtime.as_mut() {
+                                Some(rt) => load_script_from_path(rt, path, worker_id, &limits).await,
+                                None => Err(AnyError::msg("default runtime not initialized")),
+                            };
+                            if let Err(ref err) = result {
+                                error!(target: "flora:runtime", worker_id, ?err, "failed to load user script");
+                            }
+                            let _ = respond_to.send(result);
+                        }
+
+                        WorkerCommand::DeployGuild { deployment, respond_to } => {
+                            {
+                                let mut reg = cron_registry.lock();
+                                reg.clear_guild(&deployment.guild_id);
+                            }
+                            let result = deploy_guild_to_worker(
+                                &mut guild_runtimes,
+                                &http,
+                                &kv,
+                                deployment,
+                                worker_id,
+                                &limits,
+                                cron_registry.clone(),
+                            )
                             .await;
-                    if let Err(ref err) = result {
-                        error!(target: "flora:runtime", worker_id, ?err, "failed to initialize worker");
+                            if let Err(ref err) = result {
+                                error!(target: "flora:runtime", worker_id, ?err, "failed to deploy guild");
+                            }
+                            let _ = respond_to.send(result);
+                        }
+
+                        WorkerCommand::DispatchEvent { guild_id, event, payload, respond_to } => {
+                            let result = dispatch_to_worker(
+                                &mut guild_runtimes,
+                                &mut default_runtime,
+                                guild_id,
+                                event,
+                                payload,
+                                worker_id,
+                                &limits,
+                            )
+                            .await;
+                            if let Err(ref err) = result {
+                                error!(target: "flora:runtime", worker_id, ?err, "dispatch failed");
+                            }
+                            let _ = respond_to.send(result);
+                        }
+
+                        WorkerCommand::BroadcastEvent { event, payload, respond_to } => {
+                            let result = broadcast_to_worker(
+                                &mut guild_runtimes,
+                                &mut default_runtime,
+                                event,
+                                payload,
+                                worker_id,
+                                &limits,
+                            )
+                            .await;
+                            if let Err(ref err) = result {
+                                error!(target: "flora:runtime", worker_id, ?err, "broadcast failed");
+                            }
+                            let _ = respond_to.send(result);
+                        }
+
+                        WorkerCommand::UnloadGuild { guild_id, respond_to } => {
+                            {
+                                let mut reg = cron_registry.lock();
+                                reg.clear_guild(&guild_id);
+                            }
+                            guild_runtimes.remove(&guild_id);
+                            info!(target: "flora:runtime", worker_id, guild_id, "unloaded guild");
+                            let _ = respond_to.send(());
+                        }
+
+                        WorkerCommand::Shutdown => {
+                            info!(target: "flora:runtime", worker_id, "worker shutting down");
+                            break;
+                        }
                     }
-                    let _ = respond_to.send(result);
-                }
-
-                WorkerCommand::LoadSdkBundle { path, respond_to } => {
-                    let result = match default_runtime.as_mut() {
-                        Some(rt) => load_script_from_path(rt, path, worker_id, &limits).await,
-                        None => Err(AnyError::msg("default runtime not initialized")),
-                    };
-                    if let Err(ref err) = result {
-                        error!(target: "flora:runtime", worker_id, ?err, "failed to load SDK bundle");
-                    }
-                    let _ = respond_to.send(result);
-                }
-
-                WorkerCommand::LoadUserScript { path, respond_to } => {
-                    let result = match default_runtime.as_mut() {
-                        Some(rt) => load_script_from_path(rt, path, worker_id, &limits).await,
-                        None => Err(AnyError::msg("default runtime not initialized")),
-                    };
-                    if let Err(ref err) = result {
-                        error!(target: "flora:runtime", worker_id, ?err, "failed to load user script");
-                    }
-                    let _ = respond_to.send(result);
-                }
-
-                WorkerCommand::DeployGuild { deployment, respond_to } => {
-                    let result = deploy_guild_to_worker(
-                        &mut guild_runtimes,
-                        &http,
-                        &kv,
-                        deployment,
-                        worker_id,
-                        &limits,
-                    )
-                    .await;
-                    if let Err(ref err) = result {
-                        error!(target: "flora:runtime", worker_id, ?err, "failed to deploy guild");
-                    }
-                    let _ = respond_to.send(result);
-                }
-
-                WorkerCommand::DispatchEvent { guild_id, event, payload, respond_to } => {
-                    let result = dispatch_to_worker(
-                        &mut guild_runtimes,
-                        &mut default_runtime,
-                        guild_id,
-                        event,
-                        payload,
-                        worker_id,
-                        &limits,
-                    )
-                    .await;
-                    if let Err(ref err) = result {
-                        error!(target: "flora:runtime", worker_id, ?err, "dispatch failed");
-                    }
-                    let _ = respond_to.send(result);
-                }
-
-                WorkerCommand::BroadcastEvent { event, payload, respond_to } => {
-                    let result = broadcast_to_worker(
-                        &mut guild_runtimes,
-                        &mut default_runtime,
-                        event,
-                        payload,
-                        worker_id,
-                        &limits,
-                    )
-                    .await;
-                    if let Err(ref err) = result {
-                        error!(target: "flora:runtime", worker_id, ?err, "broadcast failed");
-                    }
-                    let _ = respond_to.send(result);
-                }
-
-                WorkerCommand::UnloadGuild { guild_id, respond_to } => {
-                    guild_runtimes.remove(&guild_id);
-                    info!(target: "flora:runtime", worker_id, guild_id, "unloaded guild");
-                    let _ = respond_to.send(());
-                }
-
-                WorkerCommand::Shutdown => {
-                    info!(target: "flora:runtime", worker_id, "worker shutting down");
-                    break;
                 }
             }
         }
 
         info!(target: "flora:runtime", worker_id, "worker thread exited");
     });
+}
+
+async fn run_cron_tick(
+    cron_registry: &SharedCronRegistry,
+    guild_runtimes: &mut HashMap<String, JsRuntimeState>,
+    default_runtime: &mut Option<JsRuntimeState>,
+    worker_id: usize,
+    limits: &RuntimeLimits,
+) {
+    use chrono::Utc;
+
+    let now = Utc::now();
+    let mut due_jobs = Vec::new();
+
+    {
+        let mut reg = cron_registry.lock();
+        for (_gid, jobs) in reg.jobs.iter_mut() {
+            for job in jobs.iter_mut() {
+                if job.next_run <= now {
+                    due_jobs.push((
+                        job.guild_id.clone(),
+                        job.event_name.clone(),
+                        job.name.clone(),
+                    ));
+                    if let Ok(next) = job.schedule.find_next_occurrence(&now, false) {
+                        job.next_run = next;
+                    }
+                }
+            }
+        }
+    }
+
+    for (guild_id, event_name, cron_name) in due_jobs {
+        let payload = serde_json::json!({
+            "name": cron_name,
+            "scheduledAt": now.to_rfc3339(),
+        });
+
+        let runtime = match &guild_id {
+            Some(gid) => guild_runtimes.get_mut(gid),
+            None => default_runtime.as_mut(),
+        };
+
+        let Some(runtime) = runtime else {
+            continue;
+        };
+
+        let result =
+            dispatch_cron_into_runtime(runtime, event_name.clone(), payload, worker_id, limits)
+                .await;
+        if let Err(ref err) = result {
+            error!(target: "flora:runtime", worker_id, ?guild_id, cron_name, ?err, "cron dispatch failed");
+        }
+    }
+}
+
+async fn dispatch_cron_into_runtime(
+    js_state: &mut JsRuntimeState,
+    event: String,
+    payload: Value,
+    worker_id: usize,
+    limits: &RuntimeLimits,
+) -> Result<(), AnyError> {
+    let start = Instant::now();
+
+    let Some(ref dispatch_fn) = js_state.dispatch_fn else {
+        return Err(AnyError::msg("dispatch function not available"));
+    };
+
+    let context = js_state.runtime.main_context();
+    let isolate = js_state.runtime.v8_isolate();
+    let _isolate_guard = IsolateEnterGuard::new(isolate);
+
+    let promise = {
+        v8::scope_with_context!(scope, isolate, &context);
+        let scope = scope;
+        let context = v8::Local::new(scope, &context);
+        let global = context.global(scope);
+
+        let event_str = v8::String::new(scope, &event)
+            .ok_or_else(|| AnyError::msg("Failed to create event string"))?;
+
+        let payload_v8 = serde_v8::to_v8(scope, &payload)?;
+
+        let dispatch_fn = v8::Local::new(scope, dispatch_fn);
+        let args = [event_str.into(), payload_v8];
+        let result = dispatch_fn
+            .call(scope, global.into(), &args)
+            .ok_or_else(|| AnyError::msg("Dispatch call failed"))?;
+
+        let promise = v8::Local::<v8::Promise>::try_from(result)
+            .map_err(|_| AnyError::msg("Dispatch did not return a promise"))?;
+        Global::new(scope, promise)
+    };
+
+    let result = with_timeout(
+        limits.cron_timeout,
+        async {
+            js_state
+                .runtime
+                .run_event_loop(PollEventLoopOptions::default())
+                .await
+                .map_err(AnyError::from)?;
+
+            let context = js_state.runtime.main_context();
+            v8::scope_with_context!(scope, js_state.runtime.v8_isolate(), &context);
+            let scope = scope;
+            let promise = v8::Local::new(scope, &promise);
+            match promise.state() {
+                v8::PromiseState::Rejected => {
+                    let exception = promise.result(scope);
+                    Err(AnyError::msg(exception.to_rust_string_lossy(scope)))
+                }
+                _ => Ok(()),
+            }
+        },
+        "cron",
+    )
+    .await
+    .map_err(|err| {
+        error!(target: "flora:runtime", ?err, "Cron dispatch promise error");
+        err
+    });
+
+    if let Err(ref err) = result {
+        if err.is::<RuntimeTimeout>() {
+            terminate_runtime(&mut js_state.runtime, worker_id, "cron").await;
+        }
+    }
+
+    match &result {
+        Ok(_) => metrics().dispatch_success(start.elapsed()),
+        Err(_) => metrics().dispatch_error(),
+    }
+
+    result.map(|_| ())
 }
 
 struct JsRuntimeState {
@@ -549,8 +721,9 @@ async fn initialize_worker_default(
     kv: &KvService,
     worker_id: usize,
     limits: &RuntimeLimits,
+    cron_registry: SharedCronRegistry,
 ) -> Result<(), AnyError> {
-    let mut runtime = new_js_runtime(http.clone(), kv.clone(), None);
+    let mut runtime = new_js_runtime(http.clone(), kv.clone(), None, cron_registry);
 
     runtime
         .runtime
@@ -582,6 +755,7 @@ async fn deploy_guild_to_worker(
     deployment: Deployment,
     worker_id: usize,
     limits: &RuntimeLimits,
+    cron_registry: SharedCronRegistry,
 ) -> Result<(), AnyError> {
     let guild_id = deployment.guild_id.clone();
 
@@ -592,7 +766,12 @@ async fn deploy_guild_to_worker(
 
     info!(target: "flora:runtime", worker_id, guild_id, "Creating guild runtime");
 
-    let mut runtime = new_js_runtime(http.clone(), kv.clone(), Some(guild_id.clone()));
+    let mut runtime = new_js_runtime(
+        http.clone(),
+        kv.clone(),
+        Some(guild_id.clone()),
+        cron_registry,
+    );
 
     {
         let _isolate_guard = enter_isolate(&mut runtime.runtime);
@@ -942,7 +1121,12 @@ fn bootstrap_extension() -> Extension {
     }
 }
 
-fn new_js_runtime(http: Arc<Http>, kv: KvService, guild_id: Option<String>) -> JsRuntimeState {
+fn new_js_runtime(
+    http: Arc<Http>,
+    kv: KvService,
+    guild_id: Option<String>,
+    cron_registry: SharedCronRegistry,
+) -> JsRuntimeState {
     metrics().isolate_created();
     let blob_store = Arc::new(deno_web::BlobStore::default());
     let broadcast_channel = deno_web::InMemoryBroadcastChannel::default();
@@ -968,7 +1152,7 @@ fn new_js_runtime(http: Arc<Http>, kv: KvService, guild_id: Option<String>) -> J
             deno_net::deno_net::init(None, None),
             deno_tls::deno_tls::init(),
             bootstrap_extension(),
-            ops::extension(http, kv.clone()),
+            ops::extension(http, kv.clone(), cron_registry),
         ],
         extension_transpiler: Some(Rc::new(|specifier, source| {
             match crate::transpile::transpile_if_typescript(&specifier, source.as_str())? {

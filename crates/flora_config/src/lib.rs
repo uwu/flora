@@ -90,6 +90,12 @@ pub struct RuntimeConfig {
     /// Max script size in bytes (SDK + deployment). Default: 1MB.
     #[config(env = "RUNTIME_MAX_SCRIPT_BYTES", default = 1_048_576)]
     pub max_script_bytes: usize,
+    /// Maximum number of cron jobs per guild (or default runtime).
+    #[config(env = "RUNTIME_MAX_CRON_JOBS", default = 32)]
+    pub max_cron_jobs: usize,
+    /// Timeout in seconds for cron handler execution (0 disables).
+    #[config(env = "RUNTIME_CRON_TIMEOUT_SECS", default = 5)]
+    pub cron_timeout_secs: u64,
 }
 
 /// API server configuration.

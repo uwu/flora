@@ -7,12 +7,15 @@ use crate::kv::KvService;
 pub mod channels;
 pub mod commands;
 mod components;
+pub mod cron;
 pub mod guilds;
 pub mod interaction;
 pub mod kv;
 pub mod message;
 mod tls;
 pub mod webhooks;
+
+pub use cron::{CronRegistry, SharedCronRegistry};
 
 deno_core::extension!(
     flora_ops,
@@ -72,17 +75,24 @@ deno_core::extension!(
         kv::op_kv_list_keys,
         kv::op_kv_get_with_metadata,
         kv::op_kv_update_metadata,
+        cron::op_register_cron,
     ],
     options = {
         http: Arc<Http>,
         kv: KvService,
+        cron_registry: SharedCronRegistry,
     },
     state = |state, options| {
         state.put(options.http.clone());
         state.put(options.kv.clone());
+        state.put(options.cron_registry.clone());
     }
 );
 
-pub fn extension(http: Arc<Http>, kv: KvService) -> deno_core::Extension {
-    flora_ops::init(http, kv)
+pub fn extension(
+    http: Arc<Http>,
+    kv: KvService,
+    cron_registry: SharedCronRegistry,
+) -> deno_core::Extension {
+    flora_ops::init(http, kv, cron_registry)
 }

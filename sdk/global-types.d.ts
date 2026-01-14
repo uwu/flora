@@ -66,6 +66,13 @@ declare global {
     ctx: FloraEventMap[E]
   ) => void | Promise<void>
 
+  interface CronContext {
+    name: string
+    scheduledAt: string
+  }
+
+  type CronHandler = (ctx: CronContext) => void | Promise<void>
+
   var __floraHandlers: { [x: string]: Array<Function> }
 
   var __floraGuildId: string | undefined
@@ -78,6 +85,12 @@ declare global {
   function __floraDispatch(event: string, payload: unknown): Promise<void>
 
   function registerSlashCommands(commands: Array<FlattenedSlashCommand>): Promise<void> | undefined
+
+  function cron(
+    name: string,
+    cronExpr: string,
+    handler: (ctx: CronContext) => void | Promise<void>
+  ): void
 
   // SDK exports (functions, consts, classes, types)
   function prefix(

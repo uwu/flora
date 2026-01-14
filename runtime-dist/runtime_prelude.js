@@ -35,6 +35,27 @@ globalThis.registerSlashCommands = function registerSlashCommands(commands) {
     commands
   })
 }
+const CRON_EVENT_PREFIX = '__cron:'
+globalThis.cron = function cron(name, cronExpr, handler) {
+  if (typeof name !== 'string' || !name.length) {
+    throw new TypeError('cron name must be a non-empty string')
+  }
+  if (typeof cronExpr !== 'string' || !cronExpr.length) {
+    throw new TypeError('cron expression must be a non-empty string')
+  }
+  if (typeof handler !== 'function') {
+    throw new TypeError('cron handler must be a function')
+  }
+  const eventName = CRON_EVENT_PREFIX + name
+  if (!globalThis.__floraHandlers[eventName]) {
+    globalThis.__floraHandlers[eventName] = []
+  }
+  globalThis.__floraHandlers[eventName].push(handler)
+  core.ops.op_register_cron({
+    name,
+    expr: cronExpr
+  })
+}
 function normalizeReply(message, payload) {
   if (payload?.interactionToken) {
     return normalizeInteractionReply(message, payload)
