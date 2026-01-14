@@ -1,0 +1,8 @@
+[package]
+name = "flora_typegen"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+flora = { path = "../../apps/runtime" }
+t0x.workspace = true
