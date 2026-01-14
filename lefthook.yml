@@ -1,10 +1,10 @@
 pre-commit:
   parallel: true
-  stage_fixed: true
   commands:
     rustfmt:
       glob: '*.rs'
       run: cargo fmt
-
+      stage_fixed: true
     dprint:
       run: bun format
+      stage_fixed: true

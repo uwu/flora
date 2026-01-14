@@ -14,6 +14,8 @@ pub struct CronJob {
     pub event_name: String,
     pub schedule: Cron,
     pub next_run: DateTime<Utc>,
+    pub skip_if_running: bool,
+    pub is_running: bool,
 }
 
 impl Clone for CronJob {
@@ -24,6 +26,8 @@ impl Clone for CronJob {
             event_name: self.event_name.clone(),
             schedule: Cron::from_str(&self.schedule.pattern.to_string()).unwrap(),
             next_run: self.next_run,
+            skip_if_running: self.skip_if_running,
+            is_running: self.is_running,
         }
     }
 }
@@ -58,6 +62,8 @@ pub type SharedCronRegistry = Arc<Mutex<CronRegistry>>;
 struct RegisterCronArgs {
     name: String,
     expr: String,
+    #[serde(default)]
+    skip_if_running: bool,
 }
 
 #[op2]
@@ -104,6 +110,8 @@ pub fn op_register_cron(
         event_name: format!("{}{}", CRON_EVENT_PREFIX, args.name),
         schedule,
         next_run,
+        skip_if_running: args.skip_if_running,
+        is_running: false,
     });
 
     Ok(())

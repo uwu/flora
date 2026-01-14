@@ -36,7 +36,7 @@ globalThis.registerSlashCommands = function registerSlashCommands(commands) {
   })
 }
 const CRON_EVENT_PREFIX = '__cron:'
-globalThis.cron = function cron(name, cronExpr, handler) {
+globalThis.cron = function cron(name, cronExpr, handler, options) {
   if (typeof name !== 'string' || !name.length) {
     throw new TypeError('cron name must be a non-empty string')
   }
@@ -53,7 +53,8 @@ globalThis.cron = function cron(name, cronExpr, handler) {
   globalThis.__floraHandlers[eventName].push(handler)
   core.ops.op_register_cron({
     name,
-    expr: cronExpr
+    expr: cronExpr,
+    skipIfRunning: options?.skipIfRunning ?? false
   })
 }
 function normalizeReply(message, payload) {

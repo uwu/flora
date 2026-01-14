@@ -71,6 +71,10 @@ declare global {
     scheduledAt: string
   }
 
+  interface CronOptions {
+    skipIfRunning?: boolean | undefined
+  }
+
   type CronHandler = (ctx: CronContext) => void | Promise<void>
 
   var __floraHandlers: { [x: string]: Array<Function> }
@@ -89,7 +93,8 @@ declare global {
   function cron(
     name: string,
     cronExpr: string,
-    handler: (ctx: CronContext) => void | Promise<void>
+    handler: (ctx: CronContext) => void | Promise<void>,
+    options?: CronOptions | undefined
   ): void
 
   // SDK exports (functions, consts, classes, types)

@@ -39,6 +39,10 @@ export interface CronContext {
   scheduledAt: string
 }
 
+export interface CronOptions {
+  skipIfRunning?: boolean
+}
+
 export type CronHandler = (ctx: CronContext) => void | Promise<void>
 
 declare global {
@@ -47,7 +51,7 @@ declare global {
   function on<E extends keyof FloraEventMap>(event: E, handler: FloraEventHandler<E>): void
   function __floraDispatch(event: string, payload: unknown): Promise<void>
   function registerSlashCommands(commands: FlattenedSlashCommand[]): Promise<void> | undefined
-  function cron(name: string, cronExpr: string, handler: CronHandler): void
+  function cron(name: string, cronExpr: string, handler: CronHandler, options?: CronOptions): void
 }
 
 declare const Deno: {
@@ -60,7 +64,7 @@ declare const Deno: {
       op_upsert_guild_commands(
         options: { guildId: string; commands: FlattenedSlashCommand[] }
       ): Promise<void>
-      op_register_cron(options: { name: string; expr: string }): void
+      op_register_cron(options: { name: string; expr: string; skipIfRunning?: boolean }): void
     }
   }
 }
@@ -132,7 +136,8 @@ const CRON_EVENT_PREFIX = '__cron:'
 globalThis.cron = function cron(
   name: string,
   cronExpr: string,
-  handler: CronHandler
+  handler: CronHandler,
+  options?: CronOptions
 ): void {
   if (typeof name !== 'string' || !name.length) {
     throw new TypeError('cron name must be a non-empty string')
@@ -151,7 +156,11 @@ globalThis.cron = function cron(
   }
   globalThis.__floraHandlers[eventName].push(handler)
 
-  core.ops.op_register_cron({ name, expr: cronExpr })
+  core.ops.op_register_cron({
+    name,
+    expr: cronExpr,
+    skipIfRunning: options?.skipIfRunning ?? false
+  })
 }
 
 function normalizeReply(

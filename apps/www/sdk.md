@@ -210,6 +210,17 @@ The cron context provides:
 - `name`: The cron job name you specified
 - `scheduledAt`: ISO 8601 timestamp of when the job was scheduled to run
 
+### Options
+
+```ts
+// Skip execution if previous run is still active
+cron('long-task', '*/5 * * * *', async (ctx) => {
+  await someLongRunningTask()
+}, { skipIfRunning: true })
+```
+
+- `skipIfRunning`: If `true`, the job won't start a new execution if the previous one is still running. Default: `false`.
+
 Cron expressions follow standard 5-field format: `minute hour day-of-month month day-of-week`.
 
 Limits:

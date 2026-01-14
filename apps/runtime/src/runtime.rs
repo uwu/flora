@@ -539,6 +539,14 @@ async fn run_cron_tick(
         for (_gid, jobs) in reg.jobs.iter_mut() {
             for job in jobs.iter_mut() {
                 if job.next_run <= now {
+                    if job.skip_if_running && job.is_running {
+                        info!(target: "flora:runtime", worker_id, name = job.name, "skipping cron job (still running)");
+                        if let Ok(next) = job.schedule.find_next_occurrence(&now, false) {
+                            job.next_run = next;
+                        }
+                        continue;
+                    }
+                    job.is_running = true;
                     due_jobs.push((
                         job.guild_id.clone(),
                         job.event_name.clone(),
@@ -564,14 +572,35 @@ async fn run_cron_tick(
         };
 
         let Some(runtime) = runtime else {
+            mark_cron_not_running(cron_registry, &guild_id, &cron_name);
             continue;
         };
 
         let result =
             dispatch_cron_into_runtime(runtime, event_name.clone(), payload, worker_id, limits)
                 .await;
+
+        mark_cron_not_running(cron_registry, &guild_id, &cron_name);
+
         if let Err(ref err) = result {
             error!(target: "flora:runtime", worker_id, ?guild_id, cron_name, ?err, "cron dispatch failed");
+        }
+    }
+}
+
+fn mark_cron_not_running(
+    cron_registry: &SharedCronRegistry,
+    guild_id: &Option<String>,
+    cron_name: &str,
+) {
+    let mut reg = cron_registry.lock();
+    let Some(jobs) = reg.jobs.get_mut(guild_id) else {
+        return;
+    };
+    for job in jobs.iter_mut() {
+        if job.name == cron_name {
+            job.is_running = false;
+            break;
         }
     }
 }
