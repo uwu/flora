@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod bundler;
 pub mod deployments;
+pub mod discord_enums;
 pub mod discord_handler;
 pub mod handlers;
 pub mod kv;

@@ -15,7 +15,7 @@ import type {
   RawEmbed,
   RawEmbedField
 } from '../generated'
-export type * from '../generated'
+export * from '../generated'
 
 export type Embed = RawEmbed
 export type EmbedField = RawEmbedField

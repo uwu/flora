@@ -63,6 +63,9 @@ utoipa-scalar = { version = "0.3.0", features = ["axum"] }
 uuid = { version = "1.19.0", features = ["v4"] }
 
 [patch.crates-io]
+# Use local t0x workspace
+t0x = { path = "t0x/t0x" }
+t0x-macros = { path = "t0x/t0x-macros" }
 # Use our deno_core fork compatible with rusty_v8 locker API
 deno_core = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat" }
 deno_ops = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat" }

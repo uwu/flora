@@ -1,6 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use flora::{
+    discord_enums::{ButtonStyle, ComponentType, InputTextStyle, MessageFlags},
     discord_handler::{
         EventComponentInteraction, EventInteractionCreate, EventMember, EventMessage,
         EventMessageDelete, EventMessageDeleteBulk, EventMessageUpdate, EventModalSubmit,
@@ -122,6 +123,10 @@ fn main() {
         RawExecuteWebhook,
         RawEditWebhook,
         RawDeleteWebhook,
+        ButtonStyle,
+        ComponentType,
+        InputTextStyle,
+        MessageFlags,
     ));
 
     fs::write(&output_path, output).expect("Failed to write generated types");

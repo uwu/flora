@@ -1797,3 +1797,75 @@ export type RawDeleteWebhook = {
   /** Audit log reason for this action. */
   reason?: string
 }
+
+export type ButtonStyle = 1 | 2 | 3 | 4
+
+export const ButtonStyle = {
+  Primary: 1,
+  Secondary: 2,
+  Success: 3,
+  Danger: 4
+} as const
+
+export type ComponentType =
+  | 1
+  | 2
+  | 3
+  | 4
+  | 5
+  | 6
+  | 7
+  | 8
+  | 9
+  | 10
+  | 11
+  | 12
+  | 13
+  | 14
+  | 17
+  | 18
+  | 19
+
+export const ComponentType = {
+  ActionRow: 1,
+  Button: 2,
+  StringSelect: 3,
+  InputText: 4,
+  UserSelect: 5,
+  RoleSelect: 6,
+  MentionableSelect: 7,
+  ChannelSelect: 8,
+  Section: 9,
+  TextDisplay: 10,
+  Thumbnail: 11,
+  MediaGallery: 12,
+  File: 13,
+  Separator: 14,
+  Container: 17,
+  Label: 18,
+  FileUpload: 19
+} as const
+
+export type InputTextStyle = 1 | 2
+
+export const InputTextStyle = {
+  Short: 1,
+  Paragraph: 2
+} as const
+
+export type MessageFlags = number
+
+export const MessageFlags = {
+  CROSSPOSTED: 1,
+  IS_CROSSPOST: 2,
+  SUPPRESS_EMBEDS: 4,
+  SOURCE_MESSAGE_DELETED: 8,
+  URGENT: 16,
+  HAS_THREAD: 32,
+  EPHEMERAL: 64,
+  LOADING: 128,
+  FAILED_TO_MENTION_SOME_ROLES_IN_THREAD: 256,
+  SUPPRESS_NOTIFICATIONS: 4096,
+  IS_VOICE_MESSAGE: 8192,
+  IS_COMPONENTS_V2: 32768
+} as const
