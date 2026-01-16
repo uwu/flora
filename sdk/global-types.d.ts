@@ -192,6 +192,273 @@ declare global {
     [x: string]: Record<string, (ctx: InteractionContext) => Promise<void> | void>
   }
 
+  type ComponentJson = { [key: string]: JsonValue; type: number }
+
+  type ComponentLike = ComponentJson | ComponentBuilder
+
+  type ComponentBuilder = { toJSON: () => ComponentJson }
+
+  class ActionRowBuilder {
+    addComponents(components: Array<ComponentLike>): this
+    setComponents(components: Array<ComponentLike>): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class ButtonBuilder {
+    setStyle(style: number): this
+    setCustomId(customId: string): this
+    setUrl(url: string): this
+    setSkuId(skuId: string): this
+    setLabel(label: string): this
+    setEmoji(
+      emoji:
+        | string
+        | number
+        | boolean
+        | Array<JsonValue>
+        | { [x: string]: JsonValue | undefined }
+        | null
+    ): this
+    setDisabled(disabled?: boolean): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class SelectMenuBuilderBase {
+    data: { [key: string]: JsonValue; type: number }
+    setCustomId(customId: string): this
+    setPlaceholder(placeholder: string): this
+    setMinValues(min: number): this
+    setMaxValues(max: number): this
+    setRequired(required?: boolean): this
+    setDisabled(disabled?: boolean): this
+    setChannelTypes(types: Array<number>): this
+    setDefaultValues(values: Array<SelectDefaultValue>): this
+    setDefaultUsers(ids: Array<string>): this
+    setDefaultRoles(ids: Array<string>): this
+    setDefaultChannels(ids: Array<string>): this
+    addDefaultUser(id: string): this
+    addDefaultRole(id: string): this
+    addDefaultChannel(id: string): this
+    addDefaultValue(id: string, type: 'user' | 'role' | 'channel'): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class StringSelectMenuBuilder {
+    setOptions(options: Array<SelectOption>): this
+    addOptions(options: Array<SelectOption>): this
+    data: { [key: string]: JsonValue; type: number }
+    setCustomId(customId: string): this
+    setPlaceholder(placeholder: string): this
+    setMinValues(min: number): this
+    setMaxValues(max: number): this
+    setRequired(required?: boolean): this
+    setDisabled(disabled?: boolean): this
+    setChannelTypes(types: Array<number>): this
+    setDefaultValues(values: Array<SelectDefaultValue>): this
+    setDefaultUsers(ids: Array<string>): this
+    setDefaultRoles(ids: Array<string>): this
+    setDefaultChannels(ids: Array<string>): this
+    addDefaultUser(id: string): this
+    addDefaultRole(id: string): this
+    addDefaultChannel(id: string): this
+    addDefaultValue(id: string, type: 'user' | 'role' | 'channel'): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class UserSelectMenuBuilder {
+    data: { [key: string]: JsonValue; type: number }
+    setCustomId(customId: string): this
+    setPlaceholder(placeholder: string): this
+    setMinValues(min: number): this
+    setMaxValues(max: number): this
+    setRequired(required?: boolean): this
+    setDisabled(disabled?: boolean): this
+    setChannelTypes(types: Array<number>): this
+    setDefaultValues(values: Array<SelectDefaultValue>): this
+    setDefaultUsers(ids: Array<string>): this
+    setDefaultRoles(ids: Array<string>): this
+    setDefaultChannels(ids: Array<string>): this
+    addDefaultUser(id: string): this
+    addDefaultRole(id: string): this
+    addDefaultChannel(id: string): this
+    addDefaultValue(id: string, type: 'user' | 'role' | 'channel'): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class RoleSelectMenuBuilder {
+    data: { [key: string]: JsonValue; type: number }
+    setCustomId(customId: string): this
+    setPlaceholder(placeholder: string): this
+    setMinValues(min: number): this
+    setMaxValues(max: number): this
+    setRequired(required?: boolean): this
+    setDisabled(disabled?: boolean): this
+    setChannelTypes(types: Array<number>): this
+    setDefaultValues(values: Array<SelectDefaultValue>): this
+    setDefaultUsers(ids: Array<string>): this
+    setDefaultRoles(ids: Array<string>): this
+    setDefaultChannels(ids: Array<string>): this
+    addDefaultUser(id: string): this
+    addDefaultRole(id: string): this
+    addDefaultChannel(id: string): this
+    addDefaultValue(id: string, type: 'user' | 'role' | 'channel'): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class MentionableSelectMenuBuilder {
+    data: { [key: string]: JsonValue; type: number }
+    setCustomId(customId: string): this
+    setPlaceholder(placeholder: string): this
+    setMinValues(min: number): this
+    setMaxValues(max: number): this
+    setRequired(required?: boolean): this
+    setDisabled(disabled?: boolean): this
+    setChannelTypes(types: Array<number>): this
+    setDefaultValues(values: Array<SelectDefaultValue>): this
+    setDefaultUsers(ids: Array<string>): this
+    setDefaultRoles(ids: Array<string>): this
+    setDefaultChannels(ids: Array<string>): this
+    addDefaultUser(id: string): this
+    addDefaultRole(id: string): this
+    addDefaultChannel(id: string): this
+    addDefaultValue(id: string, type: 'user' | 'role' | 'channel'): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class ChannelSelectMenuBuilder {
+    data: { [key: string]: JsonValue; type: number }
+    setCustomId(customId: string): this
+    setPlaceholder(placeholder: string): this
+    setMinValues(min: number): this
+    setMaxValues(max: number): this
+    setRequired(required?: boolean): this
+    setDisabled(disabled?: boolean): this
+    setChannelTypes(types: Array<number>): this
+    setDefaultValues(values: Array<SelectDefaultValue>): this
+    setDefaultUsers(ids: Array<string>): this
+    setDefaultRoles(ids: Array<string>): this
+    setDefaultChannels(ids: Array<string>): this
+    addDefaultUser(id: string): this
+    addDefaultRole(id: string): this
+    addDefaultChannel(id: string): this
+    addDefaultValue(id: string, type: 'user' | 'role' | 'channel'): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class InputTextBuilder {
+    setCustomId(customId: string): this
+    setStyle(style: number): this
+    setMinLength(min: number): this
+    setMaxLength(max: number): this
+    setRequired(required?: boolean): this
+    setValue(value: string): this
+    setPlaceholder(placeholder: string): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class TextDisplayBuilder {
+    setContent(content: string): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class ThumbnailBuilder {
+    setUrl(url: string): this
+    setDescription(description: string): this
+    setSpoiler(spoiler?: boolean): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class SectionBuilder {
+    addComponents(components: Array<ComponentLike>): this
+    setComponents(components: Array<ComponentLike>): this
+    setAccessory(accessory: ComponentJson | ComponentBuilder): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class MediaGalleryBuilder {
+    addItem(url: string, options?: { description?: string; spoiler?: boolean } | undefined): this
+    setItems(items: Array<MediaItemEntry>): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class FileBuilder {
+    setUrl(url: string): this
+    setSpoiler(spoiler?: boolean): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class SeparatorBuilder {
+    setDivider(divider?: boolean): this
+    setSpacing(spacing: number | 'small' | 'large'): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class ContainerBuilder {
+    addComponents(components: Array<ComponentLike>): this
+    setComponents(components: Array<ComponentLike>): this
+    setAccentColor(color: number): this
+    setSpoiler(spoiler?: boolean): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class LabelBuilder {
+    setLabel(label: string): this
+    setDescription(description: string): this
+    setComponent(component: ComponentJson | ComponentBuilder): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  class FileUploadBuilder {
+    setCustomId(customId: string): this
+    setMinValues(min: number): this
+    setMaxValues(max: number): this
+    setRequired(required?: boolean): this
+    toJSON(): { [key: string]: JsonValue; type: number }
+  }
+
+  const actionRow: () => ActionRowBuilder
+
+  const button: () => ButtonBuilder
+
+  const stringSelect: (customId: string) => StringSelectMenuBuilder
+
+  const userSelect: (customId: string) => UserSelectMenuBuilder
+
+  const roleSelect: (customId: string) => RoleSelectMenuBuilder
+
+  const mentionableSelect: (customId: string) => MentionableSelectMenuBuilder
+
+  const channelSelect: (customId: string) => ChannelSelectMenuBuilder
+
+  const inputText: (customId: string) => InputTextBuilder
+
+  const textDisplay: (content: string) => TextDisplayBuilder
+
+  const thumbnail: (url: string) => ThumbnailBuilder
+
+  const section: () => SectionBuilder
+
+  const mediaGallery: () => MediaGalleryBuilder
+
+  const file: (url: string) => FileBuilder
+
+  const separator: (divider?: boolean) => SeparatorBuilder
+
+  const container: () => ContainerBuilder
+
+  const label: (labelText: string) => LabelBuilder
+
+  const fileUpload: (customId: string) => FileUploadBuilder
+
+  const ButtonStyles: {
+    readonly Primary: 1
+    readonly Secondary: 2
+    readonly Success: 3
+    readonly Danger: 4
+  }
+
+  const InputTextStyles: { readonly Short: 1; readonly Paragraph: 2 }
+
   function embed(initial?: Embed | undefined): EmbedBuilder
 
   class EmbedBuilder {
@@ -1068,6 +1335,58 @@ declare global {
   }
 
   type RawDeleteWebhook = { webhookId: string; token?: string; reason?: string }
+
+  type ButtonStyle = 1 | 2 | 3 | 4
+
+  const ButtonStyle: {
+    readonly Primary: 1
+    readonly Secondary: 2
+    readonly Success: 3
+    readonly Danger: 4
+  }
+
+  type ComponentType = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 17 | 18 | 19
+
+  const ComponentType: {
+    readonly ActionRow: 1
+    readonly Button: 2
+    readonly StringSelect: 3
+    readonly InputText: 4
+    readonly UserSelect: 5
+    readonly RoleSelect: 6
+    readonly MentionableSelect: 7
+    readonly ChannelSelect: 8
+    readonly Section: 9
+    readonly TextDisplay: 10
+    readonly Thumbnail: 11
+    readonly MediaGallery: 12
+    readonly File: 13
+    readonly Separator: 14
+    readonly Container: 17
+    readonly Label: 18
+    readonly FileUpload: 19
+  }
+
+  type InputTextStyle = 1 | 2
+
+  const InputTextStyle: { readonly Short: 1; readonly Paragraph: 2 }
+
+  type MessageFlags = number
+
+  const MessageFlags: {
+    readonly CROSSPOSTED: 1
+    readonly IS_CROSSPOST: 2
+    readonly SUPPRESS_EMBEDS: 4
+    readonly SOURCE_MESSAGE_DELETED: 8
+    readonly URGENT: 16
+    readonly HAS_THREAD: 32
+    readonly EPHEMERAL: 64
+    readonly LOADING: 128
+    readonly FAILED_TO_MENTION_SOME_ROLES_IN_THREAD: 256
+    readonly SUPPRESS_NOTIFICATIONS: 4096
+    readonly IS_VOICE_MESSAGE: 8192
+    readonly IS_COMPONENTS_V2: 32768
+  }
 
   const flora: typeof import('./src/index')
 }

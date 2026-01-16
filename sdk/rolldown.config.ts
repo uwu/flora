@@ -31,6 +31,7 @@ export default defineConfig([
   global.kv = global.flora.kv;
   global.EmbedBuilder = global.flora.EmbedBuilder;
   global.embed = global.flora.embed;
+  global.MessageFlags = global.flora.MessageFlags;
 })(globalThis);
 `
     }

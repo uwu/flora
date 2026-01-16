@@ -105,6 +105,500 @@ var flora = (function(exports) {
   }
 
   // #endregion
+  // #region src/generated.ts
+  const ButtonStyle = {
+    Primary: 1,
+    Secondary: 2,
+    Success: 3,
+    Danger: 4
+  }
+  const ComponentType = {
+    ActionRow: 1,
+    Button: 2,
+    StringSelect: 3,
+    InputText: 4,
+    UserSelect: 5,
+    RoleSelect: 6,
+    MentionableSelect: 7,
+    ChannelSelect: 8,
+    Section: 9,
+    TextDisplay: 10,
+    Thumbnail: 11,
+    MediaGallery: 12,
+    File: 13,
+    Separator: 14,
+    Container: 17,
+    Label: 18,
+    FileUpload: 19
+  }
+  const InputTextStyle = {
+    Short: 1,
+    Paragraph: 2
+  }
+  const MessageFlags = {
+    CROSSPOSTED: 1,
+    IS_CROSSPOST: 2,
+    SUPPRESS_EMBEDS: 4,
+    SOURCE_MESSAGE_DELETED: 8,
+    URGENT: 16,
+    HAS_THREAD: 32,
+    EPHEMERAL: 64,
+    LOADING: 128,
+    FAILED_TO_MENTION_SOME_ROLES_IN_THREAD: 256,
+    SUPPRESS_NOTIFICATIONS: 4096,
+    IS_VOICE_MESSAGE: 8192,
+    IS_COMPONENTS_V2: 32768
+  }
+
+  // #endregion
+  // #region src/sdk/components.ts
+  const isBuilder = (value) => typeof value?.toJSON === 'function'
+  const resolveComponent = (value) => isBuilder(value) ? value.toJSON() : value
+  var ActionRowBuilder = class {
+    #components = []
+    addComponents(...components) {
+      this.#components.push(...components)
+      return this
+    }
+    setComponents(components) {
+      this.#components = [...components]
+      return this
+    }
+    toJSON() {
+      return {
+        type: ComponentType.ActionRow,
+        components: this.#components.map(resolveComponent)
+      }
+    }
+  }
+  var ButtonBuilder = class {
+    #data = { type: ComponentType.Button }
+    setStyle(style) {
+      this.#data.style = style
+      return this
+    }
+    setCustomId(customId) {
+      this.#data.custom_id = customId
+      return this
+    }
+    setUrl(url) {
+      this.#data.style = 5
+      this.#data.url = url
+      return this
+    }
+    setSkuId(skuId) {
+      this.#data.style = 6
+      this.#data.sku_id = skuId
+      return this
+    }
+    setLabel(label$1) {
+      this.#data.label = label$1
+      return this
+    }
+    setEmoji(emoji) {
+      this.#data.emoji = emoji
+      return this
+    }
+    setDisabled(disabled = true) {
+      this.#data.disabled = disabled
+      return this
+    }
+    toJSON() {
+      return { ...this.#data }
+    }
+  }
+  var SelectMenuBuilderBase = class {
+    data
+    constructor(type, customId) {
+      this.data = {
+        type,
+        custom_id: customId
+      }
+    }
+    setCustomId(customId) {
+      this.data.custom_id = customId
+      return this
+    }
+    setPlaceholder(placeholder) {
+      this.data.placeholder = placeholder
+      return this
+    }
+    setMinValues(min) {
+      this.data.min_values = min
+      return this
+    }
+    setMaxValues(max) {
+      this.data.max_values = max
+      return this
+    }
+    setRequired(required = true) {
+      this.data.required = required
+      return this
+    }
+    setDisabled(disabled = true) {
+      this.data.disabled = disabled
+      return this
+    }
+    setChannelTypes(types) {
+      this.data.channel_types = [...types]
+      return this
+    }
+    setDefaultValues(values) {
+      this.data.default_values = values.map((value) => ({ ...value }))
+      return this
+    }
+    setDefaultUsers(ids) {
+      this.data.default_users = [...ids]
+      return this
+    }
+    setDefaultRoles(ids) {
+      this.data.default_roles = [...ids]
+      return this
+    }
+    setDefaultChannels(ids) {
+      this.data.default_channels = [...ids]
+      return this
+    }
+    addDefaultUser(id) {
+      const current = this.data.default_users ?? []
+      this.data.default_users = [...current, id]
+      return this
+    }
+    addDefaultRole(id) {
+      const current = this.data.default_roles ?? []
+      this.data.default_roles = [...current, id]
+      return this
+    }
+    addDefaultChannel(id) {
+      const current = this.data.default_channels ?? []
+      this.data.default_channels = [...current, id]
+      return this
+    }
+    addDefaultValue(id, type) {
+      const current = this.data.default_values ?? []
+      this.data.default_values = [...current, {
+        id,
+        type
+      }]
+      return this
+    }
+    toJSON() {
+      return { ...this.data }
+    }
+  }
+  var StringSelectMenuBuilder = class extends SelectMenuBuilderBase {
+    constructor(customId) {
+      super(ComponentType.StringSelect, customId)
+    }
+    setOptions(options) {
+      this.data.options = options.map((option) => ({ ...option }))
+      return this
+    }
+    addOptions(...options) {
+      const current = this.data.options ?? []
+      this.data.options = [...current, ...options.map((option) => ({ ...option }))]
+      return this
+    }
+  }
+  var UserSelectMenuBuilder = class extends SelectMenuBuilderBase {
+    constructor(customId) {
+      super(ComponentType.UserSelect, customId)
+    }
+  }
+  var RoleSelectMenuBuilder = class extends SelectMenuBuilderBase {
+    constructor(customId) {
+      super(ComponentType.RoleSelect, customId)
+    }
+  }
+  var MentionableSelectMenuBuilder = class extends SelectMenuBuilderBase {
+    constructor(customId) {
+      super(ComponentType.MentionableSelect, customId)
+    }
+  }
+  var ChannelSelectMenuBuilder = class extends SelectMenuBuilderBase {
+    constructor(customId) {
+      super(ComponentType.ChannelSelect, customId)
+    }
+  }
+  var InputTextBuilder = class {
+    #data
+    constructor(customId) {
+      this.#data = {
+        type: ComponentType.InputText,
+        custom_id: customId
+      }
+    }
+    setCustomId(customId) {
+      this.#data.custom_id = customId
+      return this
+    }
+    setStyle(style) {
+      this.#data.style = style
+      return this
+    }
+    setMinLength(min) {
+      this.#data.min_length = min
+      return this
+    }
+    setMaxLength(max) {
+      this.#data.max_length = max
+      return this
+    }
+    setRequired(required = true) {
+      this.#data.required = required
+      return this
+    }
+    setValue(value) {
+      this.#data.value = value
+      return this
+    }
+    setPlaceholder(placeholder) {
+      this.#data.placeholder = placeholder
+      return this
+    }
+    toJSON() {
+      return { ...this.#data }
+    }
+  }
+  var TextDisplayBuilder = class {
+    #data
+    constructor(content) {
+      this.#data = {
+        type: ComponentType.TextDisplay,
+        content
+      }
+    }
+    setContent(content) {
+      this.#data.content = content
+      return this
+    }
+    toJSON() {
+      return { ...this.#data }
+    }
+  }
+  var ThumbnailBuilder = class {
+    #data
+    constructor(url) {
+      this.#data = {
+        type: ComponentType.Thumbnail,
+        media: { url }
+      }
+    }
+    setUrl(url) {
+      this.#data.media = { url }
+      return this
+    }
+    setDescription(description) {
+      this.#data.description = description
+      return this
+    }
+    setSpoiler(spoiler = true) {
+      this.#data.spoiler = spoiler
+      return this
+    }
+    toJSON() {
+      return { ...this.#data }
+    }
+  }
+  var SectionBuilder = class {
+    #components = []
+    #accessory
+    addComponents(...components) {
+      this.#components.push(...components)
+      return this
+    }
+    setComponents(components) {
+      this.#components = [...components]
+      return this
+    }
+    setAccessory(accessory) {
+      this.#accessory = accessory
+      return this
+    }
+    toJSON() {
+      return {
+        type: ComponentType.Section,
+        components: this.#components.map(resolveComponent),
+        accessory: this.#accessory ? resolveComponent(this.#accessory) : null
+      }
+    }
+  }
+  var MediaGalleryBuilder = class {
+    #items = []
+    addItem(url, options) {
+      const item = {
+        media: { url },
+        description: options?.description,
+        spoiler: options?.spoiler
+      }
+      this.#items.push(item)
+      return this
+    }
+    setItems(items) {
+      this.#items = items.map((item) => ({
+        ...item,
+        media: { ...item.media }
+      }))
+      return this
+    }
+    toJSON() {
+      return {
+        type: ComponentType.MediaGallery,
+        items: this.#items.map((item) => ({
+          ...item,
+          media: { ...item.media }
+        }))
+      }
+    }
+  }
+  var FileBuilder = class {
+    #data
+    constructor(url) {
+      this.#data = {
+        type: ComponentType.File,
+        file: { url }
+      }
+    }
+    setUrl(url) {
+      this.#data.file = { url }
+      return this
+    }
+    setSpoiler(spoiler = true) {
+      this.#data.spoiler = spoiler
+      return this
+    }
+    toJSON() {
+      return { ...this.#data }
+    }
+  }
+  var SeparatorBuilder = class {
+    #data
+    constructor(divider = true) {
+      this.#data = {
+        type: ComponentType.Separator,
+        divider
+      }
+    }
+    setDivider(divider = true) {
+      this.#data.divider = divider
+      return this
+    }
+    setSpacing(spacing) {
+      this.#data.spacing = spacing
+      return this
+    }
+    toJSON() {
+      return { ...this.#data }
+    }
+  }
+  var ContainerBuilder = class {
+    #components = []
+    #accentColor
+    #spoiler
+    addComponents(...components) {
+      this.#components.push(...components)
+      return this
+    }
+    setComponents(components) {
+      this.#components = [...components]
+      return this
+    }
+    setAccentColor(color) {
+      this.#accentColor = color
+      return this
+    }
+    setSpoiler(spoiler = true) {
+      this.#spoiler = spoiler
+      return this
+    }
+    toJSON() {
+      const data = {
+        type: ComponentType.Container,
+        components: this.#components.map(resolveComponent)
+      }
+      if (this.#accentColor !== undefined) data.accent_color = this.#accentColor
+      if (this.#spoiler !== undefined) data.spoiler = this.#spoiler
+      return data
+    }
+  }
+  var LabelBuilder = class {
+    #label
+    #description
+    #component
+    constructor(label$1) {
+      this.#label = label$1
+    }
+    setLabel(label$1) {
+      this.#label = label$1
+      return this
+    }
+    setDescription(description) {
+      this.#description = description
+      return this
+    }
+    setComponent(component) {
+      this.#component = component
+      return this
+    }
+    toJSON() {
+      const data = {
+        type: ComponentType.Label,
+        label: this.#label,
+        component: this.#component ? resolveComponent(this.#component) : null
+      }
+      if (this.#description !== undefined) data.description = this.#description
+      return data
+    }
+  }
+  var FileUploadBuilder = class {
+    #data
+    constructor(customId) {
+      this.#data = {
+        type: ComponentType.FileUpload,
+        custom_id: customId
+      }
+    }
+    setCustomId(customId) {
+      this.#data.custom_id = customId
+      return this
+    }
+    setMinValues(min) {
+      this.#data.min_values = min
+      return this
+    }
+    setMaxValues(max) {
+      this.#data.max_values = max
+      return this
+    }
+    setRequired(required = true) {
+      this.#data.required = required
+      return this
+    }
+    toJSON() {
+      return { ...this.#data }
+    }
+  }
+  const actionRow = () => new ActionRowBuilder()
+  const button = () => new ButtonBuilder()
+  const stringSelect = (customId) => new StringSelectMenuBuilder(customId)
+  const userSelect = (customId) => new UserSelectMenuBuilder(customId)
+  const roleSelect = (customId) => new RoleSelectMenuBuilder(customId)
+  const mentionableSelect = (customId) => new MentionableSelectMenuBuilder(customId)
+  const channelSelect = (customId) => new ChannelSelectMenuBuilder(customId)
+  const inputText = (customId) => new InputTextBuilder(customId)
+  const textDisplay = (content) => new TextDisplayBuilder(content)
+  const thumbnail = (url) => new ThumbnailBuilder(url)
+  const section = () => new SectionBuilder()
+  const mediaGallery = () => new MediaGalleryBuilder()
+  const file = (url) => new FileBuilder(url)
+  const separator = (divider = true) => new SeparatorBuilder(divider)
+  const container = () => new ContainerBuilder()
+  const label = (labelText) => new LabelBuilder(labelText)
+  const fileUpload = (customId) => new FileUploadBuilder(customId)
+  const ButtonStyles = ButtonStyle
+  const InputTextStyles = InputTextStyle
+
+  // #endregion
   // #region src/sdk/embed.ts
   var EmbedBuilder = class {
     #embed
@@ -338,21 +832,62 @@ var flora = (function(exports) {
   }
 
   // #endregion
+  exports.ActionRowBuilder = ActionRowBuilder
+  exports.ButtonBuilder = ButtonBuilder
+  exports.ButtonStyle = ButtonStyle
+  exports.ButtonStyles = ButtonStyles
+  exports.ChannelSelectMenuBuilder = ChannelSelectMenuBuilder
+  exports.ComponentType = ComponentType
+  exports.ContainerBuilder = ContainerBuilder
   exports.EmbedBuilder = EmbedBuilder
+  exports.FileBuilder = FileBuilder
+  exports.FileUploadBuilder = FileUploadBuilder
+  exports.InputTextBuilder = InputTextBuilder
+  exports.InputTextStyle = InputTextStyle
+  exports.InputTextStyles = InputTextStyles
   exports.KvStore = KvStore
+  exports.LabelBuilder = LabelBuilder
+  exports.MediaGalleryBuilder = MediaGalleryBuilder
+  exports.MentionableSelectMenuBuilder = MentionableSelectMenuBuilder
+  exports.MessageFlags = MessageFlags
+  exports.RoleSelectMenuBuilder = RoleSelectMenuBuilder
+  exports.SectionBuilder = SectionBuilder
+  exports.SelectMenuBuilderBase = SelectMenuBuilderBase
+  exports.SeparatorBuilder = SeparatorBuilder
+  exports.StringSelectMenuBuilder = StringSelectMenuBuilder
+  exports.TextDisplayBuilder = TextDisplayBuilder
+  exports.ThumbnailBuilder = ThumbnailBuilder
+  exports.UserSelectMenuBuilder = UserSelectMenuBuilder
+  exports.actionRow = actionRow
+  exports.button = button
+  exports.channelSelect = channelSelect
+  exports.container = container
   exports.createBot = createBot
   exports.embed = embed
+  exports.file = file
+  exports.fileUpload = fileUpload
   exports.flattenCommands = flattenCommands
   exports.flattenInteractionOptions = flattenInteractionOptions
   exports.getSubcommand = getSubcommand
   exports.getSubcommandGroup = getSubcommandGroup
   exports.handleSubcommand = handleSubcommand
   exports.hasRole = hasRole
+  exports.inputText = inputText
   exports.kv = kv
+  exports.label = label
+  exports.mediaGallery = mediaGallery
+  exports.mentionableSelect = mentionableSelect
   exports.prefix = prefix
   exports.rest = rest
+  exports.roleSelect = roleSelect
+  exports.section = section
+  exports.separator = separator
   exports.slash = slash
   exports.store = store
+  exports.stringSelect = stringSelect
+  exports.textDisplay = textDisplay
+  exports.thumbnail = thumbnail
+  exports.userSelect = userSelect
   return exports
 })({})
 ;(function(global) {
@@ -366,4 +901,5 @@ var flora = (function(exports) {
   global.kv = global.flora.kv
   global.EmbedBuilder = global.flora.EmbedBuilder
   global.embed = global.flora.embed
+  global.MessageFlags = global.flora.MessageFlags
 })(globalThis)

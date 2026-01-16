@@ -6,7 +6,6 @@ const repoRefRegex =
   /\b(?<owner>[A-Za-z\d-]+)\/(?<repo>[\w.-]+)(?:(?:#|\/(?:issues|pull)\/)(?<issue>\d+)(?:#issuecomment-(?<comment>\d+))?)?\b/g
 
 const allowed = ['981306328930713661', '886194087072510012']
-const SUPPRESS_EMBEDS = 1 << 2
 
 on('messageCreate', async (ctx) => {
   const msg = ctx.msg
@@ -170,7 +169,7 @@ on('messageCreate', async (ctx) => {
       ? `Showing ${limited.length} of ${embeds.length} GitHub links.`
       : undefined
     await ctx.reply({ embeds: limited, content })
-    await ctx.edit({ flags: SUPPRESS_EMBEDS })
+    await ctx.edit({ flags: MessageFlags.SUPPRESS_EMBEDS })
   }
 })
 
