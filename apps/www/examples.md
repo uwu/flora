@@ -106,6 +106,17 @@ const info = embed()
 await ctx.reply({ embeds: [info] })
 ```
 
+## Components
+
+```ts
+const row = actionRow().addComponents(
+  button().setCustomId('primary').setLabel('Primary').setStyle(ButtonStyle.Primary),
+  button().setCustomId('danger').setLabel('Danger').setStyle(ButtonStyle.Danger)
+)
+
+await ctx.reply({ content: 'Buttons', components: [row.toJSON()] })
+```
+
 ## KV store
 
 ```ts

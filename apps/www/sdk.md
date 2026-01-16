@@ -157,6 +157,34 @@ const status = embed()
 await ctx.reply({ embeds: [status] })
 ```
 
+## Components
+
+```ts
+const row = actionRow().addComponents(
+  button().setCustomId('ping').setLabel('Ping').setStyle(ButtonStyle.Primary),
+  button().setUrl('https://example.com').setLabel('Docs')
+)
+
+await ctx.reply({ content: 'Pick one', components: [row.toJSON()] })
+```
+
+V2 components require a message flag:
+
+```ts
+const card = container()
+  .setAccentColor(0x3366ff)
+  .addComponents(
+    section()
+      .addComponents(textDisplay('Flora runtime'))
+      .setAccessory(thumbnail('https://example.com/logo.png'))
+  )
+
+await ctx.reply({
+  components: [card.toJSON()],
+  flags: MessageFlags.IS_COMPONENTS_V2
+})
+```
+
 ## KV store
 
 ```ts
