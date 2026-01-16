@@ -492,12 +492,13 @@ export class LabelBuilder implements ComponentBuilder {
   }
 
   toJSON(): ComponentJson {
-    return {
+    const data: ComponentJson = {
       type: ComponentType.Label,
       label: this.#label,
-      description: this.#description,
       component: this.#component ? resolveComponent(this.#component) : null
     }
+    if (this.#description !== undefined) data.description = this.#description
+    return data
   }
 }
 
