@@ -2,7 +2,8 @@
 
 use axum::{
     Json,
-    extract::{Path, Query},
+    extract::{Path, Query, State},
+    http::HeaderMap,
     response::{
         IntoResponse,
         sse::{Event, KeepAlive, Sse},
@@ -13,7 +14,14 @@ use std::convert::Infallible;
 use tokio_stream::StreamExt as _;
 use utoipa::{IntoParams, OpenApi, ToSchema};
 
-use crate::log_sink::{self, LogEntry};
+use crate::{
+    handlers::{
+        auth::{ensure_guild_admin, require_identity},
+        error::ApiError,
+    },
+    log_sink::{self, LogEntry},
+    state::AppState,
+};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -43,16 +51,25 @@ fn default_limit() -> usize {
     ),
     tag = "logs"
 )]
-pub async fn get_logs(Query(query): Query<LogsQuery>) -> impl IntoResponse {
+pub async fn get_logs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<LogsQuery>,
+) -> Result<impl IntoResponse, ApiError> {
+    require_identity(&state, &headers).await?;
     let limit = query.limit.min(1000);
     let logs = log_sink::log_sink().recent(limit);
-    Json(logs)
+    Ok(Json(logs))
 }
 
 /// Stream logs via Server-Sent Events.
 ///
 /// Note: This endpoint is not documented in OpenAPI due to SSE response type limitations.
-pub async fn stream_logs() -> impl IntoResponse {
+pub async fn stream_logs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, ApiError> {
+    require_identity(&state, &headers).await?;
     let receiver = log_sink::log_sink().subscribe();
 
     let stream = tokio_stream::wrappers::BroadcastStream::new(receiver).filter_map(|result| {
@@ -65,7 +82,7 @@ pub async fn stream_logs() -> impl IntoResponse {
         }
     });
 
-    Sse::new(stream).keep_alive(KeepAlive::default())
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
 
 /// Get recent logs for a specific guild.
@@ -82,18 +99,28 @@ pub async fn stream_logs() -> impl IntoResponse {
     tag = "logs"
 )]
 pub async fn get_guild_logs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
     Path(guild_id): Path<String>,
     Query(query): Query<LogsQuery>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
+    let identity = require_identity(&state, &headers).await?;
+    ensure_guild_admin(&state, &identity, &guild_id).await?;
     let limit = query.limit.min(1000);
     let logs = log_sink::log_sink().recent_for_guild(&guild_id, limit);
-    Json(logs)
+    Ok(Json(logs))
 }
 
 /// Stream logs for a specific guild via Server-Sent Events.
 ///
 /// Note: This endpoint is not documented in OpenAPI due to SSE response type limitations.
-pub async fn stream_guild_logs(Path(guild_id): Path<String>) -> impl IntoResponse {
+pub async fn stream_guild_logs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(guild_id): Path<String>,
+) -> Result<impl IntoResponse, ApiError> {
+    let identity = require_identity(&state, &headers).await?;
+    ensure_guild_admin(&state, &identity, &guild_id).await?;
     let receiver = log_sink::log_sink().subscribe();
 
     let stream = tokio_stream::wrappers::BroadcastStream::new(receiver).filter_map(move |result| {
@@ -111,5 +138,5 @@ pub async fn stream_guild_logs(Path(guild_id): Path<String>) -> impl IntoRespons
         }
     });
 
-    Sse::new(stream).keep_alive(KeepAlive::default())
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
