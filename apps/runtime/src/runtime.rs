@@ -137,6 +137,7 @@ impl Worker {
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 
+    #[allow(dead_code)]
     async fn load_user_script(&self, path: PathBuf) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
         self.send_cmd(WorkerCommand::LoadUserScript {
@@ -261,6 +262,7 @@ impl BotRuntime {
     }
 
     /// Load a user script into worker 0's default runtime (for local dev).
+    #[allow(dead_code)]
     pub async fn load_local_script(&self, path: impl Into<PathBuf>) -> Result<(), AnyError> {
         let path = path.into();
         self.workers[0].load_user_script(path).await
