@@ -1,4 +1,5 @@
 use axum::{Json, Router, routing::get};
+use tower_http::compression::CompressionLayer;
 use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable as ScalarServable};
 
@@ -37,7 +38,7 @@ pub fn create_router() -> Router<AppState> {
     )]
     struct ApiDoc;
 
-    let api_router = Router::new()
+    let compressed_api = Router::new()
         .nest("/auth", auth::router())
         .nest("/guilds", guilds::router())
         .nest("/tokens", tokens::router())
@@ -46,10 +47,15 @@ pub fn create_router() -> Router<AppState> {
         .route("/health", get(health::health_check))
         .route("/metrics", get(metrics::get_metrics))
         .route("/metrics/json", get(metrics::get_metrics_json))
+        .layer(CompressionLayer::new());
+
+    let logs_router = Router::new()
         .route("/logs", get(logs::get_logs))
         .route("/logs/stream", get(logs::stream_logs))
         .route("/logs/{guild_id}", get(logs::get_guild_logs))
         .route("/logs/{guild_id}/stream", get(logs::stream_guild_logs));
+
+    let api_router = Router::new().merge(compressed_api).merge(logs_router);
 
     let oapi_router = Router::new()
         .merge(Scalar::with_url("/scalar", ApiDoc::openapi()))

@@ -36,7 +36,7 @@ use std::{future::IntoFuture, sync::Arc};
 use time::macros::format_description;
 use tokens::TokenService;
 use tokio::net::TcpListener;
-use tower_http::{compression::CompressionLayer, timeout::TimeoutLayer};
+use tower_http::timeout::TimeoutLayer;
 use tower_layer::layer_fn;
 use tracing::error;
 use tracing_error::ErrorLayer;
@@ -189,7 +189,6 @@ async fn main() -> Result<()> {
             StatusCode::REQUEST_TIMEOUT,
             Duration::from_secs(10),
         ))
-        .layer(CompressionLayer::new())
         .layer(layer_fn(LoggingMiddleware))
         .with_state(api_state);
 
