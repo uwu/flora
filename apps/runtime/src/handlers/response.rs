@@ -45,6 +45,32 @@ where
     }
 }
 
+/// Plain text wrapper for endpoints that return text bodies.
+#[derive(Debug)]
+pub struct ApiText(
+    pub  (
+        http::StatusCode,
+        [(http::header::HeaderName, &'static str); 1],
+        String,
+    ),
+);
+
+impl IntoResponse for ApiText {
+    fn into_response(self) -> Response {
+        self.0.into_response()
+    }
+}
+
+impl IntoResponses for ApiText {
+    fn responses() -> BTreeMap<String, RefOr<utoipa::openapi::response::Response>> {
+        let response = ResponseBuilder::new()
+            .description("Successful response")
+            .content("text/plain", ContentBuilder::new().build())
+            .build();
+        BTreeMap::from([("200".to_string(), RefOr::T(response))])
+    }
+}
+
 /// Simple redirect wrapper that documents a 302.
 pub struct ApiRedirect {
     pub response: Response,

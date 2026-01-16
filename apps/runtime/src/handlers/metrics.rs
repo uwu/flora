@@ -1,12 +1,20 @@
 //! Metrics endpoint for Prometheus scraping.
 
 use axum::{
-    http::{StatusCode, header},
-    response::IntoResponse,
+    extract::State,
+    http::{HeaderMap, StatusCode, header},
 };
 use utoipa::OpenApi;
 
-use crate::metrics;
+use crate::{
+    handlers::{
+        auth::require_identity,
+        error::ApiError,
+        response::{ApiJson, ApiText},
+    },
+    metrics,
+    state::AppState,
+};
 
 #[derive(OpenApi)]
 #[openapi(paths(get_metrics, get_metrics_json))]
@@ -21,13 +29,17 @@ pub struct MetricsApi;
     ),
     tag = "metrics"
 )]
-pub async fn get_metrics() -> impl IntoResponse {
+pub async fn get_metrics(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<ApiText, ApiError> {
+    require_identity(&state, &headers).await?;
     let body = metrics::metrics().prometheus_format();
-    (
+    Ok(ApiText((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
         body,
-    )
+    )))
 }
 
 /// Get metrics as JSON.
@@ -39,9 +51,13 @@ pub async fn get_metrics() -> impl IntoResponse {
     ),
     tag = "metrics"
 )]
-pub async fn get_metrics_json() -> impl IntoResponse {
+pub async fn get_metrics_json(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<ApiJson<MetricsSnapshot>, ApiError> {
+    require_identity(&state, &headers).await?;
     let snapshot = metrics::metrics().snapshot();
-    (StatusCode::OK, axum::Json(snapshot))
+    Ok(ApiJson(axum::Json(snapshot)))
 }
 
 /// Alias for utoipa schema generation.

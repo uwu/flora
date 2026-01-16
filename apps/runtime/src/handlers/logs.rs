@@ -4,10 +4,7 @@ use axum::{
     Json,
     extract::{Path, Query, State},
     http::HeaderMap,
-    response::{
-        IntoResponse,
-        sse::{Event, KeepAlive, Sse},
-    },
+    response::sse::{Event, KeepAlive, Sse},
 };
 use serde::Deserialize;
 use std::convert::Infallible;
@@ -18,6 +15,7 @@ use crate::{
     handlers::{
         auth::{ensure_guild_admin, require_identity},
         error::ApiError,
+        response::ApiJson,
     },
     log_sink::{self, LogEntry},
     state::AppState,
@@ -55,11 +53,11 @@ pub async fn get_logs(
     State(state): State<AppState>,
     headers: HeaderMap,
     Query(query): Query<LogsQuery>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<ApiJson<Vec<LogEntry>>, ApiError> {
     require_identity(&state, &headers).await?;
     let limit = query.limit.min(1000);
     let logs = log_sink::log_sink().recent(limit);
-    Ok(Json(logs))
+    Ok(ApiJson(Json(logs)))
 }
 
 /// Stream logs via Server-Sent Events.
@@ -68,7 +66,7 @@ pub async fn get_logs(
 pub async fn stream_logs(
     State(state): State<AppState>,
     headers: HeaderMap,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>>, ApiError> {
     require_identity(&state, &headers).await?;
     let receiver = log_sink::log_sink().subscribe();
 
@@ -103,12 +101,12 @@ pub async fn get_guild_logs(
     headers: HeaderMap,
     Path(guild_id): Path<String>,
     Query(query): Query<LogsQuery>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<ApiJson<Vec<LogEntry>>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
     ensure_guild_admin(&state, &identity, &guild_id).await?;
     let limit = query.limit.min(1000);
     let logs = log_sink::log_sink().recent_for_guild(&guild_id, limit);
-    Ok(Json(logs))
+    Ok(ApiJson(Json(logs)))
 }
 
 /// Stream logs for a specific guild via Server-Sent Events.
@@ -118,7 +116,7 @@ pub async fn stream_guild_logs(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(guild_id): Path<String>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
     ensure_guild_admin(&state, &identity, &guild_id).await?;
     let receiver = log_sink::log_sink().subscribe();
