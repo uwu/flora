@@ -1,5 +1,6 @@
 import { defineConfig } from 'rolldown'
 import { globalTypes } from './src/build/plugins/global-types'
+import { buildRuntimeGlobals } from './src/build/runtime-globals'
 
 export default defineConfig([
   // SDK bundle
@@ -19,21 +20,7 @@ export default defineConfig([
       format: 'iife',
       name: 'flora',
       exports: 'named',
-      footer: `
-;(function (global) {
-  if (!global.flora) return;
-  global.createBot = global.flora.createBot;
-  global.prefix = global.flora.prefix;
-  global.slash = global.flora.slash;
-  global.hasRole = global.flora.hasRole;
-  global.getSubcommand = global.flora.getSubcommand;
-  global.getSubcommandGroup = global.flora.getSubcommandGroup;
-  global.kv = global.flora.kv;
-  global.EmbedBuilder = global.flora.EmbedBuilder;
-  global.embed = global.flora.embed;
-  global.MessageFlags = global.flora.MessageFlags;
-})(globalThis);
-`
+      footer: buildRuntimeGlobals('./src/index.ts')
     }
   },
 
