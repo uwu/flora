@@ -1,4 +1,5 @@
 export * from './commands'
+export * from './components'
 export * from './embed'
 export * from './helpers'
 export * from './kv'
