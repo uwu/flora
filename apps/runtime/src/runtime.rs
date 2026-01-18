@@ -64,6 +64,12 @@ enum WorkerCommand {
         path: PathBuf,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
+    /// Load the SDK bundle from pre-read source (avoids per-worker disk I/O).
+    LoadSdkBundleSource {
+        name: String,
+        code: String,
+        respond_to: oneshot::Sender<Result<(), AnyError>>,
+    },
     /// Load a user script into the default runtime.
     LoadUserScript {
         path: PathBuf,
@@ -132,6 +138,16 @@ impl Worker {
         let (tx, rx) = oneshot::channel();
         self.send_cmd(WorkerCommand::LoadSdkBundle {
             path,
+            respond_to: tx,
+        })?;
+        rx.await.map_err(|_| AnyError::msg("worker stopped"))?
+    }
+
+    async fn load_sdk_bundle_source(&self, name: String, code: String) -> Result<(), AnyError> {
+        let (tx, rx) = oneshot::channel();
+        self.send_cmd(WorkerCommand::LoadSdkBundleSource {
+            name,
+            code,
             respond_to: tx,
         })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
@@ -252,10 +268,12 @@ impl BotRuntime {
     /// Load the SDK bundle into all workers' default runtimes.
     pub async fn load_sdk_bundle(&self, path: impl Into<PathBuf>) -> Result<(), AnyError> {
         let path = path.into();
+        let code = tokio::fs::read_to_string(&path).await?;
+        let name = path.to_string_lossy().to_string();
         let futures: Vec<_> = self
             .workers
             .iter()
-            .map(|w| w.load_sdk_bundle(path.clone()))
+            .map(|w| w.load_sdk_bundle_source(name.clone(), code.clone()))
             .collect();
         futures::future::try_join_all(futures).await?;
         Ok(())
@@ -388,6 +406,7 @@ fn worker_thread(
         let mut guild_runtimes: HashMap<String, JsRuntimeState> = HashMap::new();
         let mut default_runtime: Option<JsRuntimeState> = None;
         let mut cron_interval = tokio::time::interval(Duration::from_secs(1));
+        let mut last_sdk_bundle: Option<(String, String)> = None;
 
         info!(target: "flora:runtime", worker_id, "worker thread started");
 
@@ -430,6 +449,30 @@ fn worker_thread(
                                 Some(rt) => load_script_from_path(rt, path, worker_id, &limits).await,
                                 None => Err(AnyError::msg("default runtime not initialized")),
                             };
+                            if let Err(ref err) = result {
+                                error!(target: "flora:runtime", worker_id, ?err, "failed to load SDK bundle");
+                            }
+                            let _ = respond_to.send(result);
+                        }
+
+                        WorkerCommand::LoadSdkBundleSource { name, code, respond_to } => {
+                            let result = match default_runtime.as_mut() {
+                                Some(rt) => {
+                                    load_script_source(
+                                        &mut rt.runtime,
+                                        ModuleName::from(name.clone()),
+                                        code.clone(),
+                                        name.clone(),
+                                        worker_id,
+                                        &limits,
+                                    )
+                                    .await
+                                }
+                                None => Err(AnyError::msg("default runtime not initialized")),
+                            };
+                            if result.is_ok() {
+                                last_sdk_bundle = Some((name.clone(), code));
+                            }
                             if let Err(ref err) = result {
                                 error!(target: "flora:runtime", worker_id, ?err, "failed to load SDK bundle");
                             }
