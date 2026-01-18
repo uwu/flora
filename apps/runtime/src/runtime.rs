@@ -84,13 +84,13 @@ enum WorkerCommand {
     DispatchEvent {
         guild_id: Option<String>,
         event: String,
-        payload: Value,
+        payload: Arc<Value>,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
     /// Broadcast an event to all runtimes on this worker.
     BroadcastEvent {
         event: String,
-        payload: Value,
+        payload: Arc<Value>,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
     /// Unload a guild's runtime.
@@ -176,7 +176,7 @@ impl Worker {
         &self,
         guild_id: Option<String>,
         event: String,
-        payload: Value,
+        payload: Arc<Value>,
     ) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
         self.send_cmd(WorkerCommand::DispatchEvent {
@@ -192,7 +192,7 @@ impl Worker {
         let (tx, rx) = oneshot::channel();
         self.send_cmd(WorkerCommand::BroadcastEvent {
             event,
-            payload,
+            payload: Arc::new(payload),
             respond_to: tx,
         })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
@@ -305,6 +305,7 @@ impl BotRuntime {
         guild_id: Option<String>,
         payload: Value,
     ) -> Result<(), AnyError> {
+        let payload = Arc::new(payload);
         match &guild_id {
             Some(gid) => {
                 let worker_idx = self.worker_for_guild(gid);
@@ -323,7 +324,7 @@ impl BotRuntime {
                     return Ok(());
                 }
                 self.workers[worker_idx]
-                    .dispatch(guild_id, event.to_string(), payload)
+                    .dispatch(guild_id, event.to_string(), Arc::clone(&payload))
                     .await
             }
             None => {
@@ -331,7 +332,7 @@ impl BotRuntime {
                 let futures: Vec<_> = self
                     .workers
                     .iter()
-                    .map(|w| w.broadcast(event.to_string(), payload.clone()))
+                    .map(|w| w.broadcast(event.to_string(), Arc::clone(&payload)))
                     .collect();
                 futures::future::try_join_all(futures).await?;
                 Ok(())
@@ -1002,7 +1003,7 @@ async fn dispatch_to_worker(
     default_runtime: &mut Option<JsRuntimeState>,
     guild_id: Option<String>,
     event: String,
-    payload: Value,
+    payload: Arc<Value>,
     worker_id: usize,
     limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
@@ -1022,7 +1023,7 @@ async fn broadcast_to_worker(
     guild_runtimes: &mut HashMap<String, JsRuntimeState>,
     default_runtime: &mut Option<JsRuntimeState>,
     event: String,
-    payload: Value,
+    payload: Arc<Value>,
     worker_id: usize,
     limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
@@ -1048,7 +1049,7 @@ async fn broadcast_to_worker(
 async fn dispatch_into_runtime(
     js_state: &mut JsRuntimeState,
     event: String,
-    payload: Value,
+    payload: Arc<Value>,
     worker_id: usize,
     limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
