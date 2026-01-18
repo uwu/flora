@@ -188,11 +188,11 @@ impl Worker {
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 
-    async fn broadcast(&self, event: String, payload: Value) -> Result<(), AnyError> {
+    async fn broadcast(&self, event: String, payload: Arc<Value>) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
         self.send_cmd(WorkerCommand::BroadcastEvent {
             event,
-            payload: Arc::new(payload),
+            payload,
             respond_to: tx,
         })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
@@ -493,10 +493,6 @@ fn worker_thread(
                         }
 
                         WorkerCommand::DeployGuild { deployment, respond_to } => {
-                            {
-                                let mut reg = cron_registry.lock();
-                                reg.clear_guild(&deployment.guild_id);
-                            }
                             let guild_id = deployment.guild_id.clone();
                             let deployment_clone = deployment.clone();
                             let result = deploy_guild_to_worker(
