@@ -789,80 +789,107 @@ async fn deploy_guild_to_worker(
     cron_registry: SharedCronRegistry,
 ) -> Result<(), AnyError> {
     let guild_id = deployment.guild_id.clone();
-
-    if let Some(old) = guild_runtimes.remove(&guild_id) {
-        drop(old);
-        info!(target: "flora:runtime", worker_id, guild_id, "Dropped old guild runtime");
+    let saved_runtime = guild_runtimes.remove(&guild_id);
+    let saved_crons = {
+        let reg = cron_registry.lock();
+        reg.jobs.get(&Some(guild_id.clone())).cloned()
+    };
+    {
+        let mut reg = cron_registry.lock();
+        reg.clear_guild(&guild_id);
     }
 
     info!(target: "flora:runtime", worker_id, guild_id, "Creating guild runtime");
 
-    let mut runtime = new_js_runtime(
-        http.clone(),
-        kv.clone(),
-        Some(guild_id.clone()),
-        cron_registry,
-    );
+    let result = async {
+        let mut runtime = new_js_runtime(
+            http.clone(),
+            kv.clone(),
+            Some(guild_id.clone()),
+            cron_registry.clone(),
+        );
 
-    {
-        let _isolate_guard = enter_isolate(&mut runtime.runtime);
-        let code = format!("globalThis.__floraGuildId = \"{}\";", guild_id);
+        {
+            let _isolate_guard = enter_isolate(&mut runtime.runtime);
+            let code = format!("globalThis.__floraGuildId = \"{}\";", guild_id);
+            runtime
+                .runtime
+                .execute_script("flora:guild_context", code)?;
+        }
+
         runtime
             .runtime
-            .execute_script("flora:guild_context", code)?;
+            .execute_script("flora:bootstrap", RUNTIME_PRELUDE)?;
+        run_event_loop_with_timeout(
+            &mut runtime.runtime,
+            PollEventLoopOptions::default(),
+            limits.boot_timeout,
+            worker_id,
+            "bootstrap",
+        )
+        .await?;
+
+        {
+            let context = runtime.runtime.main_context();
+            let isolate = runtime.runtime.v8_isolate();
+            let _isolate_guard = IsolateEnterGuard::new(isolate);
+            runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
+        }
+
+        info!(target: "flora:runtime", worker_id, guild_id, path = SDK_BUNDLE_PATH, "Loading SDK bundle");
+        load_script_from_path(
+            &mut runtime,
+            PathBuf::from(SDK_BUNDLE_PATH),
+            worker_id,
+            limits,
+        )
+        .await?;
+
+        let module_name = ModuleName::from(deployment.module_name());
+        let script_name = module_name.as_str().to_string();
+        info!(target: "flora:runtime", worker_id, guild_id, script = script_name, "Loading guild script");
+        load_script_source(
+            &mut runtime.runtime,
+            module_name,
+            deployment.bundle.clone(),
+            script_name,
+            worker_id,
+            limits,
+        )
+        .await?;
+
+        {
+            let context = runtime.runtime.main_context();
+            let isolate = runtime.runtime.v8_isolate();
+            let _isolate_guard = IsolateEnterGuard::new(isolate);
+            runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
+        }
+
+        Ok::<JsRuntimeState, AnyError>(runtime)
     }
+    .await;
 
-    runtime
-        .runtime
-        .execute_script("flora:bootstrap", RUNTIME_PRELUDE)?;
-    run_event_loop_with_timeout(
-        &mut runtime.runtime,
-        PollEventLoopOptions::default(),
-        limits.boot_timeout,
-        worker_id,
-        "bootstrap",
-    )
-    .await?;
-
-    {
-        let context = runtime.runtime.main_context();
-        let isolate = runtime.runtime.v8_isolate();
-        let _isolate_guard = IsolateEnterGuard::new(isolate);
-        runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
+    match result {
+        Ok(runtime) => {
+            if let Some(old) = guild_runtimes.insert(guild_id.clone(), runtime) {
+                drop(old);
+                info!(target: "flora:runtime", worker_id, guild_id, "Dropped old guild runtime");
+            }
+            info!(target: "flora:runtime", worker_id, guild_id, "Guild deployment loaded");
+            Ok(())
+        }
+        Err(err) => {
+            if let Some(old) = saved_runtime {
+                guild_runtimes.insert(guild_id.clone(), old);
+                info!(target: "flora:runtime", worker_id, guild_id, "Restored previous guild runtime after failed deploy");
+            }
+            if let Some(crons) = saved_crons {
+                let mut reg = cron_registry.lock();
+                reg.jobs.insert(Some(guild_id.clone()), crons);
+            }
+            Err(err)
+        }
     }
-
-    info!(target: "flora:runtime", worker_id, guild_id, path = SDK_BUNDLE_PATH, "Loading SDK bundle");
-    load_script_from_path(
-        &mut runtime,
-        PathBuf::from(SDK_BUNDLE_PATH),
-        worker_id,
-        limits,
-    )
-    .await?;
-
-    let module_name = ModuleName::from(deployment.module_name());
-    let script_name = module_name.as_str().to_string();
-    info!(target: "flora:runtime", worker_id, guild_id, script = script_name, "Loading guild script");
-    load_script_source(
-        &mut runtime.runtime,
-        module_name,
-        deployment.bundle.clone(),
-        script_name,
-        worker_id,
-        limits,
-    )
-    .await?;
-
-    {
-        let context = runtime.runtime.main_context();
-        let isolate = runtime.runtime.v8_isolate();
-        let _isolate_guard = IsolateEnterGuard::new(isolate);
-        runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
-    }
-
-    guild_runtimes.insert(guild_id.clone(), runtime);
-    info!(target: "flora:runtime", worker_id, guild_id, "Guild deployment loaded");
-    Ok(())
 }
 
 async fn dispatch_to_worker(
