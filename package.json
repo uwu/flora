@@ -10,5 +10,14 @@
     "dprint": "^0.51.1",
     "lefthook": "^2.0.15",
     "typescript": "^5.7.2"
+  },
+  "catalog": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@latest",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
+    "vite-plus": "latest"
+  },
+  "overrides": {
+    "vite": "catalog:",
+    "vitest": "catalog:"
   }
 }
