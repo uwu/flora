@@ -64,12 +64,6 @@ enum WorkerCommand {
         path: PathBuf,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
-    /// Load the SDK bundle from pre-read source (avoids per-worker disk I/O).
-    LoadSdkBundleSource {
-        name: String,
-        code: String,
-        respond_to: oneshot::Sender<Result<(), AnyError>>,
-    },
     /// Load a user script into the default runtime.
     LoadUserScript {
         path: PathBuf,
@@ -84,13 +78,13 @@ enum WorkerCommand {
     DispatchEvent {
         guild_id: Option<String>,
         event: String,
-        payload: Arc<Value>,
+        payload: Value,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
     /// Broadcast an event to all runtimes on this worker.
     BroadcastEvent {
         event: String,
-        payload: Arc<Value>,
+        payload: Value,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
     /// Unload a guild's runtime.
@@ -143,16 +137,6 @@ impl Worker {
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 
-    async fn load_sdk_bundle_source(&self, name: String, code: String) -> Result<(), AnyError> {
-        let (tx, rx) = oneshot::channel();
-        self.send_cmd(WorkerCommand::LoadSdkBundleSource {
-            name,
-            code,
-            respond_to: tx,
-        })?;
-        rx.await.map_err(|_| AnyError::msg("worker stopped"))?
-    }
-
     #[allow(dead_code)]
     async fn load_user_script(&self, path: PathBuf) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
@@ -176,7 +160,7 @@ impl Worker {
         &self,
         guild_id: Option<String>,
         event: String,
-        payload: Arc<Value>,
+        payload: Value,
     ) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
         self.send_cmd(WorkerCommand::DispatchEvent {
@@ -188,7 +172,7 @@ impl Worker {
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 
-    async fn broadcast(&self, event: String, payload: Arc<Value>) -> Result<(), AnyError> {
+    async fn broadcast(&self, event: String, payload: Value) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
         self.send_cmd(WorkerCommand::BroadcastEvent {
             event,
@@ -268,12 +252,10 @@ impl BotRuntime {
     /// Load the SDK bundle into all workers' default runtimes.
     pub async fn load_sdk_bundle(&self, path: impl Into<PathBuf>) -> Result<(), AnyError> {
         let path = path.into();
-        let code = tokio::fs::read_to_string(&path).await?;
-        let name = path.to_string_lossy().to_string();
         let futures: Vec<_> = self
             .workers
             .iter()
-            .map(|w| w.load_sdk_bundle_source(name.clone(), code.clone()))
+            .map(|w| w.load_sdk_bundle(path.clone()))
             .collect();
         futures::future::try_join_all(futures).await?;
         Ok(())
@@ -305,7 +287,6 @@ impl BotRuntime {
         guild_id: Option<String>,
         payload: Value,
     ) -> Result<(), AnyError> {
-        let payload = Arc::new(payload);
         match &guild_id {
             Some(gid) => {
                 let worker_idx = self.worker_for_guild(gid);
@@ -324,7 +305,7 @@ impl BotRuntime {
                     return Ok(());
                 }
                 self.workers[worker_idx]
-                    .dispatch(guild_id, event.to_string(), Arc::clone(&payload))
+                    .dispatch(guild_id, event.to_string(), payload)
                     .await
             }
             None => {
@@ -332,7 +313,7 @@ impl BotRuntime {
                 let futures: Vec<_> = self
                     .workers
                     .iter()
-                    .map(|w| w.broadcast(event.to_string(), Arc::clone(&payload)))
+                    .map(|w| w.broadcast(event.to_string(), payload.clone()))
                     .collect();
                 futures::future::try_join_all(futures).await?;
                 Ok(())
@@ -407,9 +388,7 @@ fn worker_thread(
         let mut guild_runtimes: HashMap<String, JsRuntimeState> = HashMap::new();
         let mut default_runtime: Option<JsRuntimeState> = None;
         let mut cron_interval = tokio::time::interval(Duration::from_secs(1));
-        let mut last_sdk_bundle: Option<(String, String)> = None;
 
-        let mut guild_deployments: HashMap<String, Deployment> = HashMap::new();
         info!(target: "flora:runtime", worker_id, "worker thread started");
 
         loop {
@@ -457,30 +436,6 @@ fn worker_thread(
                             let _ = respond_to.send(result);
                         }
 
-                        WorkerCommand::LoadSdkBundleSource { name, code, respond_to } => {
-                            let result = match default_runtime.as_mut() {
-                                Some(rt) => {
-                                    load_script_source(
-                                        &mut rt.runtime,
-                                        ModuleName::from(name.clone()),
-                                        code.clone(),
-                                        name.clone(),
-                                        worker_id,
-                                        &limits,
-                                    )
-                                    .await
-                                }
-                                None => Err(AnyError::msg("default runtime not initialized")),
-                            };
-                            if result.is_ok() {
-                                last_sdk_bundle = Some((name.clone(), code));
-                            }
-                            if let Err(ref err) = result {
-                                error!(target: "flora:runtime", worker_id, ?err, "failed to load SDK bundle");
-                            }
-                            let _ = respond_to.send(result);
-                        }
-
                         WorkerCommand::LoadUserScript { path, respond_to } => {
                             let result = match default_runtime.as_mut() {
                                 Some(rt) => load_script_from_path(rt, path, worker_id, &limits).await,
@@ -493,8 +448,10 @@ fn worker_thread(
                         }
 
                         WorkerCommand::DeployGuild { deployment, respond_to } => {
-                            let guild_id = deployment.guild_id.clone();
-                            let deployment_clone = deployment.clone();
+                            {
+                                let mut reg = cron_registry.lock();
+                                reg.clear_guild(&deployment.guild_id);
+                            }
                             let result = deploy_guild_to_worker(
                                 &mut guild_runtimes,
                                 &http,
@@ -508,9 +465,6 @@ fn worker_thread(
                             if let Err(ref err) = result {
                                 error!(target: "flora:runtime", worker_id, ?err, "failed to deploy guild");
                             }
-                            if result.is_ok() {
-                                guild_deployments.insert(guild_id, deployment_clone);
-                            }
                             let _ = respond_to.send(result);
                         }
 
@@ -518,7 +472,7 @@ fn worker_thread(
                             let result = dispatch_to_worker(
                                 &mut guild_runtimes,
                                 &mut default_runtime,
-                                guild_id.clone(),
+                                guild_id,
                                 event,
                                 payload,
                                 worker_id,
@@ -526,62 +480,7 @@ fn worker_thread(
                             )
                             .await;
                             if let Err(ref err) = result {
-                                let timed_out = err.is::<RuntimeTimeout>();
                                 error!(target: "flora:runtime", worker_id, ?err, "dispatch failed");
-                                if timed_out {
-                                    match guild_id {
-                                        Some(ref gid) => {
-                                            guild_runtimes.remove(gid);
-                                            if let Some(deployment) = guild_deployments.get(gid).cloned() {
-                                                if let Err(redeploy_err) = deploy_guild_to_worker(
-                                                    &mut guild_runtimes,
-                                                    &http,
-                                                    &kv,
-                                                    deployment,
-                                                    worker_id,
-                                                    &limits,
-                                                    cron_registry.clone(),
-                                                )
-                                                .await
-                                                {
-                                                    error!(target: "flora:runtime", worker_id, guild_id = gid, ?redeploy_err, "failed to redeploy after timeout");
-                                                }
-                                            } else {
-                                                info!(target: "flora:runtime", worker_id, guild_id = gid, "no deployment to redeploy after timeout");
-                                            }
-                                        }
-                                        None => {
-                                            default_runtime = None;
-                                            let init_res = initialize_worker_default(
-                                                &mut default_runtime,
-                                                &http,
-                                                &kv,
-                                                worker_id,
-                                                &limits,
-                                                cron_registry.clone(),
-                                            )
-                                            .await;
-                                            if let Err(reinit_err) = init_res {
-                                                error!(target: "flora:runtime", worker_id, ?reinit_err, "failed to reinitialize default runtime after timeout");
-                                            } else if let (Some(rt), Some((name, code))) =
-                                                (default_runtime.as_mut(), last_sdk_bundle.clone())
-                                            {
-                                                if let Err(load_err) = load_script_source(
-                                                    &mut rt.runtime,
-                                                    ModuleName::from(name.clone()),
-                                                    code.clone(),
-                                                    name,
-                                                    worker_id,
-                                                    &limits,
-                                                )
-                                                .await
-                                                {
-                                                    error!(target: "flora:runtime", worker_id, ?load_err, "failed to reload SDK bundle after default timeout");
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
                             }
                             let _ = respond_to.send(result);
                         }
@@ -608,7 +507,6 @@ fn worker_thread(
                                 reg.clear_guild(&guild_id);
                             }
                             guild_runtimes.remove(&guild_id);
-                            guild_deployments.remove(&guild_id);
                             info!(target: "flora:runtime", worker_id, guild_id, "unloaded guild");
                             let _ = respond_to.send(());
                         }
@@ -999,7 +897,7 @@ async fn dispatch_to_worker(
     default_runtime: &mut Option<JsRuntimeState>,
     guild_id: Option<String>,
     event: String,
-    payload: Arc<Value>,
+    payload: Value,
     worker_id: usize,
     limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
@@ -1019,7 +917,7 @@ async fn broadcast_to_worker(
     guild_runtimes: &mut HashMap<String, JsRuntimeState>,
     default_runtime: &mut Option<JsRuntimeState>,
     event: String,
-    payload: Arc<Value>,
+    payload: Value,
     worker_id: usize,
     limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
@@ -1045,7 +943,7 @@ async fn broadcast_to_worker(
 async fn dispatch_into_runtime(
     js_state: &mut JsRuntimeState,
     event: String,
-    payload: Arc<Value>,
+    payload: Value,
     worker_id: usize,
     limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
