@@ -1,4 +1,4 @@
-import { describe, expect, it, mock } from 'bun:test'
+import { describe, expect, it, vi } from 'vitest'
 import type { InteractionContext } from './index'
 import { createBot, slash } from './index'
 
@@ -9,7 +9,7 @@ describe('createBot slash registration', () => {
       onHandlers[event] = handler
     }
 
-    const register = mock(() => Promise.resolve())
+    const register = vi.fn(() => Promise.resolve())
     // @ts-expect-error
     globalThis.slash = register
     globalThis.__floraGuildId = '123'

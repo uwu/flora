@@ -10,12 +10,13 @@
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "build": "rolldown -c ./rolldown.config.ts",
-    "test": "bun test"
+    "test": "vitest"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "@typescript/native-preview": "^7.0.0-dev.20260105.1",
     "rolldown": "^1.0.0-beta.53",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "catalog:"
   }
 }

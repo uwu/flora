@@ -1,4 +1,4 @@
-import { describe, expect, it, mock } from 'bun:test'
+import { describe, expect, it, vi } from 'vitest'
 import type { InteractionContext } from './index'
 import { createBot, slash } from './index'
 
@@ -10,7 +10,7 @@ describe('createBot slash commands', () => {
       handlers[event] = handler
     }
 
-    const run = mock(async (ctx: InteractionContext) => {
+    const run = vi.fn(async (ctx: InteractionContext) => {
       expect(ctx.msg.commandName).toBe('ping')
       expect(ctx.options).toEqual({ text: 'hello', count: 2 })
       await ctx.reply({ content: 'pong', ephemeral: true })
@@ -18,7 +18,7 @@ describe('createBot slash commands', () => {
 
     createBot({ slashCommands: [slash({ name: 'ping', description: 'Ping command', run })] })
 
-    const reply = mock(() => Promise.resolve())
+    const reply = vi.fn(() => Promise.resolve())
     const handler = handlers['interactionCreate']
     expect(handler).toBeTruthy()
 
