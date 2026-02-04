@@ -10,6 +10,7 @@ pub mod log_sink;
 pub mod metrics;
 pub mod ops;
 pub mod runtime;
+pub mod secrets;
 pub mod state;
 pub mod tokens;
 pub mod transpile;

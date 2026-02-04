@@ -7,6 +7,14 @@
 # Default value: "flora::runtime=info,flora=info"
 # log_level = "flora::runtime=info,flora=info"
 
+[secrets]
+# 32-byte key for encrypting secrets (hex or raw ASCII).
+#
+# Can also be specified via environment variable `SECRETS_MASTER_KEY`.
+#
+# Required! This value must be specified.
+# master_key =
+
 # Discord config.
 [discord]
 # Discord bot token.

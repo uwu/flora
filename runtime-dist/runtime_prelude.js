@@ -1,6 +1,11 @@
 // #region src/runtime/index.ts
 const core = Deno.core
 globalThis.__floraHandlers = {}
+globalThis.secrets = {
+  get(name) {
+    return core.ops.op_secret_placeholder(name)
+  }
+}
 globalThis.on = function on(event, handler) {
   if (!globalThis.__floraHandlers[event]) {
     globalThis.__floraHandlers[event] = []

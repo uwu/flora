@@ -45,6 +45,10 @@ export interface CronOptions {
 
 export type CronHandler = (ctx: CronContext) => void | Promise<void>
 
+export interface Secrets {
+  get(name: string): string | undefined
+}
+
 declare global {
   var __floraHandlers: Record<string, Function[]>
   var __floraGuildId: string | undefined
@@ -52,6 +56,7 @@ declare global {
   function __floraDispatch(event: string, payload: unknown): Promise<void>
   function registerSlashCommands(commands: FlattenedSlashCommand[]): Promise<void> | undefined
   function cron(name: string, cronExpr: string, handler: CronHandler, options?: CronOptions): void
+  var secrets: Secrets
 }
 
 declare const Deno: {
@@ -65,6 +70,7 @@ declare const Deno: {
         options: { guildId: string; commands: FlattenedSlashCommand[] }
       ): Promise<void>
       op_register_cron(options: { name: string; expr: string; skipIfRunning?: boolean }): void
+      op_secret_placeholder(name: string): string | undefined
     }
   }
 }
@@ -81,6 +87,11 @@ type AnyPayload = {
 
 const core = Deno.core
 globalThis.__floraHandlers = {}
+globalThis.secrets = {
+  get(name: string) {
+    return core.ops.op_secret_placeholder(name)
+  }
+}
 
 globalThis.on = function on<E extends keyof FloraEventMap>(
   event: E,

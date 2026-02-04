@@ -1,6 +1,6 @@
 use crate::{
     auth::AuthService, deployments::DeploymentService, kv::KvService, runtime::BotRuntime,
-    tokens::TokenService,
+    secrets::SecretService, tokens::TokenService,
 };
 use serenity::http::Http;
 use std::sync::Arc;
@@ -18,6 +18,8 @@ pub struct AppState {
     pub tokens: TokenService,
     /// Key-value store service backed by RocksDB.
     pub kv: KvService,
+    /// Secret storage and encryption.
+    pub secrets: SecretService,
     /// Bot HTTP client for guild permission checks.
     pub http: Arc<Http>,
 }

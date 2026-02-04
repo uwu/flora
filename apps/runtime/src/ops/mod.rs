@@ -12,6 +12,7 @@ pub mod guilds;
 pub mod interaction;
 pub mod kv;
 pub mod message;
+pub mod secrets;
 mod tls;
 pub mod webhooks;
 
@@ -76,6 +77,7 @@ deno_core::extension!(
         kv::op_kv_get_with_metadata,
         kv::op_kv_update_metadata,
         cron::op_register_cron,
+        secrets::op_secret_placeholder,
     ],
     options = {
         http: Arc<Http>,

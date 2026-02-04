@@ -9,6 +9,7 @@ mod log_sink;
 mod metrics;
 mod ops;
 mod runtime;
+mod secrets;
 mod state;
 mod tokens;
 mod transpile;
@@ -28,6 +29,7 @@ use kv::KvService;
 use layers::logger::LoggingMiddleware;
 use reqwest::StatusCode;
 use runtime::BotRuntime;
+use secrets::SecretService;
 use serenity::all::{Client, GatewayIntents, Token};
 use sqlx::{migrate::Migrator, postgres::PgPoolOptions};
 use state::AppState;
@@ -111,6 +113,7 @@ async fn main() -> Result<()> {
         DeploymentService::new(db_pool.clone(), cache_client.clone(), cache_task);
     let token_service = TokenService::new(db_pool.clone());
     let kv_service = KvService::new(db_pool.clone(), "./data/kv".into());
+    let secret_service = SecretService::new(db_pool.clone(), config.secrets.master_key.clone())?;
     let auth_task = cache_client.clone().init().await?;
     let auth_service = AuthService::new(
         AuthConfig {
@@ -141,6 +144,7 @@ async fn main() -> Result<()> {
     let runtime = Arc::new(BotRuntime::new(
         http.clone(),
         kv_service.clone(),
+        secret_service.clone(),
         config.runtime,
     ));
     runtime.initialize().await.map_err(|err| eyre!(err))?;
@@ -181,6 +185,7 @@ async fn main() -> Result<()> {
         auth: auth_service.clone(),
         tokens: token_service.clone(),
         kv: kv_service.clone(),
+        secrets: secret_service.clone(),
         http: http.clone(),
     };
 

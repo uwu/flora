@@ -1,5 +1,11 @@
 use crate::ops::{CronRegistry, SharedCronRegistry};
-use crate::{deployments::Deployment, kv::KvService, metrics::metrics, ops};
+use crate::{
+    deployments::Deployment,
+    kv::KvService,
+    metrics::metrics,
+    ops,
+    secrets::{SecretService, SecretsRuntimeData},
+};
 use deno_core::{
     Extension, ExtensionFileSource, FastStaticString, FastString, FsModuleLoader, JsRuntime,
     ModuleName, PollEventLoopOptions, RuntimeOptions, ascii_str_include,
@@ -7,6 +13,7 @@ use deno_core::{
     serde_v8,
     v8::{self, Global},
 };
+use deno_error::JsErrorBox;
 use deno_permissions::{
     Permissions, PermissionsContainer, PermissionsOptions, RuntimePermissionDescriptorParser,
 };
@@ -15,6 +22,7 @@ use serde_json::Value;
 use serenity::http::Http;
 use std::{
     borrow::Cow,
+    cell::RefCell,
     collections::{HashMap, hash_map::DefaultHasher},
     future::Future,
     hash::{Hash, Hasher},
@@ -51,6 +59,9 @@ const BOOTSTRAP_DEPS: &[&str] = &[
 ];
 const RUNTIME_BOOSTRAP: FastStaticString =
     ascii_str_include!("../../../runtime-dist/runtime_bootstrap.js");
+thread_local! {
+    static CURRENT_SECRETS: RefCell<Option<Arc<SecretsRuntimeData>>> = RefCell::new(None);
+}
 
 /// Commands sent to worker threads.
 #[allow(dead_code)]
@@ -85,6 +96,12 @@ enum WorkerCommand {
     BroadcastEvent {
         event: String,
         payload: Value,
+        respond_to: oneshot::Sender<Result<(), AnyError>>,
+    },
+    /// Refresh secrets for a guild runtime.
+    UpdateSecrets {
+        guild_id: String,
+        secrets: Arc<SecretsRuntimeData>,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
     /// Unload a guild's runtime.
@@ -181,6 +198,20 @@ impl Worker {
         })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
+
+    async fn update_secrets(
+        &self,
+        guild_id: String,
+        secrets: Arc<SecretsRuntimeData>,
+    ) -> Result<(), AnyError> {
+        let (tx, rx) = oneshot::channel();
+        self.send_cmd(WorkerCommand::UpdateSecrets {
+            guild_id,
+            secrets,
+            respond_to: tx,
+        })?;
+        rx.await.map_err(|_| AnyError::msg("worker stopped"))?
+    }
 }
 
 /// The main runtime that manages a pool of worker threads.
@@ -188,6 +219,7 @@ impl Worker {
 pub struct BotRuntime {
     workers: Vec<Worker>,
     num_workers: usize,
+    secrets: Arc<SecretService>,
 }
 
 #[derive(Clone, Copy)]
@@ -223,18 +255,24 @@ fn timeout_from_secs(secs: u64) -> Option<Duration> {
 
 impl BotRuntime {
     /// Create a new runtime with a pool of worker threads.
-    pub fn new(http: Arc<Http>, kv: KvService, config: RuntimeConfig) -> Self {
+    pub fn new(
+        http: Arc<Http>,
+        kv: KvService,
+        secrets: SecretService,
+        config: RuntimeConfig,
+    ) -> Self {
         let num_workers = config.max_workers.clamp(1, MAX_WORKERS_LIMIT);
         info!(target: "flora:runtime", num_workers, "spawning worker pool");
         let limits = RuntimeLimits::from_config(&config);
 
         let workers: Vec<Worker> = (0..num_workers)
-            .map(|id| spawn_worker(id, http.clone(), kv.clone(), limits))
+            .map(|id| spawn_worker(id, http.clone(), kv.clone(), secrets.clone(), limits))
             .collect();
 
         Self {
             workers,
             num_workers,
+            secrets: Arc::new(secrets),
         }
     }
 
@@ -321,6 +359,19 @@ impl BotRuntime {
         }
     }
 
+    /// Refresh secrets for an existing guild runtime.
+    pub async fn refresh_guild_secrets(&self, guild_id: &str) -> Result<(), AnyError> {
+        let data = self
+            .secrets
+            .load_runtime(guild_id)
+            .await
+            .map_err(|err| AnyError::msg(err.to_string()))?;
+        let worker_idx = self.worker_for_guild(guild_id);
+        self.workers[worker_idx]
+            .update_secrets(guild_id.to_string(), data)
+            .await
+    }
+
     fn worker_for_guild(&self, guild_id: &str) -> usize {
         let mut hasher = DefaultHasher::new();
         guild_id.hash(&mut hasher);
@@ -346,7 +397,13 @@ impl Drop for BotRuntime {
     }
 }
 
-fn spawn_worker(id: usize, http: Arc<Http>, kv: KvService, limits: RuntimeLimits) -> Worker {
+fn spawn_worker(
+    id: usize,
+    http: Arc<Http>,
+    kv: KvService,
+    secrets: SecretService,
+    limits: RuntimeLimits,
+) -> Worker {
     let (tx, rx) = mpsc::unbounded_channel();
     let backlog = Arc::new(AtomicUsize::new(0));
     let backlog_handle = Arc::clone(&backlog);
@@ -358,7 +415,16 @@ fn spawn_worker(id: usize, http: Arc<Http>, kv: KvService, limits: RuntimeLimits
     let handle = thread::Builder::new()
         .name(format!("flora-worker-{}", id))
         .spawn(move || {
-            worker_thread(id, rx, http, kv, limits, backlog_handle, cron_registry);
+            worker_thread(
+                id,
+                rx,
+                http,
+                kv,
+                secrets,
+                limits,
+                backlog_handle,
+                cron_registry,
+            );
         })
         .expect("failed to spawn worker thread");
 
@@ -375,6 +441,7 @@ fn worker_thread(
     mut receiver: mpsc::UnboundedReceiver<WorkerCommand>,
     http: Arc<Http>,
     kv: KvService,
+    secrets: SecretService,
     limits: RuntimeLimits,
     backlog: Arc<AtomicUsize>,
     cron_registry: SharedCronRegistry,
@@ -388,6 +455,7 @@ fn worker_thread(
         let mut guild_runtimes: HashMap<String, JsRuntimeState> = HashMap::new();
         let mut default_runtime: Option<JsRuntimeState> = None;
         let mut cron_interval = tokio::time::interval(Duration::from_secs(1));
+        let default_secrets = SecretsRuntimeData::empty();
 
         info!(target: "flora:runtime", worker_id, "worker thread started");
 
@@ -414,6 +482,7 @@ fn worker_thread(
                                     &mut default_runtime,
                                     &http,
                                     &kv,
+                                    default_secrets.clone(),
                                     worker_id,
                                     &limits,
                                     cron_registry.clone(),
@@ -456,6 +525,7 @@ fn worker_thread(
                                 &mut guild_runtimes,
                                 &http,
                                 &kv,
+                                &secrets,
                                 deployment,
                                 worker_id,
                                 &limits,
@@ -497,6 +567,18 @@ fn worker_thread(
                             .await;
                             if let Err(ref err) = result {
                                 error!(target: "flora:runtime", worker_id, ?err, "broadcast failed");
+                            }
+                            let _ = respond_to.send(result);
+                        }
+
+                        WorkerCommand::UpdateSecrets { guild_id, secrets, respond_to } => {
+                            let result = update_runtime_secrets(
+                                &mut guild_runtimes,
+                                &guild_id,
+                                secrets,
+                            );
+                            if let Err(ref err) = result {
+                                error!(target: "flora:runtime", worker_id, guild_id, ?err, "failed to update secrets");
                             }
                             let _ = respond_to.send(result);
                         }
@@ -615,6 +697,7 @@ async fn dispatch_cron_into_runtime(
     limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
     let start = Instant::now();
+    let _secret_scope = SecretScope::enter(js_state.secrets.clone());
 
     let Some(ref dispatch_fn) = js_state.dispatch_fn else {
         return Err(AnyError::msg("dispatch function not available"));
@@ -694,6 +777,7 @@ struct JsRuntimeState {
     dispatch_fn: Option<Global<v8::Function>>,
     #[allow(dead_code)]
     guild_id: Option<String>,
+    secrets: Arc<SecretsRuntimeData>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -741,6 +825,26 @@ impl Drop for IsolateEnterGuard {
     }
 }
 
+/// Sets thread-local secrets for the duration of a dispatch.
+struct SecretScope;
+
+impl SecretScope {
+    fn enter(data: Arc<SecretsRuntimeData>) -> Self {
+        CURRENT_SECRETS.with(|cell| {
+            *cell.borrow_mut() = Some(data);
+        });
+        Self
+    }
+}
+
+impl Drop for SecretScope {
+    fn drop(&mut self) {
+        CURRENT_SECRETS.with(|cell| {
+            cell.borrow_mut().take();
+        });
+    }
+}
+
 fn enter_isolate(runtime: &mut JsRuntime) -> IsolateEnterGuard {
     let isolate = runtime.v8_isolate();
     IsolateEnterGuard::new(isolate)
@@ -750,11 +854,12 @@ async fn initialize_worker_default(
     default_runtime: &mut Option<JsRuntimeState>,
     http: &Arc<Http>,
     kv: &KvService,
+    secrets: Arc<SecretsRuntimeData>,
     worker_id: usize,
     limits: &RuntimeLimits,
     cron_registry: SharedCronRegistry,
 ) -> Result<(), AnyError> {
-    let mut runtime = new_js_runtime(http.clone(), kv.clone(), None, cron_registry);
+    let mut runtime = new_js_runtime(http.clone(), kv.clone(), secrets, None, cron_registry);
 
     runtime
         .runtime
@@ -783,6 +888,7 @@ async fn deploy_guild_to_worker(
     guild_runtimes: &mut HashMap<String, JsRuntimeState>,
     http: &Arc<Http>,
     kv: &KvService,
+    secrets: &SecretService,
     deployment: Deployment,
     worker_id: usize,
     limits: &RuntimeLimits,
@@ -805,6 +911,10 @@ async fn deploy_guild_to_worker(
         let mut runtime = new_js_runtime(
             http.clone(),
             kv.clone(),
+            secrets
+                .load_runtime(&guild_id)
+                .await
+                .map_err(|err| AnyError::msg(err.to_string()))?,
             Some(guild_id.clone()),
             cron_registry.clone(),
         );
@@ -892,6 +1002,19 @@ async fn deploy_guild_to_worker(
     }
 }
 
+fn update_runtime_secrets(
+    guild_runtimes: &mut HashMap<String, JsRuntimeState>,
+    guild_id: &str,
+    secrets: Arc<SecretsRuntimeData>,
+) -> Result<(), AnyError> {
+    let runtime = guild_runtimes
+        .get_mut(guild_id)
+        .ok_or_else(|| AnyError::msg("No runtime available for guild"))?;
+    runtime.secrets = secrets.clone();
+    runtime.runtime.op_state().borrow_mut().put(secrets);
+    Ok(())
+}
+
 async fn dispatch_to_worker(
     guild_runtimes: &mut HashMap<String, JsRuntimeState>,
     default_runtime: &mut Option<JsRuntimeState>,
@@ -948,6 +1071,7 @@ async fn dispatch_into_runtime(
     limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
     let start = Instant::now();
+    let _secret_scope = SecretScope::enter(js_state.secrets.clone());
     let dispatch_fn = js_state
         .dispatch_fn
         .as_ref()
@@ -1182,6 +1306,7 @@ fn bootstrap_extension() -> Extension {
 fn new_js_runtime(
     http: Arc<Http>,
     kv: KvService,
+    secrets: Arc<SecretsRuntimeData>,
     guild_id: Option<String>,
     cron_registry: SharedCronRegistry,
 ) -> JsRuntimeState {
@@ -1206,7 +1331,10 @@ fn new_js_runtime(
             deno_telemetry::deno_telemetry::init(),
             deno_webidl::deno_webidl::init(),
             deno_web::deno_web::init(blob_store, None, broadcast_channel),
-            deno_fetch::deno_fetch::init(deno_fetch::Options::default()),
+            deno_fetch::deno_fetch::init(deno_fetch::Options {
+                request_builder_hook: Some(secret_request_builder_hook),
+                ..Default::default()
+            }),
             deno_net::deno_net::init(None, None),
             deno_tls::deno_tls::init(),
             bootstrap_extension(),
@@ -1222,6 +1350,7 @@ fn new_js_runtime(
         ..Default::default()
     });
     runtime.op_state().borrow_mut().put(permissions);
+    runtime.op_state().borrow_mut().put(secrets.clone());
 
     if let Some(ref gid) = guild_id {
         runtime.op_state().borrow_mut().put(gid.clone());
@@ -1231,5 +1360,84 @@ fn new_js_runtime(
         runtime,
         dispatch_fn: None,
         guild_id,
+        secrets,
     }
+}
+
+fn secret_request_builder_hook(
+    request: &mut http::Request<deno_fetch::ReqBody>,
+) -> Result<(), JsErrorBox> {
+    let secrets = CURRENT_SECRETS.with(|cell| cell.borrow().clone());
+    let Some(secrets) = secrets else {
+        return Ok(());
+    };
+
+    let mut matched_allowed: Vec<Vec<String>> = Vec::new();
+
+    let uri_string = request.uri().to_string();
+    let (new_uri, uri_matches) = substitute_placeholders(&uri_string, &secrets);
+    matched_allowed.extend(uri_matches);
+    if new_uri != uri_string {
+        let parsed = new_uri
+            .parse()
+            .map_err(|_| JsErrorBox::generic("failed to parse uri after secret substitution"))?;
+        *request.uri_mut() = parsed;
+    }
+
+    let header_keys: Vec<_> = request.headers().keys().cloned().collect();
+    for name in header_keys {
+        if let Some(value) = request.headers_mut().get_mut(&name) {
+            let Ok(orig) = value.to_str() else {
+                continue;
+            };
+            let (replaced, hits) = substitute_placeholders(orig, &secrets);
+            matched_allowed.extend(hits);
+            if replaced != orig {
+                *value = http::HeaderValue::from_str(&replaced)
+                    .map_err(|_| JsErrorBox::generic("invalid header after secret substitution"))?;
+            }
+        }
+    }
+
+    if !matched_allowed.is_empty() {
+        let host = request.uri().host();
+        for allow in matched_allowed {
+            if !allow.is_empty() && !host_allowed(host, &allow) {
+                return Err(JsErrorBox::generic("secret not allowed for request host"));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn substitute_placeholders(
+    input: &str,
+    secrets: &SecretsRuntimeData,
+) -> (String, Vec<Vec<String>>) {
+    let mut output = input.to_string();
+    let mut matched = Vec::new();
+    for (placeholder, entry) in secrets.by_placeholder.iter() {
+        if output.contains(placeholder) {
+            output = output.replace(placeholder, &entry.value);
+            matched.push(entry.allowed_hosts.clone());
+        }
+    }
+    (output, matched)
+}
+
+fn host_allowed(host: Option<&str>, allowlist: &[String]) -> bool {
+    if allowlist.is_empty() {
+        return true;
+    }
+    let Some(host) = host else {
+        return false;
+    };
+    allowlist.iter().any(|pattern| {
+        if let Some(suffix) = pattern.strip_prefix("*.") {
+            host.ends_with(suffix)
+        } else {
+            host == pattern
+        }
+    })
 }

@@ -8,6 +8,9 @@ pub struct AppConfig {
     /// Logging config. This is the same as `RUST_LOG`'s format.
     #[config(env = "RUST_LOG", default = "flora::runtime=info,flora=info")]
     pub log_level: String,
+    /// Secrets configuration.
+    #[config(nested)]
+    pub secrets: SecretsConfig,
     /// Discord config.
     #[config(nested)]
     pub discord: DiscordConfig,
@@ -116,6 +119,15 @@ pub struct ApiConfig {
     /// Whether to use secure cookies.
     #[config(env = "API_COOKIE_SECURE", default = false)]
     pub cookie_secure: bool,
+}
+
+/// Secrets configuration.
+#[derive(Debug, Config)]
+pub struct SecretsConfig {
+    /// 32-byte key for encrypting stored secrets and deriving placeholders.
+    /// Example: a 64-char hex string or 32 raw ASCII bytes.
+    #[config(env = "SECRETS_MASTER_KEY")]
+    pub master_key: String,
 }
 
 #[cfg(test)]

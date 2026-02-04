@@ -5,6 +5,7 @@ members = ["apps/cli", "apps/runtime", "crates/*"]
 [workspace.dependencies]
 axum = "0.8.7"
 base64 = { version = "0.22", default-features = false, features = ["alloc"] }
+chacha20poly1305 = { version = "0.10", features = ["std", "rand_core"] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = "4.5.20"
 color-eyre = { version = "0.6.5", features = ["capture-spantrace", "issue-url"] }
@@ -43,8 +44,8 @@ sled = "0.34"
 sqlx = { version = "0.8.6", features = ["chrono", "macros", "postgres", "runtime-tokio-rustls", "uuid"] }
 syn = { version = "2", features = ["full", "extra-traits", "parsing"] }
 sys_traits = { version = "0.1.17", features = ["libc", "real"] }
-t0x = { version = "0.1.4", features = ["serde-json-impl"] }
-t0x-macros = "0.1.4"
+t0x = { version = "0.1.5", features = ["serde-json-impl"] }
+t0x-macros = "0.1.5"
 thiserror = "2.0.17"
 time = "0.3"
 tokio = { version = "1", features = ["full"] }
@@ -63,9 +64,6 @@ utoipa-scalar = { version = "0.3.0", features = ["axum"] }
 uuid = { version = "1.19.0", features = ["v4"] }
 
 [patch.crates-io]
-# Use local t0x workspace
-t0x = { path = "t0x/t0x" }
-t0x-macros = { path = "t0x/t0x-macros" }
 # Use our deno_core fork compatible with rusty_v8 locker API
 deno_core = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat" }
 deno_ops = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat" }
