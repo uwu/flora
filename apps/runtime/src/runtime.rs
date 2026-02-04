@@ -1007,9 +1007,10 @@ fn update_runtime_secrets(
     guild_id: &str,
     secrets: Arc<SecretsRuntimeData>,
 ) -> Result<(), AnyError> {
-    let runtime = guild_runtimes
-        .get_mut(guild_id)
-        .ok_or_else(|| AnyError::msg("No runtime available for guild"))?;
+    let Some(runtime) = guild_runtimes.get_mut(guild_id) else {
+        // Guild runtime not loaded yet; nothing to refresh.
+        return Ok(());
+    };
     runtime.secrets = secrets.clone();
     runtime.runtime.op_state().borrow_mut().put(secrets);
     Ok(())
