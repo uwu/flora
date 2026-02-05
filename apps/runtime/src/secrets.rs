@@ -244,10 +244,7 @@ impl SecretService {
         }
     }
 
-    pub async fn load_runtime_for_tests(
-        &self,
-        _guild_id: &str,
-    ) -> Result<Arc<SecretsRuntimeData>> {
+    pub async fn load_runtime_for_tests(&self, _guild_id: &str) -> Result<Arc<SecretsRuntimeData>> {
         Ok(SecretsRuntimeData::empty())
     }
 }

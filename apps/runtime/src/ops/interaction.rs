@@ -11,7 +11,13 @@ use serenity::{
     http::Http,
     model::{channel::MessageFlags, id::InteractionId},
 };
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    hash::{DefaultHasher, Hash, Hasher},
+    rc::Rc,
+    sync::Arc,
+};
 use t0x::T0x;
 use tracing::info;
 
@@ -47,6 +53,7 @@ pub struct RawInteractionResponse {
 }
 
 /// Arguments for bulk-upserting guild application commands.
+#[derive(serde::Serialize)]
 #[expose_input]
 pub struct RawUpsertGuildCommands {
     /// The guild's snowflake ID.
@@ -56,6 +63,7 @@ pub struct RawUpsertGuildCommands {
 }
 
 /// Definition of a slash command.
+#[derive(serde::Serialize)]
 #[expose_input]
 pub struct RawSlashCommand {
     /// The command name (1-32 chars, lowercase).
@@ -67,6 +75,7 @@ pub struct RawSlashCommand {
 }
 
 /// Definition of a slash command option.
+#[derive(serde::Serialize)]
 #[expose_input]
 pub struct RawSlashCommandOption {
     /// The option name.
@@ -83,6 +92,23 @@ pub struct RawSlashCommandOption {
     #[serde(default)]
     #[t0x(type = "RawSlashCommandOption[]")]
     pub options: Option<Vec<RawSlashCommandOption>>,
+}
+
+/// Memoizes the last slash-command payload per guild to avoid redundant upserts.
+#[derive(Default)]
+pub struct CommandHashCache {
+    by_guild: HashMap<String, u64>,
+}
+
+impl CommandHashCache {
+    pub fn is_duplicate_and_update(&mut self, guild_id: &str, hash: u64) -> bool {
+        if self.by_guild.get(guild_id) == Some(&hash) {
+            true
+        } else {
+            self.by_guild.insert(guild_id.to_string(), hash);
+            false
+        }
+    }
 }
 
 #[op2(async)]
@@ -365,17 +391,33 @@ pub async fn op_upsert_guild_commands(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawUpsertGuildCommands,
 ) -> Result<(), JsErrorBox> {
-    let http = {
-        let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+    let command_defs = args.commands;
+    let commands_hash = serde_json::to_string(&command_defs)
+        .map(hash_json)
+        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+
+    let (http, skipped) = {
+        let mut state = state.borrow_mut();
+        let http = state.borrow::<Arc<Http>>().clone();
+        let cache = state.borrow_mut::<CommandHashCache>();
+        let skipped = cache.is_duplicate_and_update(&args.guild_id, commands_hash);
+        (http, skipped)
     };
+
+    if skipped {
+        info!(
+            target: "flora:ops",
+            guild_id = args.guild_id,
+            "slash commands unchanged; skipping upsert"
+        );
+        return Ok(());
+    }
 
     let guild_id = args
         .guild_id
         .parse::<u64>()
         .map_err(|_| JsErrorBox::generic("Invalid guild id"))?;
 
-    let command_defs = args.commands;
     let names: Vec<String> = command_defs.iter().map(|c| c.name.clone()).collect();
     let commands: Vec<CreateCommand<'static>> = command_defs
         .into_iter()
@@ -440,6 +482,12 @@ fn build_option(opt: RawSlashCommandOption) -> Result<CreateCommandOption<'stati
         }
     }
     Ok(builder)
+}
+
+fn hash_json(value: String) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    value.hash(&mut hasher);
+    hasher.finish()
 }
 
 /// Build the response payload and attachments for an interaction reply.

@@ -4,6 +4,7 @@ use crate::{
     kv::KvService,
     metrics::metrics,
     ops,
+    ops::interaction::CommandHashCache,
     secrets::{SecretService, SecretsRuntimeData},
 };
 use deno_core::{
@@ -1408,6 +1409,10 @@ fn new_js_runtime(
     });
     runtime.op_state().borrow_mut().put(permissions);
     runtime.op_state().borrow_mut().put(secrets.clone());
+    runtime
+        .op_state()
+        .borrow_mut()
+        .put(CommandHashCache::default());
 
     if let Some(ref gid) = guild_id {
         runtime.op_state().borrow_mut().put(gid.clone());
@@ -1506,9 +1511,9 @@ mod tests {
     use chrono::Utc;
     use parking_lot::Mutex;
     use serde_json::json;
+    use serenity::secrets::Token;
     use sqlx::postgres::PgPoolOptions;
     use std::{collections::HashMap, path::PathBuf, sync::Arc};
-    use serenity::secrets::Token;
     use uuid::Uuid;
 
     const GUILD_ID: &str = "guild-redeploy";
@@ -1558,14 +1563,13 @@ mod tests {
             .to_path_buf();
         std::env::set_current_dir(&workspace_root).expect("set workspace cwd");
 
-        let http = Arc::new(
-            Http::new(Token::try_from("Bot stress.test.token").expect("token")),
-        );
+        let http = Arc::new(Http::new(
+            Token::try_from("Bot stress.test.token").expect("token"),
+        ));
         let kv = test_kv_service();
         let secrets = SecretService::new_for_tests();
         let limits = test_limits();
-        let cron_registry =
-            Arc::new(Mutex::new(CronRegistry::new(limits.max_cron_jobs)));
+        let cron_registry = Arc::new(Mutex::new(CronRegistry::new(limits.max_cron_jobs)));
         let mut guild_runtimes: HashMap<String, JsRuntimeState> = HashMap::new();
 
         for iteration in 0..10 {

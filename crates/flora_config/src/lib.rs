@@ -85,7 +85,7 @@ pub struct RuntimeConfig {
     #[config(env = "RUNTIME_BOOT_TIMEOUT_SECS", default = 5)]
     pub boot_timeout_secs: u64,
     /// Timeout in seconds for script/module load (0 disables).
-    #[config(env = "RUNTIME_LOAD_TIMEOUT_SECS", default = 10)]
+    #[config(env = "RUNTIME_LOAD_TIMEOUT_SECS", default = 30)]
     pub load_timeout_secs: u64,
     /// Timeout in seconds for per-event dispatch (0 disables).
     #[config(env = "RUNTIME_DISPATCH_TIMEOUT_SECS", default = 3)]
