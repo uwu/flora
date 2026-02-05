@@ -13,6 +13,9 @@ use sqlx::{FromRow, Pool, Postgres};
 use tracing::warn;
 use uuid::Uuid;
 
+#[cfg(test)]
+use sqlx::postgres::PgPoolOptions;
+
 const PLACEHOLDER_PREFIX: &str = "__FLORA_SECRET__";
 
 #[derive(Clone)]
@@ -225,5 +228,26 @@ impl SecretsRuntimeData {
 
     pub fn find_by_placeholder(&self, value: &str) -> Option<&SecretRuntimeEntry> {
         self.by_placeholder.get(value)
+    }
+}
+
+#[cfg(test)]
+impl SecretService {
+    pub fn new_for_tests() -> Self {
+        let db_pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect_lazy("postgres://localhost:5433/flora")
+            .expect("create test pg pool");
+        Self {
+            db_pool,
+            key_bytes: [0u8; 32],
+        }
+    }
+
+    pub async fn load_runtime_for_tests(
+        &self,
+        _guild_id: &str,
+    ) -> Result<Arc<SecretsRuntimeData>> {
+        Ok(SecretsRuntimeData::empty())
     }
 }

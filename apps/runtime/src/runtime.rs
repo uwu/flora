@@ -588,7 +588,9 @@ fn worker_thread(
                                 let mut reg = cron_registry.lock();
                                 reg.clear_guild(&guild_id);
                             }
-                            guild_runtimes.remove(&guild_id);
+                            if let Some(runtime) = guild_runtimes.remove(&guild_id) {
+                                drop_runtime_state(runtime);
+                            }
                             info!(target: "flora:runtime", worker_id, guild_id, "unloaded guild");
                             let _ = respond_to.send(());
                         }
@@ -600,6 +602,13 @@ fn worker_thread(
                     }
                 }
             }
+        }
+
+        if let Some(runtime) = default_runtime.take() {
+            drop_runtime_state(runtime);
+        }
+        for (_, runtime) in guild_runtimes.drain() {
+            drop_runtime_state(runtime);
         }
 
         info!(target: "flora:runtime", worker_id, "worker thread exited");
@@ -699,12 +708,14 @@ async fn dispatch_cron_into_runtime(
     let start = Instant::now();
     let _secret_scope = SecretScope::enter(js_state.secrets.clone());
 
-    let Some(ref dispatch_fn) = js_state.dispatch_fn else {
-        return Err(AnyError::msg("dispatch function not available"));
-    };
+    let dispatch_fn = js_state
+        .dispatch_fn
+        .as_ref()
+        .ok_or_else(|| AnyError::msg("dispatch function not available"))?
+        .clone();
 
-    let context = js_state.runtime.main_context();
-    let isolate = js_state.runtime.v8_isolate();
+    let context = js_state.runtime().main_context();
+    let isolate = js_state.runtime_mut().v8_isolate();
     let _isolate_guard = IsolateEnterGuard::new(isolate);
 
     let promise = {
@@ -733,13 +744,13 @@ async fn dispatch_cron_into_runtime(
         limits.cron_timeout,
         async {
             js_state
-                .runtime
+                .runtime_mut()
                 .run_event_loop(PollEventLoopOptions::default())
                 .await
                 .map_err(AnyError::from)?;
 
-            let context = js_state.runtime.main_context();
-            v8::scope_with_context!(scope, js_state.runtime.v8_isolate(), &context);
+            let context = js_state.runtime().main_context();
+            v8::scope_with_context!(scope, js_state.runtime_mut().v8_isolate(), &context);
             let scope = scope;
             let promise = v8::Local::new(scope, &promise);
             match promise.state() {
@@ -760,7 +771,7 @@ async fn dispatch_cron_into_runtime(
 
     if let Err(ref err) = result {
         if err.is::<RuntimeTimeout>() {
-            terminate_runtime(&mut js_state.runtime, worker_id, "cron").await;
+            terminate_runtime(js_state.runtime_mut(), worker_id, "cron").await;
         }
     }
 
@@ -789,15 +800,18 @@ struct RuntimeTimeout {
 impl Drop for JsRuntimeState {
     fn drop(&mut self) {
         metrics().isolate_destroyed();
-        // V8 requires the isolate to be entered before resetting persistent handles.
-        if let Some(dispatch_fn) = self.dispatch_fn.take() {
-            let isolate = self.runtime.v8_isolate();
-            let _isolate_guard = IsolateEnterGuard::new(isolate);
-            // Create a handle scope so V8 is happy when cleaning up persistent handles.
-            let scope = v8::HandleScope::new(isolate);
-            drop(dispatch_fn);
-            // Explicitly drop the scope before leaving the isolate.
-            drop(scope);
+        unsafe {
+            let dispatch_fn = self.dispatch_fn.take();
+            let isolate_ptr = {
+                let runtime_ref: &mut JsRuntime = &mut self.runtime;
+                runtime_ref.v8_isolate() as *mut v8::OwnedIsolate
+            };
+            let _isolate_guard = IsolateEnterGuard::new(&mut *isolate_ptr);
+            let _scope = v8::HandleScope::new(&mut *isolate_ptr);
+
+            if let Some(dispatch_fn) = dispatch_fn {
+                drop(dispatch_fn);
+            }
         }
     }
 }
@@ -850,6 +864,16 @@ fn enter_isolate(runtime: &mut JsRuntime) -> IsolateEnterGuard {
     IsolateEnterGuard::new(isolate)
 }
 
+impl JsRuntimeState {
+    fn runtime(&self) -> &JsRuntime {
+        &self.runtime
+    }
+
+    fn runtime_mut(&mut self) -> &mut JsRuntime {
+        &mut self.runtime
+    }
+}
+
 async fn initialize_worker_default(
     default_runtime: &mut Option<JsRuntimeState>,
     http: &Arc<Http>,
@@ -862,10 +886,10 @@ async fn initialize_worker_default(
     let mut runtime = new_js_runtime(http.clone(), kv.clone(), secrets, None, cron_registry);
 
     runtime
-        .runtime
+        .runtime_mut()
         .execute_script("flora:bootstrap", RUNTIME_PRELUDE)?;
     run_event_loop_with_timeout(
-        &mut runtime.runtime,
+        runtime.runtime_mut(),
         PollEventLoopOptions::default(),
         limits.boot_timeout,
         worker_id,
@@ -874,8 +898,8 @@ async fn initialize_worker_default(
     .await?;
 
     // Extract dispatch function - need to enter isolate first
-    let context = runtime.runtime.main_context();
-    let isolate = runtime.runtime.v8_isolate();
+    let context = runtime.runtime().main_context();
+    let isolate = runtime.runtime_mut().v8_isolate();
     let _isolate_guard = IsolateEnterGuard::new(isolate);
     runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
 
@@ -895,7 +919,7 @@ async fn deploy_guild_to_worker(
     cron_registry: SharedCronRegistry,
 ) -> Result<(), AnyError> {
     let guild_id = deployment.guild_id.clone();
-    let saved_runtime = guild_runtimes.remove(&guild_id);
+    let mut saved_runtime = guild_runtimes.remove(&guild_id);
     let saved_crons = {
         let reg = cron_registry.lock();
         reg.jobs.get(&Some(guild_id.clone())).cloned()
@@ -908,30 +932,28 @@ async fn deploy_guild_to_worker(
     info!(target: "flora:runtime", worker_id, guild_id, "Creating guild runtime");
 
     let result = async {
+        let secrets_data = load_runtime_secrets(secrets, &guild_id).await?;
         let mut runtime = new_js_runtime(
             http.clone(),
             kv.clone(),
-            secrets
-                .load_runtime(&guild_id)
-                .await
-                .map_err(|err| AnyError::msg(err.to_string()))?,
+            secrets_data,
             Some(guild_id.clone()),
             cron_registry.clone(),
         );
 
         {
-            let _isolate_guard = enter_isolate(&mut runtime.runtime);
+            let _isolate_guard = enter_isolate(runtime.runtime_mut());
             let code = format!("globalThis.__floraGuildId = \"{}\";", guild_id);
             runtime
-                .runtime
+                .runtime_mut()
                 .execute_script("flora:guild_context", code)?;
         }
 
         runtime
-            .runtime
+            .runtime_mut()
             .execute_script("flora:bootstrap", RUNTIME_PRELUDE)?;
         run_event_loop_with_timeout(
-            &mut runtime.runtime,
+            runtime.runtime_mut(),
             PollEventLoopOptions::default(),
             limits.boot_timeout,
             worker_id,
@@ -940,8 +962,8 @@ async fn deploy_guild_to_worker(
         .await?;
 
         {
-            let context = runtime.runtime.main_context();
-            let isolate = runtime.runtime.v8_isolate();
+            let context = runtime.runtime().main_context();
+            let isolate = runtime.runtime_mut().v8_isolate();
             let _isolate_guard = IsolateEnterGuard::new(isolate);
             runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
         }
@@ -959,7 +981,7 @@ async fn deploy_guild_to_worker(
         let script_name = module_name.as_str().to_string();
         info!(target: "flora:runtime", worker_id, guild_id, script = script_name, "Loading guild script");
         load_script_source(
-            &mut runtime.runtime,
+            runtime.runtime_mut(),
             module_name,
             deployment.bundle.clone(),
             script_name,
@@ -969,8 +991,8 @@ async fn deploy_guild_to_worker(
         .await?;
 
         {
-            let context = runtime.runtime.main_context();
-            let isolate = runtime.runtime.v8_isolate();
+            let context = runtime.runtime().main_context();
+            let isolate = runtime.runtime_mut().v8_isolate();
             let _isolate_guard = IsolateEnterGuard::new(isolate);
             runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
         }
@@ -980,16 +1002,29 @@ async fn deploy_guild_to_worker(
     .await;
 
     match result {
-        Ok(runtime) => {
+        Ok(mut runtime) => {
+            let exited_new = saved_runtime.is_some();
+            if exited_new {
+                let isolate = runtime.runtime_mut().v8_isolate();
+                unsafe { isolate.exit() };
+            }
+            if let Some(old) = saved_runtime.take() {
+                drop_runtime_state(old);
+            }
             if let Some(old) = guild_runtimes.insert(guild_id.clone(), runtime) {
-                drop(old);
-                info!(target: "flora:runtime", worker_id, guild_id, "Dropped old guild runtime");
+                drop_runtime_state(old);
+            }
+            if exited_new {
+                if let Some(new) = guild_runtimes.get_mut(&guild_id) {
+                    let isolate = new.runtime_mut().v8_isolate();
+                    unsafe { isolate.enter() };
+                }
             }
             info!(target: "flora:runtime", worker_id, guild_id, "Guild deployment loaded");
             Ok(())
         }
         Err(err) => {
-            if let Some(old) = saved_runtime {
+            if let Some(old) = saved_runtime.take() {
                 guild_runtimes.insert(guild_id.clone(), old);
                 info!(target: "flora:runtime", worker_id, guild_id, "Restored previous guild runtime after failed deploy");
             }
@@ -1002,6 +1037,26 @@ async fn deploy_guild_to_worker(
     }
 }
 
+async fn load_runtime_secrets(
+    secrets: &SecretService,
+    guild_id: &str,
+) -> Result<Arc<SecretsRuntimeData>, AnyError> {
+    #[cfg(test)]
+    let result = secrets.load_runtime_for_tests(guild_id).await;
+    #[cfg(not(test))]
+    let result = secrets.load_runtime(guild_id).await;
+
+    result.map_err(|err| AnyError::msg(err.to_string()))
+}
+
+fn drop_runtime_state(mut runtime: JsRuntimeState) {
+    let isolate = runtime.runtime_mut().v8_isolate();
+    if !isolate.is_current() {
+        unsafe { isolate.enter() };
+    }
+    drop(runtime);
+}
+
 fn update_runtime_secrets(
     guild_runtimes: &mut HashMap<String, JsRuntimeState>,
     guild_id: &str,
@@ -1012,7 +1067,7 @@ fn update_runtime_secrets(
         return Ok(());
     };
     runtime.secrets = secrets.clone();
-    runtime.runtime.op_state().borrow_mut().put(secrets);
+    runtime.runtime_mut().op_state().borrow_mut().put(secrets);
     Ok(())
 }
 
@@ -1076,10 +1131,11 @@ async fn dispatch_into_runtime(
     let dispatch_fn = js_state
         .dispatch_fn
         .as_ref()
-        .ok_or_else(|| AnyError::msg("Dispatch function not initialized"))?;
+        .ok_or_else(|| AnyError::msg("Dispatch function not initialized"))?
+        .clone();
 
-    let context = js_state.runtime.main_context();
-    let isolate = js_state.runtime.v8_isolate();
+    let context = js_state.runtime().main_context();
+    let isolate = js_state.runtime_mut().v8_isolate();
     let _isolate_guard = IsolateEnterGuard::new(isolate);
 
     let (event_value, payload_value) = {
@@ -1094,13 +1150,13 @@ async fn dispatch_into_runtime(
     };
 
     let call = js_state
-        .runtime
-        .call_with_args(dispatch_fn, &[event_value, payload_value]);
+        .runtime_mut()
+        .call_with_args(&dispatch_fn, &[event_value, payload_value]);
     let result = with_timeout(
         limits.dispatch_timeout,
         async {
             js_state
-                .runtime
+                .runtime_mut()
                 .with_event_loop_promise(call, PollEventLoopOptions::default())
                 .await
                 .map_err(AnyError::from)
@@ -1115,7 +1171,7 @@ async fn dispatch_into_runtime(
 
     if let Err(ref err) = result {
         if err.is::<RuntimeTimeout>() {
-            terminate_runtime(&mut js_state.runtime, worker_id, "dispatch").await;
+            terminate_runtime(js_state.runtime_mut(), worker_id, "dispatch").await;
         }
     }
 
@@ -1145,7 +1201,7 @@ async fn load_script_from_path(
     let name = path.to_string_lossy().to_string();
 
     load_script_source(
-        &mut js_state.runtime,
+        js_state.runtime_mut(),
         ModuleName::from(name.clone()),
         source,
         name,
@@ -1441,4 +1497,109 @@ fn host_allowed(host: Option<&str>, allowlist: &[String]) -> bool {
             host == pattern
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::deployments::Deployment;
+    use chrono::Utc;
+    use parking_lot::Mutex;
+    use serde_json::json;
+    use sqlx::postgres::PgPoolOptions;
+    use std::{collections::HashMap, path::PathBuf, sync::Arc};
+    use serenity::secrets::Token;
+    use uuid::Uuid;
+
+    const GUILD_ID: &str = "guild-redeploy";
+
+    fn test_limits() -> RuntimeLimits {
+        RuntimeLimits {
+            boot_timeout: None,
+            load_timeout: None,
+            dispatch_timeout: None,
+            cron_timeout: None,
+            max_script_bytes: 512 * 1024,
+            max_cron_jobs: 4,
+        }
+    }
+
+    fn test_kv_service() -> KvService {
+        let pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect_lazy("postgres://localhost:5433/flora")
+            .expect("lazy pg pool");
+        let kv_path = std::env::temp_dir().join(format!("flora-kv-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&kv_path).expect("create kv temp dir");
+        KvService::new(pool, kv_path)
+    }
+
+    fn make_deployment(iteration: usize) -> Deployment {
+        let bundle = format!(
+            "globalThis.__floraDispatch = (event, payload) => {{ globalThis.__last = payload; return payload; }};\n// iteration {iteration}"
+        );
+        Deployment {
+            guild_id: GUILD_ID.to_string(),
+            entry: "main.js".to_string(),
+            files: Vec::new(),
+            bundle,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn stress_redeploys_reuse_isolates_without_crash() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let workspace_root = manifest_dir
+            .parent()
+            .and_then(|p| p.parent())
+            .expect("workspace root")
+            .to_path_buf();
+        std::env::set_current_dir(&workspace_root).expect("set workspace cwd");
+
+        let http = Arc::new(
+            Http::new(Token::try_from("Bot stress.test.token").expect("token")),
+        );
+        let kv = test_kv_service();
+        let secrets = SecretService::new_for_tests();
+        let limits = test_limits();
+        let cron_registry =
+            Arc::new(Mutex::new(CronRegistry::new(limits.max_cron_jobs)));
+        let mut guild_runtimes: HashMap<String, JsRuntimeState> = HashMap::new();
+
+        for iteration in 0..10 {
+            let deployment = make_deployment(iteration);
+            deploy_guild_to_worker(
+                &mut guild_runtimes,
+                &http,
+                &kv,
+                &secrets,
+                deployment,
+                0,
+                &limits,
+                cron_registry.clone(),
+            )
+            .await
+            .expect("deploy succeeds");
+
+            let runtime = guild_runtimes
+                .get_mut(GUILD_ID)
+                .expect("runtime present after deploy");
+
+            dispatch_into_runtime(
+                runtime,
+                "ping".to_string(),
+                json!({ "iteration": iteration }),
+                0,
+                &limits,
+            )
+            .await
+            .expect("dispatch after deploy");
+        }
+
+        assert_eq!(guild_runtimes.len(), 1);
+        let runtime = guild_runtimes.remove(GUILD_ID).unwrap();
+        drop_runtime_state(runtime);
+    }
 }

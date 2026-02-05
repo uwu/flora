@@ -1,6 +1,11 @@
 [workspace]
 resolver = "2"
 members = ["apps/cli", "apps/runtime", "crates/*"]
+[workspace.package]
+edition = "2024"
+authors = ["flora contributors"]
+license = "MIT"
+repository = "https://github.com/uwu/flora"
 
 [workspace.dependencies]
 axum = "0.8.7"
@@ -12,7 +17,7 @@ color-eyre = { version = "0.6.5", features = ["capture-spantrace", "issue-url"] 
 confique = { version = "0.4.0", features = ["toml"] }
 cookie = "0.18"
 croner = "3.0"
-deno_core = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat", default-features = false, features = ["v8_use_custom_libcxx"] }
+deno_core = { git = "file:///home/tasky/flora/submodules/deno_core", branch = "flora-locker-compat", default-features = false, features = ["v8_use_custom_libcxx"] }
 deno_error = "0.7.1"
 deno_fetch = "0.249.0"
 deno_net = "0.217.0"
@@ -64,9 +69,9 @@ utoipa-scalar = { version = "0.3.0", features = ["axum"] }
 uuid = { version = "1.19.0", features = ["v4"] }
 
 [patch.crates-io]
-# Use our deno_core fork compatible with rusty_v8 locker API
-deno_core = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat" }
-deno_ops = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat" }
-serde_v8 = { git = "https://github.com/taskylizard/deno_core.git", branch = "flora-locker-compat" }
+# Use git fork of deno_core aligned with rusty_v8 locker support.
+deno_core = { git = "file:///home/tasky/flora/submodules/deno_core", branch = "flora-locker-compat" }
+deno_ops = { git = "file:///home/tasky/flora/submodules/deno_core", branch = "flora-locker-compat" }
+serde_v8 = { git = "file:///home/tasky/flora/submodules/deno_core", branch = "flora-locker-compat" }
 # Use our local rusty_v8 fork with Locker/Unlocker support
 v8 = { path = "submodules/rusty_v8" }
