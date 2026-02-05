@@ -77,6 +77,9 @@ declare global {
 
   type CronHandler = (ctx: CronContext) => void | Promise<void>
 
+  interface Secrets {
+  }
+
   var __floraHandlers: { [x: string]: Array<Function> }
 
   var __floraGuildId: string | undefined
@@ -96,6 +99,8 @@ declare global {
     handler: (ctx: CronContext) => void | Promise<void>,
     options?: CronOptions | undefined
   ): void
+
+  var secrets: Secrets
 
   // SDK exports (functions, consts, classes, types)
   function prefix(

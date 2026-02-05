@@ -1,4 +1,6 @@
 var flora = (function(exports) {
+  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
+
   // #region src/sdk/commands.ts
   function prefix(command) {
     return command
@@ -7,15 +9,15 @@ var flora = (function(exports) {
     return command
   }
   function createBot(options) {
-    const prefix$1 = options.prefix ?? '!'
+    const prefix = options.prefix ?? '!'
     const commands = options.commands ?? options.prefixCommands ?? []
     const slashCommands = options.slashCommands ?? []
     on('messageCreate', async (ctx) => {
       if (!ctx.msg || !ctx.msg.content) return
       if (ctx.msg.author?.bot) return
       const content = ctx.msg.content.trim()
-      if (!content.startsWith(prefix$1)) return
-      const body = content.slice(prefix$1.length).trim()
+      if (!content.startsWith(prefix)) return
+      const body = content.slice(prefix.length).trim()
       const [commandName, ...args] = body.split(/\s+/)
       const command = commands.find((cmd) => cmd.name === commandName)
       if (!command) return
@@ -32,10 +34,10 @@ var flora = (function(exports) {
         await handleSubcommand(ctx, command)
       } else if (command.run) {
         const rawData = ctx.msg.data
-        const options$1 = flattenInteractionOptions(rawData?.options || [])
+        const options = flattenInteractionOptions(rawData?.options || [])
         await command.run({
           ...ctx,
-          options: options$1
+          options
         })
       }
     })
@@ -191,8 +193,8 @@ var flora = (function(exports) {
       this.#data.sku_id = skuId
       return this
     }
-    setLabel(label$1) {
-      this.#data.label = label$1
+    setLabel(label) {
+      this.#data.label = label
       return this
     }
     setEmoji(emoji) {
@@ -525,11 +527,11 @@ var flora = (function(exports) {
     #label
     #description
     #component
-    constructor(label$1) {
-      this.#label = label$1
+    constructor(label) {
+      this.#label = label
     }
-    setLabel(label$1) {
-      this.#label = label$1
+    setLabel(label) {
+      this.#label = label
       return this
     }
     setDescription(description) {
