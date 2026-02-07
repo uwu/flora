@@ -64,4 +64,5 @@ utoipa-scalar.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
+pg-embed = "0.7"
 tempfile = "3"

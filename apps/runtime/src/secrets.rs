@@ -233,11 +233,30 @@ impl SecretsRuntimeData {
 
 #[cfg(test)]
 impl SecretService {
-    pub fn new_for_tests() -> Self {
+    pub async fn new_for_tests(database_url: &str) -> Self {
         let db_pool = PgPoolOptions::new()
             .max_connections(1)
-            .connect_lazy("postgres://localhost:5433/flora")
+            .connect(database_url)
+            .await
             .expect("create test pg pool");
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS guild_secrets (
+                id UUID PRIMARY KEY,
+                guild_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                ciphertext BYTEA NOT NULL,
+                nonce BYTEA NOT NULL,
+                allowed_hosts TEXT[] NOT NULL DEFAULT '{}',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (guild_id, name)
+            );
+            "#,
+        )
+        .execute(&db_pool)
+        .await
+        .expect("create secrets schema");
         Self {
             db_pool,
             key_bytes: [0u8; 32],
