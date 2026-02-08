@@ -158,10 +158,10 @@ async fn main() -> Result<()> {
 
     let cached_deployments = deployment_service.list_deployments().await?;
     for deployment in cached_deployments {
-        if let Err(err) = runtime.deploy_guild_script(deployment.clone()).await {
+        if let Err(err) = runtime.deploy_script(deployment.clone()).await {
             error!(
-                "Failed to load deployment for guild {}: {:?}",
-                deployment.guild_id, err
+                "Failed to load deployment for {}:{}: {:?}",
+                deployment.scope_type, deployment.scope_id, err
             );
         }
     }

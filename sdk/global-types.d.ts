@@ -84,6 +84,10 @@ declare global {
 
   var __floraGuildId: string | undefined
 
+  var __floraUserId: string | undefined
+
+  var __floraScope: 'user' | 'guild' | undefined
+
   function on<E extends keyof FloraEventMap>(
     event: E,
     handler: (ctx: FloraEventMap[E]) => void | Promise<void>

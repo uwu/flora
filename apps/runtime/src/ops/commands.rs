@@ -3,6 +3,7 @@ use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
 use serenity::{
+    all::{InstallationContext, InteractionContext},
     builder::{CreateCommand, CreateCommandOption},
     http::Http,
     model::id::{CommandId, GuildId},
@@ -219,6 +220,49 @@ pub async fn op_get_guild_commands_permissions(
         .into_iter()
         .map(|perm| serde_json::to_value(perm).map_err(|err| JsErrorBox::generic(err.to_string())))
         .collect()
+}
+
+#[expose_input]
+pub struct RawUpsertGlobalCommands {
+    pub commands: Vec<RawSlashCommand>,
+}
+
+#[op2(async)]
+#[serde]
+pub async fn op_upsert_global_commands(
+    state: Rc<RefCell<OpState>>,
+    #[serde] args: RawUpsertGlobalCommands,
+) -> Result<Vec<serde_json::Value>, JsErrorBox> {
+    let http = {
+        let state = state.borrow();
+        state.borrow::<Arc<Http>>().clone()
+    };
+
+    let mut commands = Vec::new();
+    for cmd in args.commands {
+        let command = build_command(cmd)?;
+        let command = command
+            .integration_types(vec![InstallationContext::User])
+            .contexts(vec![
+                InteractionContext::Guild,
+                InteractionContext::BotDm,
+                InteractionContext::PrivateChannel,
+            ]);
+        commands.push(command);
+    }
+
+    let results = http
+        .create_global_commands(&commands)
+        .await
+        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+
+    let mut values = Vec::new();
+    for cmd in results {
+        let value =
+            serde_json::to_value(cmd).map_err(|err| JsErrorBox::generic(err.to_string()))?;
+        values.push(value);
+    }
+    Ok(values)
 }
 
 fn parse_guild_id(value: &str) -> Result<GuildId, JsErrorBox> {

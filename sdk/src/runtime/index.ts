@@ -52,6 +52,8 @@ export interface Secrets {
 declare global {
   var __floraHandlers: Record<string, Function[]>
   var __floraGuildId: string | undefined
+  var __floraUserId: string | undefined
+  var __floraScope: 'guild' | 'user' | undefined
   function on<E extends keyof FloraEventMap>(event: E, handler: FloraEventHandler<E>): void
   function __floraDispatch(event: string, payload: unknown): Promise<void>
   function registerSlashCommands(commands: FlattenedSlashCommand[]): Promise<void> | undefined
@@ -68,6 +70,9 @@ declare const Deno: {
       op_log(args: unknown[]): void
       op_upsert_guild_commands(
         options: { guildId: string; commands: FlattenedSlashCommand[] }
+      ): Promise<void>
+      op_upsert_global_commands(
+        options: { commands: FlattenedSlashCommand[] }
       ): Promise<void>
       op_register_cron(options: { name: string; expr: string; skipIfRunning?: boolean }): void
       op_secret_placeholder(name: string): string | undefined
@@ -135,6 +140,9 @@ globalThis.console = {
 globalThis.registerSlashCommands = function registerSlashCommands(
   commands: FlattenedSlashCommand[]
 ): Promise<void> | undefined {
+  if (globalThis.__floraScope === 'user') {
+    return core.ops.op_upsert_global_commands({ commands })
+  }
   if (!globalThis.__floraGuildId) return
   return core.ops.op_upsert_guild_commands({
     guildId: globalThis.__floraGuildId,

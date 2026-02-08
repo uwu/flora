@@ -51,6 +51,7 @@ deno_core::extension!(
         commands::op_edit_guild_command_permissions,
         commands::op_get_guild_commands_permissions,
         commands::op_get_guild_command_permissions,
+        commands::op_upsert_global_commands,
         guilds::op_kick_member,
         guilds::op_ban_member,
         guilds::op_unban_member,

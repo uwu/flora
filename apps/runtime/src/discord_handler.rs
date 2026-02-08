@@ -6,9 +6,9 @@ use crate::{
 use color_eyre::{Report, eyre::eyre};
 use flora_macros::expose_payload;
 use serenity::all::{
-    ApplicationId, CommandInteraction, ComponentInteraction, Context, EventHandler, FullEvent,
-    GuildId, Interaction, Message, MessageUpdateEvent, ModalInteraction, Reaction, Ready,
-    async_trait,
+    ApplicationId, AuthorizingIntegrationOwner, AuthorizingIntegrationOwners, CommandInteraction,
+    ComponentInteraction, Context, EventHandler, FullEvent, GuildId, Interaction, Message,
+    MessageUpdateEvent, ModalInteraction, Reaction, Ready, async_trait,
 };
 use std::sync::Arc;
 use t0x::T0x;
@@ -79,13 +79,13 @@ impl EventHandler for DiscordHandler {
                     }
                 };
 
-                let guild_id = msg.guild_id.map(|guild| guild.get().to_string());
-                if guild_id.is_none() {
-                    return;
-                }
+                let scope_key = match msg.guild_id {
+                    Some(guild) => guild.get().to_string(),
+                    None => format!("user:{}", msg.author.id.get()),
+                };
                 if let Err(err) = self
                     .runtime
-                    .dispatch_js_event("messageCreate", guild_id, value)
+                    .dispatch_js_event("messageCreate", Some(scope_key), value)
                     .await
                 {
                     error!("dispatch_js_event error: {:?}", err);
@@ -198,11 +198,14 @@ impl EventHandler for DiscordHandler {
                         command.data.name
                     );
 
-                    let payload = EventInteractionCreate::from(command);
-                    let guild_id = payload.guild_id.clone();
-                    if guild_id.is_none() {
+                    let scope_key = match command.guild_id {
+                        Some(gid) => Some(gid.get().to_string()),
+                        None => user_scope_key(&command.authorizing_integration_owners),
+                    };
+                    let Some(scope_key) = scope_key else {
                         return;
-                    }
+                    };
+                    let payload = EventInteractionCreate::from(command);
                     let value = match serde_json::to_value(payload) {
                         Ok(value) => value,
                         Err(err) => {
@@ -213,18 +216,21 @@ impl EventHandler for DiscordHandler {
 
                     if let Err(err) = self
                         .runtime
-                        .dispatch_js_event("interactionCreate", guild_id, value)
+                        .dispatch_js_event("interactionCreate", Some(scope_key), value)
                         .await
                     {
                         error!("dispatch_js_event (interactionCreate) error: {:?}", err);
                     }
                 }
                 Interaction::Component(component) => {
-                    let payload = EventComponentInteraction::from(component);
-                    let guild_id = payload.guild_id.clone();
-                    if guild_id.is_none() {
+                    let scope_key = match component.guild_id {
+                        Some(gid) => Some(gid.get().to_string()),
+                        None => user_scope_key(&component.authorizing_integration_owners),
+                    };
+                    let Some(scope_key) = scope_key else {
                         return;
-                    }
+                    };
+                    let payload = EventComponentInteraction::from(component);
                     let value = match serde_json::to_value(payload) {
                         Ok(value) => value,
                         Err(err) => {
@@ -234,12 +240,14 @@ impl EventHandler for DiscordHandler {
                     };
                     if let Err(err) = self
                         .runtime
-                        .dispatch_js_event("componentInteraction", guild_id, value)
+                        .dispatch_js_event("componentInteraction", Some(scope_key), value)
                         .await
                     {
                         error!("dispatch_js_event (componentInteraction) error: {:?}", err);
                     }
                 }
+                // TODO: serenity is missing authorizing_integration_owners/context on ModalInteraction.
+                // Skip user-script routing for modals until upstream adds these fields.
                 Interaction::Modal(modal) => {
                     let payload = EventModalSubmit::from(modal);
                     let guild_id = payload.guild_id.clone();
@@ -620,6 +628,10 @@ pub struct EventInteractionCreate {
     locale: Option<String>,
     /// The guild's preferred locale.
     guild_locale: Option<String>,
+    /// The interaction context type (0 = Guild, 1 = BotDm, 2 = PrivateChannel).
+    context: Option<u8>,
+    /// The authorizing integration owners for this interaction.
+    authorizing_integration_owners: Option<serde_json::Value>,
 }
 
 impl From<&CommandInteraction> for EventInteractionCreate {
@@ -652,6 +664,10 @@ impl From<&CommandInteraction> for EventInteractionCreate {
             data,
             locale: Some(interaction.locale.to_string()),
             guild_locale: interaction.guild_locale.as_ref().map(|l| l.to_string()),
+            context: interaction.context.map(|c| c.0),
+            authorizing_integration_owners: Some(serialize_integration_owners(
+                &interaction.authorizing_integration_owners,
+            )),
         }
     }
 }
@@ -683,6 +699,10 @@ pub struct EventComponentInteraction {
     guild_locale: Option<String>,
     /// ID of the message the component is attached to.
     message_id: Option<String>,
+    /// The interaction context type (0 = Guild, 1 = BotDm, 2 = PrivateChannel).
+    context: Option<u8>,
+    /// The authorizing integration owners for this interaction.
+    authorizing_integration_owners: Option<serde_json::Value>,
 }
 
 impl From<&ComponentInteraction> for EventComponentInteraction {
@@ -715,6 +735,10 @@ impl From<&ComponentInteraction> for EventComponentInteraction {
             locale: Some(interaction.locale.to_string()),
             guild_locale: interaction.guild_locale.as_ref().map(|l| l.to_string()),
             message_id: Some(interaction.message.id.get().to_string()),
+            context: interaction.context.map(|c| c.0),
+            authorizing_integration_owners: Some(serialize_integration_owners(
+                &interaction.authorizing_integration_owners,
+            )),
         }
     }
 }
@@ -799,10 +823,47 @@ pub struct EventReactionRemoveAll {
     guild_id: Option<String>,
 }
 
+fn serialize_integration_owners(owners: &AuthorizingIntegrationOwners) -> serde_json::Value {
+    let mut map = serde_json::Map::new();
+    for owner in &owners.0 {
+        match owner {
+            AuthorizingIntegrationOwner::GuildInstall(gid) => {
+                let val = match gid {
+                    Some(id) => serde_json::Value::String(id.get().to_string()),
+                    None => serde_json::Value::Null,
+                };
+                map.insert("0".to_string(), val);
+            }
+            AuthorizingIntegrationOwner::UserInstall(uid) => {
+                map.insert(
+                    "1".to_string(),
+                    serde_json::Value::String(uid.get().to_string()),
+                );
+            }
+            AuthorizingIntegrationOwner::Unknown(_) | _ => {}
+        }
+    }
+    serde_json::Value::Object(map)
+}
+
+fn user_scope_key(owners: &AuthorizingIntegrationOwners) -> Option<String> {
+    for owner in &owners.0 {
+        if let AuthorizingIntegrationOwner::UserInstall(uid) = owner {
+            return Some(format!("user:{}", uid.get()));
+        }
+    }
+    None
+}
+
 impl DiscordHandler {
     async fn bootstrap_default_script(&self, guild_id: GuildId) -> Result<(), Report> {
         let guild_str = guild_id.get().to_string();
-        if self.deployments.get_deployment(&guild_str).await?.is_some() {
+        if self
+            .deployments
+            .get_deployment("guild", &guild_str)
+            .await?
+            .is_some()
+        {
             return Ok(());
         }
 
@@ -822,6 +883,7 @@ impl DiscordHandler {
         let deployment = self
             .deployments
             .upsert_deployment(
+                "guild".to_string(),
                 guild_str.clone(),
                 DEFAULT_GUILD_ENTRY.to_string(),
                 files,
@@ -829,7 +891,7 @@ impl DiscordHandler {
             )
             .await?;
         self.runtime
-            .deploy_guild_script(deployment)
+            .deploy_script(deployment)
             .await
             .map_err(|err| eyre!(err.to_string()))?;
         info!(target: "flora:deployments", guild_id = guild_str, "bootstrapped default script");

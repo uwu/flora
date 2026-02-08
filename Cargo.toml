@@ -2,8 +2,8 @@
 resolver = "2"
 members = ["apps/cli", "apps/runtime", "crates/*"]
 [workspace.package]
-edition = "2024"
 authors = ["flora contributors"]
+edition = "2024"
 license = "MIT"
 repository = "https://github.com/uwu/flora"
 
@@ -43,7 +43,9 @@ rand = "0.8"
 reqwest = { version = "0.12.25", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serenity = { git = "https://github.com/serenity-rs/serenity", default-features = false, branch = "next", features = ["typesize", "temp_cache", "tokio_task_builder", "transport_compression_zstd", "rustls_backend"] }
+# NOTE: ModalInteraction is missing `authorizing_integration_owners` and `context` fields upstream.
+# These are needed for full user-installable app support. Track serenity-rs/serenity for updates.
+serenity = { git = "https://github.com/serenity-rs/serenity", default-features = false, rev = "86a1fd08f31bb712582f3725ec210270726400a8", features = ["typesize", "temp_cache", "tokio_task_builder", "transport_compression_zstd", "rustls_backend"] }
 sha2 = "0.10"
 sled = "0.34"
 sqlx = { version = "0.8.6", features = ["chrono", "macros", "postgres", "runtime-tokio-rustls", "uuid"] }

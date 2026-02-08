@@ -34,6 +34,9 @@ globalThis.__floraDispatch = async function __floraDispatch(event, payload) {
 }
 globalThis.console = { log: (...args) => core.ops.op_log(args) }
 globalThis.registerSlashCommands = function registerSlashCommands(commands) {
+  if (globalThis.__floraScope === 'user') {
+    return core.ops.op_upsert_global_commands({ commands })
+  }
   if (!globalThis.__floraGuildId) return
   return core.ops.op_upsert_guild_commands({
     guildId: globalThis.__floraGuildId,

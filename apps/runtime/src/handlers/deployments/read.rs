@@ -47,7 +47,7 @@ pub async fn get_deployment_handler(
 
     let deployment = state
         .deployments
-        .get_deployment(&guild_id)
+        .get_deployment("guild", &guild_id)
         .await
         .map_err(|err| {
             error!(target: "flora:api", guild_id, ?err, "failed to fetch deployment");

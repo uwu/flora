@@ -30,7 +30,8 @@ pub struct DeploymentRequest {
 /// API representation of a deployment.
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct DeploymentResponse {
-    pub guild_id: String,
+    pub scope_type: String,
+    pub scope_id: String,
     pub created_at: String,
     pub updated_at: String,
     pub entry: String,
@@ -43,7 +44,8 @@ pub struct DeploymentResponse {
 impl From<Deployment> for DeploymentResponse {
     fn from(value: Deployment) -> Self {
         Self {
-            guild_id: value.guild_id,
+            scope_type: value.scope_type,
+            scope_id: value.scope_id,
             created_at: value.created_at.to_rfc3339(),
             updated_at: value.updated_at.to_rfc3339(),
             entry: value.entry,
@@ -94,7 +96,13 @@ pub async fn upsert_deployment_handler(
 
     let deployment = state
         .deployments
-        .upsert_deployment(guild_id.clone(), request.entry, request.files, bundled.code)
+        .upsert_deployment(
+            "guild".to_string(),
+            guild_id.clone(),
+            request.entry,
+            request.files,
+            bundled.code,
+        )
         .await
         .map_err(|err| {
             error!(target: "flora:api", guild_id, ?err, "failed to upsert deployment");
@@ -103,10 +111,10 @@ pub async fn upsert_deployment_handler(
 
     state
         .runtime
-        .deploy_guild_script(deployment.clone())
+        .deploy_script(deployment.clone())
         .await
         .map_err(|err| {
-            error!(target: "flora:api", guild_id, ?err, "failed to deploy guild script");
+            error!(target: "flora:api", guild_id, ?err, "failed to deploy script");
             ApiError::internal(err)
         })?;
 

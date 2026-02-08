@@ -16,6 +16,7 @@ pub mod metrics;
 pub mod response;
 pub mod secrets;
 pub mod tokens;
+pub mod users;
 
 /// Build the top-level router with API routes and interactive docs.
 pub fn create_router() -> Router<AppState> {
@@ -26,6 +27,7 @@ pub fn create_router() -> Router<AppState> {
             (path = "/guilds", api = guilds::GuildApi),
             (path = "/tokens", api = tokens::TokenApi),
             (path = "/deployments", api = deployments::DeploymentApi),
+            (path = "/users", api = users::UserApi),
             (path = "/kv", api = kv::KvApi),
             (path = "/secrets", api = secrets::SecretsApi),
             (path = "/health", api = health::HealthApi),
@@ -45,6 +47,7 @@ pub fn create_router() -> Router<AppState> {
         .nest("/guilds", guilds::router())
         .nest("/tokens", tokens::router())
         .nest("/deployments", deployments::router())
+        .nest("/users", users::router())
         .nest("/secrets", secrets::router())
         .nest("/kv", kv::router())
         .route("/health", get(health::health_check))

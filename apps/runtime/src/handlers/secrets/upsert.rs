@@ -53,7 +53,7 @@ pub async fn upsert_secret_handler(
 
     state
         .runtime
-        .refresh_guild_secrets(&guild_id)
+        .refresh_secrets(&guild_id)
         .await
         .map_err(ApiError::internal)?;
 

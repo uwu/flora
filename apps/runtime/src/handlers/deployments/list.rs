@@ -34,9 +34,10 @@ pub async fn list_deployments_handler(
 
     let mut response = Vec::new();
     for deployment in deployments {
-        if ensure_guild_admin(&state, &identity, &deployment.guild_id)
-            .await
-            .is_ok()
+        if deployment.scope_type == "guild"
+            && ensure_guild_admin(&state, &identity, &deployment.scope_id)
+                .await
+                .is_ok()
         {
             response.push(DeploymentResponse::from(deployment));
         }

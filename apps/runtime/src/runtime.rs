@@ -81,8 +81,8 @@ enum WorkerCommand {
         path: PathBuf,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
-    /// Deploy a guild's script (creates/replaces guild isolate).
-    DeployGuild {
+    /// Deploy a script (creates/replaces isolate for a scope).
+    Deploy {
         deployment: Deployment,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
@@ -165,9 +165,9 @@ impl Worker {
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 
-    async fn deploy_guild(&self, deployment: Deployment) -> Result<(), AnyError> {
+    async fn deploy(&self, deployment: Deployment) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
-        self.send_cmd(WorkerCommand::DeployGuild {
+        self.send_cmd(WorkerCommand::Deploy {
             deployment,
             respond_to: tx,
         })?;
@@ -307,16 +307,18 @@ impl BotRuntime {
         self.workers[0].load_user_script(path).await
     }
 
-    /// Deploy a guild's script to the appropriate worker.
-    pub async fn deploy_guild_script(&self, deployment: Deployment) -> Result<(), AnyError> {
-        let worker_idx = self.worker_for_guild(&deployment.guild_id);
+    /// Deploy a script to the appropriate worker.
+    pub async fn deploy_script(&self, deployment: Deployment) -> Result<(), AnyError> {
+        let scope_key = deployment.scope_key();
+        let worker_idx = self.worker_for_guild(&scope_key);
         info!(
             target: "flora:runtime",
-            guild_id = deployment.guild_id,
+            scope_type = deployment.scope_type,
+            scope_id = deployment.scope_id,
             worker_idx,
-            "routing guild deployment to worker"
+            "routing deployment to worker"
         );
-        self.workers[worker_idx].deploy_guild(deployment).await
+        self.workers[worker_idx].deploy(deployment).await
     }
 
     /// Dispatch a JS event to the appropriate runtime.
@@ -360,16 +362,16 @@ impl BotRuntime {
         }
     }
 
-    /// Refresh secrets for an existing guild runtime.
-    pub async fn refresh_guild_secrets(&self, guild_id: &str) -> Result<(), AnyError> {
+    /// Refresh secrets for an existing scope runtime.
+    pub async fn refresh_secrets(&self, scope_key: &str) -> Result<(), AnyError> {
         let data = self
             .secrets
-            .load_runtime(guild_id)
+            .load_runtime(scope_key)
             .await
             .map_err(|err| AnyError::msg(err.to_string()))?;
-        let worker_idx = self.worker_for_guild(guild_id);
+        let worker_idx = self.worker_for_guild(scope_key);
         self.workers[worker_idx]
-            .update_secrets(guild_id.to_string(), data)
+            .update_secrets(scope_key.to_string(), data)
             .await
     }
 
@@ -517,12 +519,12 @@ fn worker_thread(
                             let _ = respond_to.send(result);
                         }
 
-                        WorkerCommand::DeployGuild { deployment, respond_to } => {
+                        WorkerCommand::Deploy { deployment, respond_to } => {
                             {
                                 let mut reg = cron_registry.lock();
-                                reg.clear_guild(&deployment.guild_id);
+                                reg.clear_guild(&deployment.scope_key());
                             }
-                            let result = deploy_guild_to_worker(
+                            let result = deploy_to_worker(
                                 &mut guild_runtimes,
                                 &http,
                                 &kv,
@@ -534,7 +536,7 @@ fn worker_thread(
                             )
                             .await;
                             if let Err(ref err) = result {
-                                error!(target: "flora:runtime", worker_id, ?err, "failed to deploy guild");
+                                error!(target: "flora:runtime", worker_id, ?err, "failed to deploy");
                             }
                             let _ = respond_to.send(result);
                         }
@@ -788,7 +790,7 @@ struct JsRuntimeState {
     runtime: JsRuntime,
     dispatch_fn: Option<Global<v8::Function>>,
     #[allow(dead_code)]
-    guild_id: Option<String>,
+    scope_key: Option<String>,
     secrets: Arc<SecretsRuntimeData>,
 }
 
@@ -909,7 +911,7 @@ async fn initialize_worker_default(
     Ok(())
 }
 
-async fn deploy_guild_to_worker(
+async fn deploy_to_worker(
     guild_runtimes: &mut HashMap<String, JsRuntimeState>,
     http: &Arc<Http>,
     kv: &KvService,
@@ -919,35 +921,48 @@ async fn deploy_guild_to_worker(
     limits: &RuntimeLimits,
     cron_registry: SharedCronRegistry,
 ) -> Result<(), AnyError> {
-    let guild_id = deployment.guild_id.clone();
-    let mut saved_runtime = guild_runtimes.remove(&guild_id);
+    let scope_key = deployment.scope_key();
+    let mut saved_runtime = guild_runtimes.remove(&scope_key);
     let saved_crons = {
         let reg = cron_registry.lock();
-        reg.jobs.get(&Some(guild_id.clone())).cloned()
+        reg.jobs.get(&Some(scope_key.clone())).cloned()
     };
     {
         let mut reg = cron_registry.lock();
-        reg.clear_guild(&guild_id);
+        reg.clear_guild(&scope_key);
     }
 
-    info!(target: "flora:runtime", worker_id, guild_id, "Creating guild runtime");
+    info!(
+        target: "flora:runtime",
+        worker_id,
+        scope_type = deployment.scope_type,
+        scope_id = deployment.scope_id,
+        "Creating runtime"
+    );
 
     let result = async {
-        let secrets_data = load_runtime_secrets(secrets, &guild_id).await?;
+        let secrets_data = load_runtime_secrets(secrets, &scope_key).await?;
         let mut runtime = new_js_runtime(
             http.clone(),
             kv.clone(),
             secrets_data,
-            Some(guild_id.clone()),
+            Some(scope_key.clone()),
             cron_registry.clone(),
         );
 
         {
             let _isolate_guard = enter_isolate(runtime.runtime_mut());
-            let code = format!("globalThis.__floraGuildId = \"{}\";", guild_id);
+            let code = if deployment.scope_type == "user" {
+                format!(
+                    "globalThis.__floraUserId = \"{}\"; globalThis.__floraScope = \"user\";",
+                    deployment.scope_id
+                )
+            } else {
+                format!("globalThis.__floraGuildId = \"{}\";", deployment.scope_id)
+            };
             runtime
                 .runtime_mut()
-                .execute_script("flora:guild_context", code)?;
+                .execute_script("flora:scope_context", code)?;
         }
 
         runtime
@@ -969,7 +984,7 @@ async fn deploy_guild_to_worker(
             runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
         }
 
-        info!(target: "flora:runtime", worker_id, guild_id, path = SDK_BUNDLE_PATH, "Loading SDK bundle");
+        info!(target: "flora:runtime", worker_id, scope_key, path = SDK_BUNDLE_PATH, "Loading SDK bundle");
         load_script_from_path(
             &mut runtime,
             PathBuf::from(SDK_BUNDLE_PATH),
@@ -980,7 +995,7 @@ async fn deploy_guild_to_worker(
 
         let module_name = ModuleName::from(deployment.module_name());
         let script_name = module_name.as_str().to_string();
-        info!(target: "flora:runtime", worker_id, guild_id, script = script_name, "Loading guild script");
+        info!(target: "flora:runtime", worker_id, scope_key, script = script_name, "Loading script");
         load_script_source(
             runtime.runtime_mut(),
             module_name,
@@ -1012,26 +1027,26 @@ async fn deploy_guild_to_worker(
             if let Some(old) = saved_runtime.take() {
                 drop_runtime_state(old);
             }
-            if let Some(old) = guild_runtimes.insert(guild_id.clone(), runtime) {
+            if let Some(old) = guild_runtimes.insert(scope_key.clone(), runtime) {
                 drop_runtime_state(old);
             }
             if exited_new {
-                if let Some(new) = guild_runtimes.get_mut(&guild_id) {
+                if let Some(new) = guild_runtimes.get_mut(&scope_key) {
                     let isolate = new.runtime_mut().v8_isolate();
                     unsafe { isolate.enter() };
                 }
             }
-            info!(target: "flora:runtime", worker_id, guild_id, "Guild deployment loaded");
+            info!(target: "flora:runtime", worker_id, scope_key, "Deployment loaded");
             Ok(())
         }
         Err(err) => {
             if let Some(old) = saved_runtime.take() {
-                guild_runtimes.insert(guild_id.clone(), old);
-                info!(target: "flora:runtime", worker_id, guild_id, "Restored previous guild runtime after failed deploy");
+                guild_runtimes.insert(scope_key.clone(), old);
+                info!(target: "flora:runtime", worker_id, scope_key, "Restored previous runtime after failed deploy");
             }
             if let Some(crons) = saved_crons {
                 let mut reg = cron_registry.lock();
-                reg.jobs.insert(Some(guild_id.clone()), crons);
+                reg.jobs.insert(Some(scope_key.clone()), crons);
             }
             Err(err)
         }
@@ -1421,7 +1436,7 @@ fn new_js_runtime(
     JsRuntimeState {
         runtime,
         dispatch_fn: None,
-        guild_id,
+        scope_key: guild_id,
         secrets,
     }
 }
@@ -1615,7 +1630,8 @@ mod tests {
             "globalThis.__floraDispatch = (event, payload) => {{ globalThis.__last = payload; return payload; }};\n// iteration {iteration}"
         );
         Deployment {
-            guild_id: GUILD_ID.to_string(),
+            scope_type: "guild".to_string(),
+            scope_id: GUILD_ID.to_string(),
             entry: "main.js".to_string(),
             files: Vec::new(),
             bundle,
@@ -1653,7 +1669,7 @@ mod tests {
 
             for iteration in 0..10 {
                 let deployment = make_deployment(iteration);
-                deploy_guild_to_worker(
+                deploy_to_worker(
                     &mut guild_runtimes,
                     &http,
                     &kv,
