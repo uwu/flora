@@ -10,6 +10,12 @@ const allowed = ['981306328930713661', '886194087072510012']
 on('messageCreate', async (ctx) => {
   const msg = ctx.msg
   if (!msg.member?.roles?.some((r: string) => allowed.includes(r))) return
+  if (/(?:^|\s)-ignore(?:\s|$)/i.test(msg.content)) return
+
+  const parseContent = msg.content.replace(
+    /<(?:https?:\/\/)?(?:www\.)?github\.com\/[^>\s]+>/gi,
+    ' '
+  )
 
   const headers = {
     'User-Agent': 'flora-uwu.network',
@@ -23,7 +29,7 @@ on('messageCreate', async (ctx) => {
   }> = []
   const seen = new Set<string>()
 
-  const urlMatches = msg.content.matchAll(githubUrlRegex)
+  const urlMatches = parseContent.matchAll(githubUrlRegex)
   for (const match of urlMatches) {
     const { owner, repo, rest } = match.groups ?? {}
     if (!owner || !repo) continue
@@ -44,13 +50,13 @@ on('messageCreate', async (ctx) => {
     links.push({ owner, repo, issue, comment })
   }
 
-  const repoMatches = msg.content.matchAll(repoRefRegex)
+  const repoMatches = parseContent.matchAll(repoRefRegex)
   for (const match of repoMatches) {
     const { owner, repo, issue, comment } = match.groups ?? {}
     if (!owner || !repo) continue
     if (
       match.index !== undefined &&
-      /github\.com\/$/i.test(msg.content.slice(Math.max(0, match.index - 20), match.index))
+      /github\.com\/$/i.test(parseContent.slice(Math.max(0, match.index - 20), match.index))
     ) {
       continue
     }
