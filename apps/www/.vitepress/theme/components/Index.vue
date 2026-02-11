@@ -37,10 +37,37 @@
 
 <style>
 .page-root {
+  --page-bg: oklch(0.84 0.052 148);
+  --page-text: oklch(0.24 0.025 154);
+  --page-link: oklch(0.3 0.085 151);
+  --page-link-hover: oklch(0.24 0.098 151);
+  --page-accent-soft: oklch(0.96 0.028 148 / 0.54);
+  --footer-opacity: 0.8;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #a4b793;
+  background-color: var(--page-bg);
+  color: var(--page-text);
+}
+
+html.dark .page-root {
+  --page-bg: oklch(0.24 0.03 152);
+  --page-text: oklch(0.92 0.018 150);
+  --page-link: oklch(0.82 0.12 151);
+  --page-link-hover: oklch(0.89 0.1 151);
+  --page-accent-soft: oklch(0.31 0.04 151 / 0.5);
+  --footer-opacity: 0.6;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not(.light) .page-root {
+    --page-bg: oklch(0.24 0.03 152);
+    --page-text: oklch(0.92 0.018 150);
+    --page-link: oklch(0.82 0.12 151);
+    --page-link-hover: oklch(0.89 0.1 151);
+    --page-accent-soft: oklch(0.31 0.04 151 / 0.5);
+    --footer-opacity: 0.6;
+  }
 }
 
 .page-canvas {
@@ -63,13 +90,14 @@
   background-image: url("/flora-logo.png");
   background-size: cover;
   background-position: center;
+  border-radius: 20px;
 }
 
 .brand-name {
   position: absolute;
   left: 163px;
   top: 68px;
-  color: #e1ecd9;
+  color: var(--page-text);
   font-size: 52px;
   line-height: 58px;
 }
@@ -78,7 +106,7 @@
   position: absolute;
   right: 40px;
   top: 68px;
-  color: #e1ecd9;
+  color: var(--page-text);
   font-size: 34px;
   line-height: 52px;
 }
@@ -87,10 +115,32 @@
   max-width: 980px;
   margin-top: 32px;
   padding: 0 54px;
-  color: #e1ecd9;
+  color: var(--page-text);
   font-size: 20px;
   line-height: 32px;
   letter-spacing: -0.005em;
+}
+
+.description .underline {
+  color: var(--page-link);
+  text-decoration-color: var(--page-link);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.14em;
+  border-radius: 3px;
+  background: linear-gradient(var(--page-accent-soft), var(--page-accent-soft)) 0 100% / 100% 0
+    no-repeat;
+  transition: color 160ms ease, background-size 160ms ease, text-decoration-color 160ms ease;
+}
+
+.description .underline:hover {
+  color: var(--page-link-hover);
+  text-decoration-color: var(--page-link-hover);
+  background-size: 100% 100%;
+}
+
+.description .underline:focus-visible {
+  outline: 2px solid var(--page-link);
+  outline-offset: 3px;
 }
 
 .footer-bg {
@@ -102,6 +152,7 @@
   background-position: bottom center;
   background-repeat: no-repeat;
   pointer-events: none;
+  opacity: var(--footer-opacity);
 }
 
 @media (max-width: 900px) {
@@ -112,6 +163,7 @@
   .logo {
     width: 96px;
     height: 96px;
+    border-radius: 12px;
   }
 
   .brand-name {
