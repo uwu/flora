@@ -118,7 +118,7 @@ pub async fn op_send_interaction_response(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
 
     let interaction_id = args
@@ -159,7 +159,7 @@ pub async fn op_defer_interaction_response(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let interaction_id = args
         .interaction_id
@@ -211,7 +211,7 @@ pub async fn op_update_interaction_response(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let interaction_id = args
         .interaction_id
@@ -258,7 +258,7 @@ pub async fn op_edit_original_interaction_response(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let built = build_edit_interaction_response(&http, args).await?;
     let message = http
@@ -282,7 +282,7 @@ pub async fn op_delete_original_interaction_response(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     http.delete_original_interaction_response(&args.token)
         .await
@@ -321,7 +321,7 @@ pub async fn op_create_followup_message(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let built = build_followup_message(&http, args).await?;
     let message = http
@@ -339,7 +339,7 @@ pub async fn op_edit_followup_message(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let message_id = args
         .message_id
@@ -374,7 +374,7 @@ pub async fn op_delete_followup_message(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let message_id = args
         .message_id
@@ -398,7 +398,7 @@ pub async fn op_upsert_guild_commands(
 
     let (http, skipped) = {
         let mut state = state.borrow_mut();
-        let http = state.borrow::<Arc<Http>>().clone();
+        let http = super::resolve_http(&state)?;
         let cache = state.borrow_mut::<CommandHashCache>();
         let skipped = cache.is_duplicate_and_update(&args.guild_id, commands_hash);
         (http, skipped)

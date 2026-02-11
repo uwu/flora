@@ -82,6 +82,9 @@ enum Commands {
     /// KV store management
     #[command(subcommand)]
     Kv(KvCommands),
+    /// BYOB bot binding management
+    #[command(subcommand)]
+    Bot(BotCommands),
 }
 
 #[derive(Subcommand, Debug)]
@@ -169,6 +172,31 @@ enum KvCommands {
     },
 }
 
+#[derive(Subcommand, Debug)]
+enum BotCommands {
+    /// Bind a custom bot token to a guild
+    Bind {
+        /// Discord guild ID
+        #[arg(long)]
+        guild: String,
+        /// Discord bot token in `Bot <token>` format
+        #[arg(long)]
+        token: String,
+    },
+    /// Read BYOB binding for a guild
+    Get {
+        /// Discord guild ID
+        #[arg(long)]
+        guild: String,
+    },
+    /// Remove BYOB binding for a guild
+    Unbind {
+        /// Discord guild ID
+        #[arg(long)]
+        guild: String,
+    },
+}
+
 #[derive(Serialize)]
 struct DeploymentFile {
     path: String,
@@ -240,6 +268,22 @@ struct KvKeyInfo {
     metadata: Option<serde_json::Value>,
 }
 
+#[derive(Serialize)]
+struct UpsertGuildBotBindingRequest {
+    bot_token: String,
+}
+
+#[derive(Deserialize)]
+struct GuildBotBindingResponse {
+    guild_id: String,
+    owner_user_id: String,
+    bot_user_id: String,
+    bot_username: String,
+    application_id: String,
+    created_at: String,
+    updated_at: String,
+}
+
 /// A log entry from the runtime.
 #[derive(Deserialize, Debug, Clone)]
 struct LogEntry {
@@ -278,6 +322,7 @@ async fn main() -> Result<()> {
             println!("Saved token to config");
         }
         Commands::Kv(kv_cmd) => handle_kv_command(&client, &config, kv_cmd).await?,
+        Commands::Bot(bot_cmd) => handle_bot_command(&client, &config, bot_cmd).await?,
         Commands::Logs {
             guild,
             follow,
@@ -515,6 +560,68 @@ async fn health(client: &Client, config: &CliConfig) -> Result<()> {
         .error_for_status()?;
     let body = resp.text().await?;
     println!("{body}");
+    Ok(())
+}
+
+async fn handle_bot_command(client: &Client, config: &CliConfig, cmd: BotCommands) -> Result<()> {
+    match cmd {
+        BotCommands::Bind { guild, token } => {
+            let url = format!("{}/guild-bots/{guild}", config.api_url);
+            let body = UpsertGuildBotBindingRequest { bot_token: token };
+
+            let binding: GuildBotBindingResponse = client
+                .put(url)
+                .maybe_bearer(&config.token)?
+                .json(&body)
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await?;
+
+            println!(
+                "Bound guild {} to bot {} ({}) app={} updated={}",
+                binding.guild_id,
+                binding.bot_username,
+                binding.bot_user_id,
+                binding.application_id,
+                binding.updated_at
+            );
+        }
+        BotCommands::Get { guild } => {
+            let url = format!("{}/guild-bots/{guild}", config.api_url);
+            let binding: GuildBotBindingResponse = client
+                .get(url)
+                .maybe_bearer(&config.token)?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await?;
+
+            println!(
+                "Guild {}\n  bot: {} ({})\n  app: {}\n  owner: {}\n  created: {}\n  updated: {}",
+                binding.guild_id,
+                binding.bot_username,
+                binding.bot_user_id,
+                binding.application_id,
+                binding.owner_user_id,
+                binding.created_at,
+                binding.updated_at
+            );
+        }
+        BotCommands::Unbind { guild } => {
+            let url = format!("{}/guild-bots/{guild}", config.api_url);
+            client
+                .delete(url)
+                .maybe_bearer(&config.token)?
+                .send()
+                .await?
+                .error_for_status()?;
+            println!("Removed BYOB binding for guild {}", guild);
+        }
+    }
+
     Ok(())
 }
 

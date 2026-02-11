@@ -206,7 +206,7 @@ pub async fn op_send_message(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
 
     let channel_id_num = args
@@ -300,7 +300,7 @@ pub async fn op_edit_message(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
 
     let channel_id_num = args
@@ -377,7 +377,7 @@ pub async fn op_delete_message(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let message_id = parse_message_id(&args.message_id)?;
@@ -405,7 +405,7 @@ pub async fn op_bulk_delete_messages(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let message_ids = args
@@ -437,7 +437,7 @@ pub async fn op_pin_message(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let message_id = parse_message_id(&args.message_id)?;
@@ -456,7 +456,7 @@ pub async fn op_unpin_message(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let message_id = parse_message_id(&args.message_id)?;
@@ -485,7 +485,7 @@ pub async fn op_crosspost_message(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let message_id = parse_message_id(&args.message_id)?;
@@ -513,7 +513,7 @@ pub async fn op_fetch_message(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let message_id = parse_message_id(&args.message_id)?;
@@ -547,7 +547,7 @@ pub async fn op_fetch_messages(
 ) -> Result<Vec<serde_json::Value>, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let mut builder = GetMessages::new();
@@ -594,7 +594,7 @@ pub async fn op_add_reaction(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let message_id = parse_message_id(&args.message_id)?;
@@ -614,7 +614,7 @@ pub async fn op_remove_reaction(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let message_id = parse_message_id(&args.message_id)?;
@@ -653,7 +653,7 @@ pub async fn op_clear_reactions(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let message_id = parse_message_id(&args.message_id)?;

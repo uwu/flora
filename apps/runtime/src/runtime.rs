@@ -1,5 +1,6 @@
 use crate::ops::{CronRegistry, SharedCronRegistry};
 use crate::{
+    bot_router::GuildBotRouter,
     deployments::Deployment,
     kv::KvService,
     metrics::metrics,
@@ -20,7 +21,6 @@ use deno_permissions::{
 };
 use flora_config::RuntimeConfig;
 use serde_json::Value;
-use serenity::http::Http;
 use std::{
     borrow::Cow,
     cell::RefCell,
@@ -257,7 +257,7 @@ fn timeout_from_secs(secs: u64) -> Option<Duration> {
 impl BotRuntime {
     /// Create a new runtime with a pool of worker threads.
     pub fn new(
-        http: Arc<Http>,
+        bot_router: Arc<GuildBotRouter>,
         kv: KvService,
         secrets: SecretService,
         config: RuntimeConfig,
@@ -267,7 +267,7 @@ impl BotRuntime {
         let limits = RuntimeLimits::from_config(&config);
 
         let workers: Vec<Worker> = (0..num_workers)
-            .map(|id| spawn_worker(id, http.clone(), kv.clone(), secrets.clone(), limits))
+            .map(|id| spawn_worker(id, bot_router.clone(), kv.clone(), secrets.clone(), limits))
             .collect();
 
         Self {
@@ -400,7 +400,7 @@ impl Drop for BotRuntime {
 
 fn spawn_worker(
     id: usize,
-    http: Arc<Http>,
+    bot_router: Arc<GuildBotRouter>,
     kv: KvService,
     secrets: SecretService,
     limits: RuntimeLimits,
@@ -419,7 +419,7 @@ fn spawn_worker(
             worker_thread(
                 id,
                 rx,
-                http,
+                bot_router,
                 kv,
                 secrets,
                 limits,
@@ -440,7 +440,7 @@ fn spawn_worker(
 fn worker_thread(
     worker_id: usize,
     mut receiver: mpsc::UnboundedReceiver<WorkerCommand>,
-    http: Arc<Http>,
+    bot_router: Arc<GuildBotRouter>,
     kv: KvService,
     secrets: SecretService,
     limits: RuntimeLimits,
@@ -481,7 +481,7 @@ fn worker_thread(
                             let result =
                                 initialize_worker_default(
                                     &mut default_runtime,
-                                    &http,
+                                    &bot_router,
                                     &kv,
                                     default_secrets.clone(),
                                     worker_id,
@@ -524,7 +524,7 @@ fn worker_thread(
                             }
                             let result = deploy_guild_to_worker(
                                 &mut guild_runtimes,
-                                &http,
+                                &bot_router,
                                 &kv,
                                 &secrets,
                                 deployment,
@@ -877,14 +877,14 @@ impl JsRuntimeState {
 
 async fn initialize_worker_default(
     default_runtime: &mut Option<JsRuntimeState>,
-    http: &Arc<Http>,
+    bot_router: &Arc<GuildBotRouter>,
     kv: &KvService,
     secrets: Arc<SecretsRuntimeData>,
     worker_id: usize,
     limits: &RuntimeLimits,
     cron_registry: SharedCronRegistry,
 ) -> Result<(), AnyError> {
-    let mut runtime = new_js_runtime(http.clone(), kv.clone(), secrets, None, cron_registry);
+    let mut runtime = new_js_runtime(bot_router.clone(), kv.clone(), secrets, None, cron_registry);
 
     runtime
         .runtime_mut()
@@ -911,7 +911,7 @@ async fn initialize_worker_default(
 
 async fn deploy_guild_to_worker(
     guild_runtimes: &mut HashMap<String, JsRuntimeState>,
-    http: &Arc<Http>,
+    bot_router: &Arc<GuildBotRouter>,
     kv: &KvService,
     secrets: &SecretService,
     deployment: Deployment,
@@ -935,7 +935,7 @@ async fn deploy_guild_to_worker(
     let result = async {
         let secrets_data = load_runtime_secrets(secrets, &guild_id).await?;
         let mut runtime = new_js_runtime(
-            http.clone(),
+            bot_router.clone(),
             kv.clone(),
             secrets_data,
             Some(guild_id.clone()),
@@ -1362,7 +1362,7 @@ fn bootstrap_extension() -> Extension {
 }
 
 fn new_js_runtime(
-    http: Arc<Http>,
+    bot_router: Arc<GuildBotRouter>,
     kv: KvService,
     secrets: Arc<SecretsRuntimeData>,
     guild_id: Option<String>,
@@ -1396,7 +1396,7 @@ fn new_js_runtime(
             deno_net::deno_net::init(None, None),
             deno_tls::deno_tls::init(),
             bootstrap_extension(),
-            ops::extension(http, kv.clone(), cron_registry),
+            ops::extension(bot_router, kv.clone(), cron_registry),
         ],
         extension_transpiler: Some(Rc::new(|specifier, source| {
             match crate::transpile::transpile_if_typescript(&specifier, source.as_str())? {
@@ -1511,7 +1511,7 @@ mod tests {
     use chrono::Utc;
     use parking_lot::Mutex;
     use serde_json::json;
-    use serenity::secrets::Token;
+    use serenity::{http::Http, secrets::Token};
     use sqlx::postgres::PgPoolOptions;
     use std::{collections::HashMap, net::TcpListener, path::PathBuf, sync::Arc, time::Duration};
     use uuid::Uuid;
@@ -1645,6 +1645,7 @@ mod tests {
             let http = Arc::new(Http::new(
                 Token::try_from("Bot stress.test.token").expect("token"),
             ));
+            let bot_router = Arc::new(GuildBotRouter::new("fallback-bot".to_string(), http, true));
             let kv = test_kv_service(&database_url).await;
             let secrets = SecretService::new_for_tests(&database_url).await;
             let limits = test_limits();
@@ -1655,7 +1656,7 @@ mod tests {
                 let deployment = make_deployment(iteration);
                 deploy_guild_to_worker(
                     &mut guild_runtimes,
-                    &http,
+                    &bot_router,
                     &kv,
                     &secrets,
                     deployment,

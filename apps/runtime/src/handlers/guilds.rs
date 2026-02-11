@@ -78,17 +78,30 @@ pub async fn list_guilds_handler(
             }
         };
 
-        match state.http.get_guild(guild_id_u64.into()).await {
-            Ok(_) => {
+        let bot_http = state.bot_router.http_for_guild(Some(&guild.id));
+        match bot_http {
+            Some(http) => match http.get_guild(guild_id_u64.into()).await {
+                Ok(_) => {
+                    allowed.push(GuildResponse {
+                        id: guild.id,
+                        name: guild.name,
+                        icon: guild.icon,
+                        permissions: perms,
+                    });
+                }
+                Err(err) => {
+                    tracing::debug!(guild_id = %guild.id, guild_name = %guild.name, "bot not in guild or failed to fetch: {}", err);
+                }
+            },
+            None => {
+                // When fallback is disabled and no BYOB is bound yet, still show admin guilds
+                // so users can configure BYOB.
                 allowed.push(GuildResponse {
                     id: guild.id,
                     name: guild.name,
                     icon: guild.icon,
                     permissions: perms,
                 });
-            }
-            Err(err) => {
-                tracing::debug!(guild_id = %guild.id, guild_name = %guild.name, "bot not in guild or failed to fetch: {}", err);
             }
         }
     }

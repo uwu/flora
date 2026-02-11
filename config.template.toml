@@ -45,6 +45,13 @@
 # Default value: "http://localhost:3000/auth/callback"
 # redirect_uri = "http://localhost:3000/auth/callback"
 
+# Whether guilds without BYOB bindings should continue using the shared flora bot.
+#
+# Can also be specified via environment variable `DISCORD_BYOB_FALLBACK_SHARED_BOT`.
+#
+# Default value: true
+# byob_fallback_shared_bot = true
+
 # Database (PostgreSQL) config.
 [database]
 # Database URL.

@@ -4,10 +4,9 @@ use deno_error::JsErrorBox;
 use flora_macros::expose_input;
 use serenity::{
     builder::{CreateCommand, CreateCommandOption},
-    http::Http,
     model::id::{CommandId, GuildId},
 };
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, rc::Rc};
 use t0x::T0x;
 
 /// Arguments for creating a guild application command.
@@ -27,7 +26,7 @@ pub async fn op_create_guild_command(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let command = build_command(args.command)?;
@@ -57,7 +56,7 @@ pub async fn op_edit_guild_command(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let command_id = parse_command_id(&args.command_id)?;
@@ -85,7 +84,7 @@ pub async fn op_delete_guild_command(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let command_id = parse_command_id(&args.command_id)?;
@@ -112,7 +111,7 @@ pub async fn op_get_guild_commands(
 ) -> Result<Vec<serde_json::Value>, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let commands = http
@@ -133,7 +132,7 @@ pub async fn op_get_guild_command(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let command_id = parse_command_id(&args.command_id)?;
@@ -163,7 +162,7 @@ pub async fn op_edit_guild_command_permissions(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let command_id = parse_command_id(&args.command_id)?;
@@ -189,7 +188,7 @@ pub async fn op_get_guild_command_permissions(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let command_id = parse_command_id(&args.command_id)?;
@@ -208,7 +207,7 @@ pub async fn op_get_guild_commands_permissions(
 ) -> Result<Vec<serde_json::Value>, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let permissions = http

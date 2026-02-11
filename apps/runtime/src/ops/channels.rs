@@ -1,11 +1,8 @@
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
-use serenity::{
-    http::Http,
-    model::id::{ChannelId, GuildId, MessageId, ThreadId, UserId},
-};
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use serenity::model::id::{ChannelId, GuildId, MessageId, ThreadId, UserId};
+use std::{cell::RefCell, rc::Rc};
 use t0x::T0x;
 
 /// Arguments for creating a guild channel.
@@ -27,7 +24,7 @@ pub async fn op_create_channel(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let channel = http
@@ -56,7 +53,7 @@ pub async fn op_edit_channel(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let channel = http
@@ -83,7 +80,7 @@ pub async fn op_delete_channel(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let channel = http
@@ -112,7 +109,7 @@ pub async fn op_create_thread(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let thread = http
@@ -143,7 +140,7 @@ pub async fn op_create_thread_from_message(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let message_id = parse_message_id(&args.message_id)?;
@@ -173,7 +170,7 @@ pub async fn op_join_thread(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let thread_id = parse_thread_id(&args.thread_id)?;
     http.join_thread_channel(thread_id)
@@ -189,7 +186,7 @@ pub async fn op_leave_thread(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let thread_id = parse_thread_id(&args.thread_id)?;
     http.leave_thread_channel(thread_id)
@@ -214,7 +211,7 @@ pub async fn op_add_thread_member(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let thread_id = parse_thread_id(&args.thread_id)?;
     let user_id = parse_user_id(&args.user_id)?;
@@ -231,7 +228,7 @@ pub async fn op_remove_thread_member(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let thread_id = parse_thread_id(&args.thread_id)?;
     let user_id = parse_user_id(&args.user_id)?;

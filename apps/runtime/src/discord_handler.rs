@@ -1,4 +1,5 @@
 use crate::{
+    bot_router::GuildBotRouter,
     bundler::{DeploymentFile, bundle_files},
     deployments::DeploymentService,
     runtime::BotRuntime,
@@ -20,6 +21,8 @@ pub struct DiscordHandler {
     pub http: Arc<serenity::http::Http>,
     pub application_id: Arc<std::sync::RwLock<Option<ApplicationId>>>,
     pub deployments: DeploymentService,
+    pub bot_router: Arc<GuildBotRouter>,
+    pub source_bot_user_id: String,
 }
 
 #[async_trait]
@@ -30,7 +33,11 @@ impl EventHandler for DiscordHandler {
                 data_about_bot: ready,
                 ..
             } => {
-                info!("Connected as {}", ready.user.name.to_string());
+                info!(
+                    source_bot_user_id = self.source_bot_user_id,
+                    "Connected as {}",
+                    ready.user.name.to_string()
+                );
 
                 {
                     let mut app_id = self.application_id.write().unwrap();
@@ -39,12 +46,24 @@ impl EventHandler for DiscordHandler {
                 self.http.set_application_id(ready.application.id);
 
                 for guild in &ready.guilds {
+                    let guild_id = guild.id.get().to_string();
+                    if !self
+                        .bot_router
+                        .should_handle_event(&self.source_bot_user_id, &guild_id)
+                    {
+                        continue;
+                    }
+
                     if let Err(err) = self.bootstrap_default_script(guild.id).await {
                         error!(
                             "failed to bootstrap default script for guild {}: {:?}",
                             guild.id, err
                         );
                     }
+                }
+
+                if !self.is_fallback_handler() {
+                    return;
                 }
 
                 let payload = EventReady::from(ready);
@@ -79,13 +98,14 @@ impl EventHandler for DiscordHandler {
                     }
                 };
 
-                let guild_id = msg.guild_id.map(|guild| guild.get().to_string());
-                if guild_id.is_none() {
+                let Some(guild_id) =
+                    self.routed_guild_id(msg.guild_id.map(|guild| guild.get().to_string()))
+                else {
                     return;
-                }
+                };
                 if let Err(err) = self
                     .runtime
-                    .dispatch_js_event("messageCreate", guild_id, value)
+                    .dispatch_js_event("messageCreate", Some(guild_id), value)
                     .await
                 {
                     error!("dispatch_js_event error: {:?}", err);
@@ -101,10 +121,9 @@ impl EventHandler for DiscordHandler {
                     Some(event.message.clone()),
                     event,
                 );
-                let guild_id = payload.guild_id.clone();
-                if guild_id.is_none() {
+                let Some(guild_id) = self.routed_guild_id(payload.guild_id.clone()) else {
                     return;
-                }
+                };
                 let value = match serde_json::to_value(payload) {
                     Ok(value) => value,
                     Err(err) => {
@@ -115,7 +134,7 @@ impl EventHandler for DiscordHandler {
 
                 if let Err(err) = self
                     .runtime
-                    .dispatch_js_event("messageUpdate", guild_id, value)
+                    .dispatch_js_event("messageUpdate", Some(guild_id), value)
                     .await
                 {
                     error!("dispatch_js_event (messageUpdate) error: {:?}", err);
@@ -132,10 +151,9 @@ impl EventHandler for DiscordHandler {
                     channel_id: channel_id.get().to_string(),
                     guild_id: guild_id.map(|g| g.get().to_string()),
                 };
-                let guild_id = payload.guild_id.clone();
-                if guild_id.is_none() {
+                let Some(guild_id) = self.routed_guild_id(payload.guild_id.clone()) else {
                     return;
-                }
+                };
 
                 let value = match serde_json::to_value(payload) {
                     Ok(value) => value,
@@ -147,7 +165,7 @@ impl EventHandler for DiscordHandler {
 
                 if let Err(err) = self
                     .runtime
-                    .dispatch_js_event("messageDelete", guild_id, value)
+                    .dispatch_js_event("messageDelete", Some(guild_id), value)
                     .await
                 {
                     error!("dispatch_js_event (messageDelete) error: {:?}", err);
@@ -167,10 +185,9 @@ impl EventHandler for DiscordHandler {
                     channel_id: channel_id.get().to_string(),
                     guild_id: guild_id.map(|g| g.get().to_string()),
                 };
-                let guild_id = payload.guild_id.clone();
-                if guild_id.is_none() {
+                let Some(guild_id) = self.routed_guild_id(payload.guild_id.clone()) else {
                     return;
-                }
+                };
 
                 let value = match serde_json::to_value(payload) {
                     Ok(value) => value,
@@ -182,7 +199,7 @@ impl EventHandler for DiscordHandler {
 
                 if let Err(err) = self
                     .runtime
-                    .dispatch_js_event("messageDeleteBulk", guild_id, value)
+                    .dispatch_js_event("messageDeleteBulk", Some(guild_id), value)
                     .await
                 {
                     error!("dispatch_js_event (messageDeleteBulk) error: {:?}", err);
@@ -199,10 +216,9 @@ impl EventHandler for DiscordHandler {
                     );
 
                     let payload = EventInteractionCreate::from(command);
-                    let guild_id = payload.guild_id.clone();
-                    if guild_id.is_none() {
+                    let Some(guild_id) = self.routed_guild_id(payload.guild_id.clone()) else {
                         return;
-                    }
+                    };
                     let value = match serde_json::to_value(payload) {
                         Ok(value) => value,
                         Err(err) => {
@@ -213,7 +229,7 @@ impl EventHandler for DiscordHandler {
 
                     if let Err(err) = self
                         .runtime
-                        .dispatch_js_event("interactionCreate", guild_id, value)
+                        .dispatch_js_event("interactionCreate", Some(guild_id), value)
                         .await
                     {
                         error!("dispatch_js_event (interactionCreate) error: {:?}", err);
@@ -221,10 +237,9 @@ impl EventHandler for DiscordHandler {
                 }
                 Interaction::Component(component) => {
                     let payload = EventComponentInteraction::from(component);
-                    let guild_id = payload.guild_id.clone();
-                    if guild_id.is_none() {
+                    let Some(guild_id) = self.routed_guild_id(payload.guild_id.clone()) else {
                         return;
-                    }
+                    };
                     let value = match serde_json::to_value(payload) {
                         Ok(value) => value,
                         Err(err) => {
@@ -234,7 +249,7 @@ impl EventHandler for DiscordHandler {
                     };
                     if let Err(err) = self
                         .runtime
-                        .dispatch_js_event("componentInteraction", guild_id, value)
+                        .dispatch_js_event("componentInteraction", Some(guild_id), value)
                         .await
                     {
                         error!("dispatch_js_event (componentInteraction) error: {:?}", err);
@@ -242,10 +257,9 @@ impl EventHandler for DiscordHandler {
                 }
                 Interaction::Modal(modal) => {
                     let payload = EventModalSubmit::from(modal);
-                    let guild_id = payload.guild_id.clone();
-                    if guild_id.is_none() {
+                    let Some(guild_id) = self.routed_guild_id(payload.guild_id.clone()) else {
                         return;
-                    }
+                    };
                     let value = match serde_json::to_value(payload) {
                         Ok(value) => value,
                         Err(err) => {
@@ -255,7 +269,7 @@ impl EventHandler for DiscordHandler {
                     };
                     if let Err(err) = self
                         .runtime
-                        .dispatch_js_event("modalSubmit", guild_id, value)
+                        .dispatch_js_event("modalSubmit", Some(guild_id), value)
                         .await
                     {
                         error!("dispatch_js_event (modalSubmit) error: {:?}", err);
@@ -268,10 +282,9 @@ impl EventHandler for DiscordHandler {
                 ..
             } => {
                 let payload = EventReaction::from(reaction);
-                let guild_id = payload.guild_id.clone();
-                if guild_id.is_none() {
+                let Some(guild_id) = self.routed_guild_id(payload.guild_id.clone()) else {
                     return;
-                }
+                };
                 let value = match serde_json::to_value(payload) {
                     Ok(value) => value,
                     Err(err) => {
@@ -281,7 +294,7 @@ impl EventHandler for DiscordHandler {
                 };
                 if let Err(err) = self
                     .runtime
-                    .dispatch_js_event("reactionAdd", guild_id, value)
+                    .dispatch_js_event("reactionAdd", Some(guild_id), value)
                     .await
                 {
                     error!("dispatch_js_event (reactionAdd) error: {:?}", err);
@@ -292,10 +305,9 @@ impl EventHandler for DiscordHandler {
                 ..
             } => {
                 let payload = EventReaction::from(reaction);
-                let guild_id = payload.guild_id.clone();
-                if guild_id.is_none() {
+                let Some(guild_id) = self.routed_guild_id(payload.guild_id.clone()) else {
                     return;
-                }
+                };
                 let value = match serde_json::to_value(payload) {
                     Ok(value) => value,
                     Err(err) => {
@@ -305,7 +317,7 @@ impl EventHandler for DiscordHandler {
                 };
                 if let Err(err) = self
                     .runtime
-                    .dispatch_js_event("reactionRemove", guild_id, value)
+                    .dispatch_js_event("reactionRemove", Some(guild_id), value)
                     .await
                 {
                     error!("dispatch_js_event (reactionRemove) error: {:?}", err);
@@ -322,10 +334,9 @@ impl EventHandler for DiscordHandler {
                     channel_id: channel_id.get().to_string(),
                     guild_id: guild_id.map(|g| g.get().to_string()),
                 };
-                let guild_id = payload.guild_id.clone();
-                if guild_id.is_none() {
+                let Some(guild_id) = self.routed_guild_id(payload.guild_id.clone()) else {
                     return;
-                }
+                };
                 let value = match serde_json::to_value(payload) {
                     Ok(value) => value,
                     Err(err) => {
@@ -335,7 +346,7 @@ impl EventHandler for DiscordHandler {
                 };
                 if let Err(err) = self
                     .runtime
-                    .dispatch_js_event("reactionRemoveAll", guild_id, value)
+                    .dispatch_js_event("reactionRemoveAll", Some(guild_id), value)
                     .await
                 {
                     error!("dispatch_js_event (reactionRemoveAll) error: {:?}", err);
@@ -346,10 +357,9 @@ impl EventHandler for DiscordHandler {
                 ..
             } => {
                 let payload = EventReaction::from(reaction);
-                let guild_id = payload.guild_id.clone();
-                if guild_id.is_none() {
+                let Some(guild_id) = self.routed_guild_id(payload.guild_id.clone()) else {
                     return;
-                }
+                };
                 let value = match serde_json::to_value(payload) {
                     Ok(value) => value,
                     Err(err) => {
@@ -359,7 +369,7 @@ impl EventHandler for DiscordHandler {
                 };
                 if let Err(err) = self
                     .runtime
-                    .dispatch_js_event("reactionRemoveEmoji", guild_id, value)
+                    .dispatch_js_event("reactionRemoveEmoji", Some(guild_id), value)
                     .await
                 {
                     error!("dispatch_js_event (reactionRemoveEmoji) error: {:?}", err);
@@ -368,6 +378,13 @@ impl EventHandler for DiscordHandler {
             FullEvent::GuildCreate {
                 guild, is_new: _, ..
             } => {
+                let guild_id = guild.id.get().to_string();
+                if !self
+                    .bot_router
+                    .should_handle_event(&self.source_bot_user_id, &guild_id)
+                {
+                    return;
+                }
                 // Bootstrap a starter script when the bot joins a guild and no deployment exists yet.
                 if let Err(err) = self.bootstrap_default_script(guild.id).await {
                     error!(target: "flora:deployments", guild_id = guild.id.get(), ?err, "failed to bootstrap default script on guild create");
@@ -800,6 +817,22 @@ pub struct EventReactionRemoveAll {
 }
 
 impl DiscordHandler {
+    fn routed_guild_id(&self, guild_id: Option<String>) -> Option<String> {
+        let guild_id = guild_id?;
+        if self
+            .bot_router
+            .should_handle_event(&self.source_bot_user_id, &guild_id)
+        {
+            Some(guild_id)
+        } else {
+            None
+        }
+    }
+
+    fn is_fallback_handler(&self) -> bool {
+        self.source_bot_user_id == self.bot_router.fallback_bot_user_id()
+    }
+
     async fn bootstrap_default_script(&self, guild_id: GuildId) -> Result<(), Report> {
         let guild_str = guild_id.get().to_string();
         if self.deployments.get_deployment(&guild_str).await?.is_some() {

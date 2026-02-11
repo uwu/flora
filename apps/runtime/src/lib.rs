@@ -1,8 +1,11 @@
 pub mod auth;
+pub mod bot_gateway;
+pub mod bot_router;
 pub mod bundler;
 pub mod deployments;
 pub mod discord_enums;
 pub mod discord_handler;
+pub mod guild_bots;
 pub mod handlers;
 pub mod kv;
 pub mod layers;

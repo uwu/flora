@@ -252,7 +252,7 @@ pub async fn ensure_guild_admin(
             .await
             .map_err(ApiError::internal)?
     } else {
-        // bot lookup
+        // bot lookup (for token-based identities without user oauth session)
         let guild_id_num: u64 = guild_id
             .parse()
             .map_err(|_| ApiError::bad_request("invalid guild id"))?;
@@ -260,8 +260,11 @@ pub async fn ensure_guild_admin(
             .user_id
             .parse()
             .map_err(|_| ApiError::bad_request("invalid user id"))?;
-        let member = state
-            .http
+        let http = state
+            .bot_router
+            .http_for_guild(Some(guild_id))
+            .ok_or_else(|| ApiError::forbidden("no bot configured for guild"))?;
+        let member = http
             .get_member(guild_id_num.into(), user_id_num.into())
             .await
             .map_err(|err| ApiError::forbidden(format!("member fetch failed: {err}")))?;
@@ -269,8 +272,7 @@ pub async fn ensure_guild_admin(
         let permissions = if let Some(perms) = member.permissions {
             perms.bits()
         } else {
-            let guild = state
-                .http
+            let guild = http
                 .get_guild(guild_id_num.into())
                 .await
                 .map_err(|err| ApiError::forbidden(format!("guild fetch failed: {err}")))?;

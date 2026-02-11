@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
+use deno_core::OpState;
+use deno_error::JsErrorBox;
 use serenity::http::Http;
 
-use crate::kv::KvService;
+use crate::{bot_router::GuildBotRouter, kv::KvService};
 
 pub mod channels;
 pub mod commands;
@@ -80,21 +82,30 @@ deno_core::extension!(
         secrets::op_secret_placeholder,
     ],
     options = {
-        http: Arc<Http>,
+        bot_router: Arc<GuildBotRouter>,
         kv: KvService,
         cron_registry: SharedCronRegistry,
     },
     state = |state, options| {
-        state.put(options.http.clone());
+        state.put(options.bot_router.clone());
         state.put(options.kv.clone());
         state.put(options.cron_registry.clone());
     }
 );
 
 pub fn extension(
-    http: Arc<Http>,
+    bot_router: Arc<GuildBotRouter>,
     kv: KvService,
     cron_registry: SharedCronRegistry,
 ) -> deno_core::Extension {
-    flora_ops::init(http, kv, cron_registry)
+    flora_ops::init(bot_router, kv, cron_registry)
+}
+
+pub fn resolve_http(state: &OpState) -> Result<Arc<Http>, JsErrorBox> {
+    let bot_router = state.borrow::<Arc<GuildBotRouter>>().clone();
+    let guild_id = state.try_borrow::<String>().cloned();
+
+    bot_router
+        .http_for_guild(guild_id.as_deref())
+        .ok_or_else(|| JsErrorBox::generic("No bot configured for guild"))
 }

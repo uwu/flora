@@ -46,6 +46,9 @@ pub struct DiscordConfig {
         default = "http://localhost:3000/auth/callback"
     )]
     pub redirect_uri: String,
+    /// Whether guilds without BYOB bindings should continue using the shared bot.
+    #[config(env = "DISCORD_BYOB_FALLBACK_SHARED_BOT", default = true)]
+    pub byob_fallback_shared_bot: bool,
 }
 
 /// Database configuration.

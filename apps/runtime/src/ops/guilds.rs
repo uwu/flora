@@ -1,11 +1,8 @@
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
-use serenity::{
-    http::Http,
-    model::id::{GuildId, RoleId, UserId},
-};
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use serenity::model::id::{GuildId, RoleId, UserId};
+use std::{cell::RefCell, rc::Rc};
 use t0x::T0x;
 
 /// Arguments for operations targeting a user in a guild.
@@ -26,7 +23,7 @@ pub async fn op_kick_member(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let user_id = parse_user_id(&args.user_id)?;
@@ -56,7 +53,7 @@ pub async fn op_ban_member(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let user_id = parse_user_id(&args.user_id)?;
@@ -74,7 +71,7 @@ pub async fn op_unban_member(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let user_id = parse_user_id(&args.user_id)?;
@@ -104,7 +101,7 @@ pub async fn op_add_member_role(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let user_id = parse_user_id(&args.user_id)?;
@@ -122,7 +119,7 @@ pub async fn op_remove_member_role(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let user_id = parse_user_id(&args.user_id)?;
@@ -154,7 +151,7 @@ pub async fn op_edit_member(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
     let user_id = parse_user_id(&args.user_id)?;

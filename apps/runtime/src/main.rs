@@ -1,7 +1,10 @@
 mod auth;
+mod bot_gateway;
+mod bot_router;
 mod bundler;
 mod deployments;
 mod discord_handler;
+mod guild_bots;
 mod handlers;
 mod kv;
 mod layers;
@@ -16,6 +19,8 @@ mod transpile;
 mod v8_init;
 
 use auth::{AuthConfig, AuthService};
+use bot_gateway::BotGatewayManager;
+use bot_router::GuildBotRouter;
 use color_eyre::eyre::Result;
 use confique::Config;
 use deno_tls::{rustls, rustls::crypto::CryptoProvider};
@@ -24,6 +29,7 @@ use discord_handler::DiscordHandler;
 use eyre::{Context, eyre};
 use flora_config::AppConfig;
 use fred::prelude::*;
+use guild_bots::GuildBotService;
 use handlers::create_router;
 use kv::KvService;
 use layers::logger::LoggingMiddleware;
@@ -114,13 +120,14 @@ async fn main() -> Result<()> {
     let token_service = TokenService::new(db_pool.clone());
     let kv_service = KvService::new(db_pool.clone(), "./data/kv".into());
     let secret_service = SecretService::new(db_pool.clone(), config.secrets.master_key.clone())?;
+    let guild_bot_service = GuildBotService::new(db_pool.clone(), config.secrets.master_key)?;
     let auth_task = cache_client.clone().init().await?;
     let auth_service = AuthService::new(
         AuthConfig {
-            client_id: config.discord.client_id,
-            client_secret: config.discord.client_secret,
-            redirect_uri: config.discord.redirect_uri,
-            session_secret: config.api.secret,
+            client_id: config.discord.client_id.clone(),
+            client_secret: config.discord.client_secret.clone(),
+            redirect_uri: config.discord.redirect_uri.clone(),
+            session_secret: config.api.secret.clone(),
             session_ttl_secs: config.api.cookie_ttl_secs,
             cookie_secure: config.api.cookie_secure,
         },
@@ -133,16 +140,24 @@ async fn main() -> Result<()> {
     let token: Token = config
         .discord
         .bot_token
+        .clone()
         .parse()
         .map_err(|err: serenity::secrets::TokenError| eyre!(err))?;
     let http = Arc::new(serenity::http::Http::new(token.clone()));
+    let fallback_user = http.get_current_user().await?;
 
     // Set application id early so guild command registration works before the READY event fires.
     let app_info = http.get_current_application_info().await?;
     http.set_application_id(app_info.id);
 
-    let runtime = Arc::new(BotRuntime::new(
+    let bot_router = Arc::new(GuildBotRouter::new(
+        fallback_user.id.get().to_string(),
         http.clone(),
+        config.discord.byob_fallback_shared_bot,
+    ));
+
+    let runtime = Arc::new(BotRuntime::new(
+        bot_router.clone(),
         kv_service.clone(),
         secret_service.clone(),
         config.runtime,
@@ -168,11 +183,22 @@ async fn main() -> Result<()> {
 
     let intents = GatewayIntents::all();
 
+    let bot_gateway = Arc::new(BotGatewayManager::new(
+        runtime.clone(),
+        deployment_service.clone(),
+        guild_bot_service.clone(),
+        bot_router.clone(),
+        intents,
+    ));
+    bot_gateway.sync_all_bindings().await?;
+
     let handler = Arc::new(DiscordHandler {
         runtime: runtime.clone(),
         http: http.clone(),
         application_id: Arc::new(std::sync::RwLock::new(Some(app_info.id))),
         deployments: deployment_service.clone(),
+        bot_router: bot_router.clone(),
+        source_bot_user_id: fallback_user.id.get().to_string(),
     });
 
     let mut client = Client::builder(token, intents)
@@ -186,7 +212,9 @@ async fn main() -> Result<()> {
         tokens: token_service.clone(),
         kv: kv_service.clone(),
         secrets: secret_service.clone(),
-        http: http.clone(),
+        guild_bots: guild_bot_service,
+        bot_router,
+        bot_gateway: bot_gateway.clone(),
     };
 
     let api_router = create_router()

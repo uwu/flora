@@ -8,10 +8,9 @@ use deno_error::JsErrorBox;
 use flora_macros::expose_input;
 use serenity::{
     builder::ExecuteWebhook,
-    http::Http,
     model::id::{ThreadId, WebhookId},
 };
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, rc::Rc};
 use t0x::T0x;
 
 /// Arguments for executing a webhook.
@@ -57,7 +56,7 @@ pub async fn op_execute_webhook(
 ) -> Result<Option<serde_json::Value>, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let webhook_id = parse_webhook_id(&args.webhook_id)?;
     let thread_id = match &args.thread_id {
@@ -171,7 +170,7 @@ pub async fn op_edit_webhook(
 ) -> Result<serde_json::Value, JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let webhook_id = parse_webhook_id(&args.webhook_id)?;
     let webhook = if let Some(token) = args.token {
@@ -203,7 +202,7 @@ pub async fn op_delete_webhook(
 ) -> Result<(), JsErrorBox> {
     let http = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        super::resolve_http(&state)?
     };
     let webhook_id = parse_webhook_id(&args.webhook_id)?;
     if let Some(token) = args.token {
