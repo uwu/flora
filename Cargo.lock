@@ -1279,7 +1279,7 @@ dependencies = [
 [[package]]
 name = "deno_core"
 version = "0.376.0"
-source = "git+file:///home/tasky/flora/submodules/deno_core?branch=flora-locker-compat#fdd5c83ac93b5d616a082f2a0beb6a46bb5503e8"
+source = "git+file:///home/tasky/flora/submodules/deno_core?branch=flora-locker-compat#7999afe24081ac4cfd74205a36e98b742555408d"
 dependencies = [
  "anyhow",
  "az",
@@ -1502,7 +1502,7 @@ dependencies = [
 [[package]]
 name = "deno_ops"
 version = "0.252.0"
-source = "git+file:///home/tasky/flora/submodules/deno_core?branch=flora-locker-compat#fdd5c83ac93b5d616a082f2a0beb6a46bb5503e8"
+source = "git+file:///home/tasky/flora/submodules/deno_core?branch=flora-locker-compat#7999afe24081ac4cfd74205a36e98b742555408d"
 dependencies = [
  "indexmap 2.12.1",
  "proc-macro2",
@@ -1980,7 +1980,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2932,7 +2932,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.1",
+ "socket2 0.5.10",
  "system-configuration 0.6.1",
  "tokio",
  "tower-service",
@@ -4630,7 +4630,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls 0.23.28",
- "socket2 0.6.1",
+ "socket2 0.5.10",
  "thiserror 2.0.17",
  "tokio",
  "tracing",
@@ -4669,9 +4669,9 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.6.1",
+ "socket2 0.5.10",
  "tracing",
- "windows-sys 0.60.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5069,7 +5069,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5082,7 +5082,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.11.0",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5402,7 +5402,7 @@ dependencies = [
 [[package]]
 name = "serde_v8"
 version = "0.285.0"
-source = "git+file:///home/tasky/flora/submodules/deno_core?branch=flora-locker-compat#fdd5c83ac93b5d616a082f2a0beb6a46bb5503e8"
+source = "git+file:///home/tasky/flora/submodules/deno_core?branch=flora-locker-compat#7999afe24081ac4cfd74205a36e98b742555408d"
 dependencies = [
  "deno_error",
  "num-bigint",
@@ -6236,7 +6236,7 @@ dependencies = [
  "getrandom 0.3.4",
  "once_cell",
  "rustix 1.1.3",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -7450,7 +7450,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

@@ -1,3 +1,4 @@
+use crate::ops::cron::CronJob;
 use crate::ops::{CronRegistry, SharedCronRegistry};
 use crate::{
     deployments::Deployment,
@@ -110,6 +111,17 @@ enum WorkerCommand {
         guild_id: String,
         respond_to: oneshot::Sender<()>,
     },
+    /// Move a guild runtime out of this worker.
+    MigrateOut {
+        guild_id: String,
+        respond_to: oneshot::Sender<Result<MigrationEnvelope, AnyError>>,
+    },
+    /// Move a guild runtime into this worker.
+    MigrateIn {
+        guild_id: String,
+        runtime: MigrationEnvelope,
+        respond_to: oneshot::Sender<Result<(), MigrationInFailure>>,
+    },
     /// Shutdown the worker.
     Shutdown,
 }
@@ -213,6 +225,49 @@ impl Worker {
         })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
+
+    async fn migrate_out(&self, guild_id: String) -> Result<MigrationEnvelope, AnyError> {
+        let (tx, rx) = oneshot::channel();
+        self.send_cmd(WorkerCommand::MigrateOut {
+            guild_id,
+            respond_to: tx,
+        })?;
+        rx.await.map_err(|_| AnyError::msg("worker stopped"))?
+    }
+
+    async fn migrate_in(
+        &self,
+        guild_id: String,
+        runtime: MigrationEnvelope,
+    ) -> Result<(), MigrationInFailure> {
+        let (tx, rx) = oneshot::channel();
+        self.backlog.fetch_add(1, Ordering::Relaxed);
+        let cmd = WorkerCommand::MigrateIn {
+            guild_id,
+            runtime,
+            respond_to: tx,
+        };
+        if let Err(err) = self.sender.send(cmd) {
+            self.backlog.fetch_sub(1, Ordering::Relaxed);
+            let WorkerCommand::MigrateIn { runtime, .. } = err.0 else {
+                return Err(MigrationInFailure::new(
+                    AnyError::msg("worker unavailable"),
+                    None,
+                ));
+            };
+            return Err(MigrationInFailure::new(
+                AnyError::msg("worker unavailable"),
+                Some(runtime),
+            ));
+        }
+        match rx.await {
+            Ok(result) => result,
+            Err(_) => Err(MigrationInFailure::new(
+                AnyError::msg("worker stopped"),
+                None,
+            )),
+        }
+    }
 }
 
 /// The main runtime that manages a pool of worker threads.
@@ -221,6 +276,8 @@ pub struct BotRuntime {
     workers: Vec<Worker>,
     num_workers: usize,
     secrets: Arc<SecretService>,
+    guild_routes: Arc<parking_lot::Mutex<HashMap<String, usize>>>,
+    migration_queues: Arc<parking_lot::Mutex<HashMap<String, Vec<QueuedGuildEvent>>>>,
 }
 
 #[derive(Clone, Copy)]
@@ -229,6 +286,7 @@ struct RuntimeLimits {
     load_timeout: Option<Duration>,
     dispatch_timeout: Option<Duration>,
     cron_timeout: Option<Duration>,
+    migration_timeout: Option<Duration>,
     max_script_bytes: usize,
     max_cron_jobs: usize,
 }
@@ -240,6 +298,7 @@ impl RuntimeLimits {
             load_timeout: timeout_from_secs(config.load_timeout_secs),
             dispatch_timeout: timeout_from_secs(config.dispatch_timeout_secs),
             cron_timeout: timeout_from_secs(config.cron_timeout_secs),
+            migration_timeout: timeout_from_millis(config.migration_timeout_ms),
             max_script_bytes: config.max_script_bytes,
             max_cron_jobs: config.max_cron_jobs,
         }
@@ -251,6 +310,14 @@ fn timeout_from_secs(secs: u64) -> Option<Duration> {
         None
     } else {
         Some(Duration::from_secs(secs))
+    }
+}
+
+fn timeout_from_millis(ms: u64) -> Option<Duration> {
+    if ms == 0 {
+        None
+    } else {
+        Some(Duration::from_millis(ms))
     }
 }
 
@@ -274,6 +341,8 @@ impl BotRuntime {
             workers,
             num_workers,
             secrets: Arc::new(secrets),
+            guild_routes: Arc::new(parking_lot::Mutex::new(HashMap::new())),
+            migration_queues: Arc::new(parking_lot::Mutex::new(HashMap::new())),
         }
     }
 
@@ -309,7 +378,17 @@ impl BotRuntime {
 
     /// Deploy a guild's script to the appropriate worker.
     pub async fn deploy_guild_script(&self, deployment: Deployment) -> Result<(), AnyError> {
-        let worker_idx = self.worker_for_guild(&deployment.guild_id);
+        let worker_idx = {
+            let mut routes = self.guild_routes.lock();
+            match routes.get(&deployment.guild_id).copied() {
+                Some(worker_idx) => worker_idx,
+                None => {
+                    let worker_idx = self.default_worker_for_guild(&deployment.guild_id);
+                    routes.insert(deployment.guild_id.clone(), worker_idx);
+                    worker_idx
+                }
+            }
+        };
         info!(
             target: "flora:runtime",
             guild_id = deployment.guild_id,
@@ -317,6 +396,74 @@ impl BotRuntime {
             "routing guild deployment to worker"
         );
         self.workers[worker_idx].deploy_guild(deployment).await
+    }
+
+    #[allow(dead_code)]
+    pub async fn migrate_guild_runtime(
+        &self,
+        guild_id: &str,
+        target_worker: usize,
+    ) -> Result<(), AnyError> {
+        let target_worker = target_worker % self.num_workers;
+        let source_worker = self.worker_for_guild(guild_id);
+        if source_worker == target_worker {
+            return Ok(());
+        }
+
+        self.begin_guild_migration(guild_id)?;
+
+        let mut final_worker = source_worker;
+        let mut migration_result = async {
+            let envelope = self.workers[source_worker]
+                .migrate_out(guild_id.to_string())
+                .await?;
+
+            match self.workers[target_worker]
+                .migrate_in(guild_id.to_string(), envelope)
+                .await
+            {
+                Ok(()) => {
+                    self.guild_routes
+                        .lock()
+                        .insert(guild_id.to_string(), target_worker);
+                    final_worker = target_worker;
+                    metrics().migration_success();
+                    info!(target: "flora:runtime", guild_id, source_worker, target_worker, "guild runtime migrated");
+                    Ok(())
+                }
+                Err(failure) => {
+                    let (err, envelope) = failure.into_parts();
+                    if let Some(envelope) = envelope {
+                        let rollback = self.workers[source_worker]
+                            .migrate_in(guild_id.to_string(), envelope)
+                            .await;
+                        if let Err(rollback_failure) = rollback {
+                            let (rollback_err, _) = rollback_failure.into_parts();
+                            return Err(AnyError::msg(format!(
+                                "migration failed and rollback failed: {}; rollback: {}",
+                                err, rollback_err
+                            )));
+                        }
+                    }
+                    Err(err)
+                }
+            }
+        }
+        .await;
+
+        let queued_events = self.finish_guild_migration(guild_id);
+        let replay_result = self
+            .flush_queued_events(guild_id, final_worker, queued_events)
+            .await;
+        if let Err(err) = replay_result {
+            if migration_result.is_ok() {
+                migration_result = Err(err);
+            } else {
+                error!(target: "flora:runtime", guild_id, ?err, "failed to replay queued events after migration error");
+            }
+        }
+
+        migration_result
     }
 
     /// Dispatch a JS event to the appropriate runtime.
@@ -328,6 +475,15 @@ impl BotRuntime {
     ) -> Result<(), AnyError> {
         match &guild_id {
             Some(gid) => {
+                if self.enqueue_migrating_event(
+                    gid,
+                    QueuedGuildEvent {
+                        event: event.to_string(),
+                        payload: payload.clone(),
+                    },
+                ) {
+                    return Ok(());
+                }
                 let worker_idx = self.worker_for_guild(gid);
                 let worker = &self.workers[worker_idx];
                 if is_droppable_event(event)
@@ -374,9 +530,78 @@ impl BotRuntime {
     }
 
     fn worker_for_guild(&self, guild_id: &str) -> usize {
+        let routes = self.guild_routes.lock();
+        let Some(worker_idx) = routes.get(guild_id).copied() else {
+            return self.default_worker_for_guild(guild_id);
+        };
+        worker_idx
+    }
+
+    fn default_worker_for_guild(&self, guild_id: &str) -> usize {
         let mut hasher = DefaultHasher::new();
         guild_id.hash(&mut hasher);
         (hasher.finish() as usize) % self.num_workers
+    }
+
+    fn begin_guild_migration(&self, guild_id: &str) -> Result<(), AnyError> {
+        let mut queues = self.migration_queues.lock();
+        if queues.contains_key(guild_id) {
+            return Err(AnyError::msg("guild migration already in progress"));
+        }
+        queues.insert(guild_id.to_string(), Vec::new());
+        Ok(())
+    }
+
+    fn finish_guild_migration(&self, guild_id: &str) -> Vec<QueuedGuildEvent> {
+        self.migration_queues
+            .lock()
+            .remove(guild_id)
+            .unwrap_or_default()
+    }
+
+    fn enqueue_migrating_event(&self, guild_id: &str, event: QueuedGuildEvent) -> bool {
+        let mut queues = self.migration_queues.lock();
+        let Some(queue) = queues.get_mut(guild_id) else {
+            return false;
+        };
+        queue.push(event);
+        true
+    }
+
+    async fn flush_queued_events(
+        &self,
+        guild_id: &str,
+        worker_idx: usize,
+        events: Vec<QueuedGuildEvent>,
+    ) -> Result<(), AnyError> {
+        let guild_id = guild_id.to_string();
+        for QueuedGuildEvent { event, payload } in events {
+            self.workers[worker_idx]
+                .dispatch(Some(guild_id.clone()), event, payload)
+                .await?;
+        }
+        Ok(())
+    }
+
+    async fn migrate_all_for_shutdown(&self) {
+        if self.num_workers <= 1 {
+            return;
+        }
+
+        let guild_ids: Vec<String> = {
+            let routes = self.guild_routes.lock();
+            routes.keys().cloned().collect()
+        };
+        for guild_id in guild_ids {
+            let source_worker = self.worker_for_guild(&guild_id);
+            let target_worker = (source_worker + 1) % self.num_workers;
+            if source_worker == target_worker {
+                continue;
+            }
+            if let Err(err) = self.migrate_guild_runtime(&guild_id, target_worker).await {
+                error!(target: "flora:runtime", guild_id, source_worker, target_worker, ?err, "failed to migrate guild during shutdown");
+            }
+        }
     }
 }
 
@@ -387,6 +612,11 @@ fn is_droppable_event(event: &str) -> bool {
 impl Drop for BotRuntime {
     fn drop(&mut self) {
         info!(target: "flora:runtime", "shutting down worker pool");
+        if let Ok(rt) = Builder::new_current_thread().enable_all().build() {
+            rt.block_on(self.migrate_all_for_shutdown());
+        } else {
+            error!(target: "flora:runtime", "failed to build runtime for graceful shutdown migration");
+        }
         for worker in &self.workers {
             worker.send_shutdown();
         }
@@ -584,6 +814,34 @@ fn worker_thread(
                             let _ = respond_to.send(result);
                         }
 
+                        WorkerCommand::MigrateOut { guild_id, respond_to } => {
+                            let result = migrate_out_from_worker(
+                                &mut guild_runtimes,
+                                &guild_id,
+                                worker_id,
+                                &limits,
+                                &cron_registry,
+                            )
+                            .await;
+                            if let Err(ref err) = result {
+                                error!(target: "flora:runtime", worker_id, guild_id, ?err, "failed to migrate out guild runtime");
+                            }
+                            let _ = respond_to.send(result);
+                        }
+
+                        WorkerCommand::MigrateIn { guild_id, runtime, respond_to } => {
+                            let result = migrate_in_to_worker(
+                                &mut guild_runtimes,
+                                guild_id,
+                                runtime,
+                                &cron_registry,
+                            );
+                            if let Err(ref err) = result {
+                                error!(target: "flora:runtime", worker_id, error = %err.error, "failed to migrate in guild runtime");
+                            }
+                            let _ = respond_to.send(result);
+                        }
+
                         WorkerCommand::UnloadGuild { guild_id, respond_to } => {
                             {
                                 let mut reg = cron_registry.lock();
@@ -716,10 +974,9 @@ async fn dispatch_cron_into_runtime(
         .clone();
 
     let context = js_state.runtime().main_context();
-    let isolate = js_state.runtime_mut().v8_isolate();
-    let _isolate_guard = IsolateEnterGuard::new(isolate);
-
     let promise = {
+        let mut v8_guard = js_state.runtime_mut().v8_guard();
+        let isolate = v8_guard.isolate();
         v8::scope_with_context!(scope, isolate, &context);
         let scope = scope;
         let context = v8::Local::new(scope, &context);
@@ -751,7 +1008,8 @@ async fn dispatch_cron_into_runtime(
                 .map_err(AnyError::from)?;
 
             let context = js_state.runtime().main_context();
-            v8::scope_with_context!(scope, js_state.runtime_mut().v8_isolate(), &context);
+            let mut v8_guard = js_state.runtime_mut().v8_guard();
+            v8::scope_with_context!(scope, v8_guard.isolate(), &context);
             let scope = scope;
             let promise = v8::Local::new(scope, &promise);
             match promise.state() {
@@ -792,6 +1050,46 @@ struct JsRuntimeState {
     secrets: Arc<SecretsRuntimeData>,
 }
 
+struct QueuedGuildEvent {
+    event: String,
+    payload: Value,
+}
+
+struct MigrationEnvelope {
+    runtime: Box<JsRuntimeState>,
+    cron_jobs: Vec<CronJob>,
+}
+
+unsafe impl Send for MigrationEnvelope {}
+
+impl MigrationEnvelope {
+    fn new(runtime: JsRuntimeState, cron_jobs: Vec<CronJob>) -> Self {
+        Self {
+            runtime: Box::new(runtime),
+            cron_jobs,
+        }
+    }
+
+    fn into_parts(self) -> (JsRuntimeState, Vec<CronJob>) {
+        (*self.runtime, self.cron_jobs)
+    }
+}
+
+struct MigrationInFailure {
+    error: AnyError,
+    runtime: Option<MigrationEnvelope>,
+}
+
+impl MigrationInFailure {
+    fn new(error: AnyError, runtime: Option<MigrationEnvelope>) -> Self {
+        Self { error, runtime }
+    }
+
+    fn into_parts(self) -> (AnyError, Option<MigrationEnvelope>) {
+        (self.error, self.runtime)
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 #[error("{stage} timed out")]
 struct RuntimeTimeout {
@@ -801,42 +1099,12 @@ struct RuntimeTimeout {
 impl Drop for JsRuntimeState {
     fn drop(&mut self) {
         metrics().isolate_destroyed();
-        unsafe {
-            let dispatch_fn = self.dispatch_fn.take();
-            let isolate_ptr = {
-                let runtime_ref: &mut JsRuntime = &mut self.runtime;
-                runtime_ref.v8_isolate() as *mut v8::OwnedIsolate
-            };
-            let _isolate_guard = IsolateEnterGuard::new(&mut *isolate_ptr);
-            let _scope = v8::HandleScope::new(&mut *isolate_ptr);
-
-            if let Some(dispatch_fn) = dispatch_fn {
-                drop(dispatch_fn);
-            }
+        let dispatch_fn = self.dispatch_fn.take();
+        if let Some(dispatch_fn) = dispatch_fn {
+            let mut v8_guard = self.runtime.v8_guard();
+            let _scope = v8::HandleScope::new(v8_guard.isolate());
+            drop(dispatch_fn);
         }
-    }
-}
-
-/// RAII guard that enters an isolate on construction and exits on drop.
-/// This is required because V8's thread-local "current isolate" state
-/// needs to be set correctly before any V8 operations. Sigh.
-struct IsolateEnterGuard {
-    isolate: *mut v8::OwnedIsolate,
-}
-
-impl IsolateEnterGuard {
-    fn new(isolate: &mut v8::OwnedIsolate) -> Self {
-        // Enter the isolate so subsequent scopes are tied to it.
-        unsafe { isolate.enter() };
-        Self { isolate }
-    }
-}
-
-impl Drop for IsolateEnterGuard {
-    fn drop(&mut self) {
-        // SAFETY: isolate lives for the guard's lifetime, we only store the raw pointer.
-        let isolate = unsafe { &mut *self.isolate };
-        unsafe { isolate.exit() };
     }
 }
 
@@ -858,11 +1126,6 @@ impl Drop for SecretScope {
             cell.borrow_mut().take();
         });
     }
-}
-
-fn enter_isolate(runtime: &mut JsRuntime) -> IsolateEnterGuard {
-    let isolate = runtime.v8_isolate();
-    IsolateEnterGuard::new(isolate)
 }
 
 impl JsRuntimeState {
@@ -898,11 +1161,12 @@ async fn initialize_worker_default(
     )
     .await?;
 
-    // Extract dispatch function - need to enter isolate first
     let context = runtime.runtime().main_context();
-    let isolate = runtime.runtime_mut().v8_isolate();
-    let _isolate_guard = IsolateEnterGuard::new(isolate);
-    runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
+    let mut v8_guard = runtime.runtime_mut().v8_guard();
+    runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(
+        &context,
+        v8_guard.isolate(),
+    )?);
 
     info!(target: "flora:runtime", worker_id, "Default runtime initialized");
     *default_runtime = Some(runtime);
@@ -943,7 +1207,6 @@ async fn deploy_guild_to_worker(
         );
 
         {
-            let _isolate_guard = enter_isolate(runtime.runtime_mut());
             let code = format!("globalThis.__floraGuildId = \"{}\";", guild_id);
             runtime
                 .runtime_mut()
@@ -964,9 +1227,9 @@ async fn deploy_guild_to_worker(
 
         {
             let context = runtime.runtime().main_context();
-            let isolate = runtime.runtime_mut().v8_isolate();
-            let _isolate_guard = IsolateEnterGuard::new(isolate);
-            runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
+            let mut v8_guard = runtime.runtime_mut().v8_guard();
+            runtime.dispatch_fn =
+                Some(extract_dispatch_fn_no_enter_impl(&context, v8_guard.isolate())?);
         }
 
         info!(target: "flora:runtime", worker_id, guild_id, path = SDK_BUNDLE_PATH, "Loading SDK bundle");
@@ -993,9 +1256,9 @@ async fn deploy_guild_to_worker(
 
         {
             let context = runtime.runtime().main_context();
-            let isolate = runtime.runtime_mut().v8_isolate();
-            let _isolate_guard = IsolateEnterGuard::new(isolate);
-            runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(&context, isolate)?);
+            let mut v8_guard = runtime.runtime_mut().v8_guard();
+            runtime.dispatch_fn =
+                Some(extract_dispatch_fn_no_enter_impl(&context, v8_guard.isolate())?);
         }
 
         Ok::<JsRuntimeState, AnyError>(runtime)
@@ -1003,23 +1266,12 @@ async fn deploy_guild_to_worker(
     .await;
 
     match result {
-        Ok(mut runtime) => {
-            let exited_new = saved_runtime.is_some();
-            if exited_new {
-                let isolate = runtime.runtime_mut().v8_isolate();
-                unsafe { isolate.exit() };
-            }
+        Ok(runtime) => {
             if let Some(old) = saved_runtime.take() {
                 drop_runtime_state(old);
             }
             if let Some(old) = guild_runtimes.insert(guild_id.clone(), runtime) {
                 drop_runtime_state(old);
-            }
-            if exited_new {
-                if let Some(new) = guild_runtimes.get_mut(&guild_id) {
-                    let isolate = new.runtime_mut().v8_isolate();
-                    unsafe { isolate.enter() };
-                }
             }
             info!(target: "flora:runtime", worker_id, guild_id, "Guild deployment loaded");
             Ok(())
@@ -1056,6 +1308,106 @@ fn drop_runtime_state(mut runtime: JsRuntimeState) {
         unsafe { isolate.enter() };
     }
     drop(runtime);
+}
+
+async fn migrate_out_from_worker(
+    guild_runtimes: &mut HashMap<String, JsRuntimeState>,
+    guild_id: &str,
+    worker_id: usize,
+    limits: &RuntimeLimits,
+    cron_registry: &SharedCronRegistry,
+) -> Result<MigrationEnvelope, AnyError> {
+    let Some(mut runtime) = guild_runtimes.remove(guild_id) else {
+        return Err(AnyError::msg("guild runtime not loaded on worker"));
+    };
+
+    let mut cron_jobs = {
+        let mut reg = cron_registry.lock();
+        reg.jobs
+            .remove(&Some(guild_id.to_string()))
+            .unwrap_or_default()
+    };
+    for job in cron_jobs.iter_mut() {
+        job.is_running = false;
+    }
+
+    let quiesce_started = Instant::now();
+    let quiesce_result = with_timeout(
+        limits.migration_timeout,
+        async {
+            runtime
+                .runtime_mut()
+                .run_event_loop(PollEventLoopOptions::default())
+                .await
+                .map_err(AnyError::from)
+        },
+        "migration_quiesce",
+    )
+    .await;
+    if let Err(err) = quiesce_result {
+        if err.is::<RuntimeTimeout>() {
+            metrics().migration_timeout();
+        }
+        if !cron_jobs.is_empty() {
+            let mut reg = cron_registry.lock();
+            reg.jobs.insert(Some(guild_id.to_string()), cron_jobs);
+        }
+        guild_runtimes.insert(guild_id.to_string(), runtime);
+        return Err(err);
+    }
+    metrics().migration_quiesce_duration(quiesce_started.elapsed());
+
+    if !runtime.runtime_mut().is_idle_for_migration() {
+        if !cron_jobs.is_empty() {
+            let mut reg = cron_registry.lock();
+            reg.jobs.insert(Some(guild_id.to_string()), cron_jobs);
+        }
+        guild_runtimes.insert(guild_id.to_string(), runtime);
+        return Err(AnyError::msg("guild runtime is not idle for migration"));
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        let isolate = runtime.runtime_mut().v8_isolate();
+        debug_assert!(
+            !isolate.is_current(),
+            "guild isolate still entered during migration"
+        );
+        debug_assert!(
+            !v8::Locker::is_locked(isolate),
+            "guild isolate locker still held during migration"
+        );
+    }
+
+    info!(target: "flora:runtime", worker_id, guild_id, "migrated guild runtime out");
+    Ok(MigrationEnvelope::new(runtime, cron_jobs))
+}
+
+fn migrate_in_to_worker(
+    guild_runtimes: &mut HashMap<String, JsRuntimeState>,
+    guild_id: String,
+    envelope: MigrationEnvelope,
+    cron_registry: &SharedCronRegistry,
+) -> Result<(), MigrationInFailure> {
+    let (mut runtime, cron_jobs) = envelope.into_parts();
+
+    let context = runtime.runtime().main_context();
+    {
+        let mut v8_guard = runtime.runtime_mut().v8_guard();
+        v8::scope_with_context!(scope, v8_guard.isolate(), &context);
+        let _ = scope;
+    }
+
+    if let Some(old) = guild_runtimes.insert(guild_id.clone(), runtime) {
+        drop_runtime_state(old);
+    }
+    if !cron_jobs.is_empty() {
+        let mut reg = cron_registry.lock();
+        reg.jobs.insert(Some(guild_id.clone()), cron_jobs);
+    }
+
+    info!(target: "flora:runtime", guild_id, "migrated guild runtime in");
+    Ok(())
 }
 
 fn update_runtime_secrets(
@@ -1136,10 +1488,9 @@ async fn dispatch_into_runtime(
         .clone();
 
     let context = js_state.runtime().main_context();
-    let isolate = js_state.runtime_mut().v8_isolate();
-    let _isolate_guard = IsolateEnterGuard::new(isolate);
-
     let (event_value, payload_value) = {
+        let mut v8_guard = js_state.runtime_mut().v8_guard();
+        let isolate = v8_guard.isolate();
         v8::scope_with_context!(scope, isolate, &context);
         let scope = scope;
         let event_value = serde_v8::to_v8(scope, &event)?;
@@ -1227,7 +1578,6 @@ async fn load_script_source(
         )));
     }
     info!(target: "flora:runtime", worker_id, module = module_name.as_str(), "Executing module source");
-    let _isolate_guard = enter_isolate(js_runtime);
 
     let code = match crate::transpile::transpile_if_typescript(&module_name, &source)? {
         Some(result) => result.code,
@@ -1332,7 +1682,7 @@ async fn terminate_runtime(runtime: &mut JsRuntime, worker_id: usize, stage: &'s
 
 fn extract_dispatch_fn_no_enter_impl(
     context: &v8::Global<v8::Context>,
-    isolate: &mut v8::OwnedIsolate,
+    isolate: &mut v8::Isolate,
 ) -> Result<Global<v8::Function>, AnyError> {
     v8::scope_with_context!(scope, isolate, context);
     let scope = scope;
@@ -1369,6 +1719,7 @@ fn new_js_runtime(
     cron_registry: SharedCronRegistry,
 ) -> JsRuntimeState {
     metrics().isolate_created();
+    let use_v8_locker = guild_id.is_some();
     let blob_store = Arc::new(deno_web::BlobStore::default());
     let broadcast_channel = deno_web::InMemoryBroadcastChannel::default();
     let descriptor_parser = Arc::new(RuntimePermissionDescriptorParser::new(RealSys));
@@ -1405,6 +1756,7 @@ fn new_js_runtime(
             }
         })),
         module_loader: Some(Rc::new(FsModuleLoader)),
+        use_v8_locker,
         ..Default::default()
     });
     runtime.op_state().borrow_mut().put(permissions);
@@ -1539,6 +1891,7 @@ mod tests {
             load_timeout: None,
             dispatch_timeout: None,
             cron_timeout: None,
+            migration_timeout: None,
             max_script_bytes: 512 * 1024,
             max_cron_jobs: 4,
         }

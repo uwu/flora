@@ -99,6 +99,9 @@ pub struct RuntimeConfig {
     /// Timeout in seconds for cron handler execution (0 disables).
     #[config(env = "RUNTIME_CRON_TIMEOUT_SECS", default = 5)]
     pub cron_timeout_secs: u64,
+    /// Timeout in milliseconds for migration quiesce (0 disables).
+    #[config(env = "RUNTIME_MIGRATION_TIMEOUT_MS", default = 500)]
+    pub migration_timeout_ms: u64,
 }
 
 /// API server configuration.

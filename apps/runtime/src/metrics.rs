@@ -30,6 +30,12 @@ pub struct Metrics {
     isolate_restarts: AtomicU64,
     /// Total number of runtime thread restarts.
     runtime_restarts: AtomicU64,
+    /// Total number of successful guild migrations.
+    migration_success: AtomicU64,
+    /// Total number of timed out guild migrations.
+    migration_timeout: AtomicU64,
+    /// Last observed quiesce duration (microseconds).
+    migration_quiesce_duration_us: AtomicU64,
     /// Dispatch latency samples (last 1000).
     dispatch_latencies: RwLock<LatencyTracker>,
 }
@@ -90,6 +96,9 @@ impl Metrics {
             oom_errors: AtomicU64::new(0),
             isolate_restarts: AtomicU64::new(0),
             runtime_restarts: AtomicU64::new(0),
+            migration_success: AtomicU64::new(0),
+            migration_timeout: AtomicU64::new(0),
+            migration_quiesce_duration_us: AtomicU64::new(0),
             dispatch_latencies: RwLock::new(LatencyTracker::new()),
         }
     }
@@ -146,6 +155,25 @@ impl Metrics {
         self.runtime_restarts.fetch_add(1, Ordering::Relaxed);
     }
 
+    /// Records a successful migration.
+    #[allow(dead_code)]
+    pub fn migration_success(&self) {
+        self.migration_success.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Records a migration timeout.
+    #[allow(dead_code)]
+    pub fn migration_timeout(&self) {
+        self.migration_timeout.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Records the latest migration quiesce duration.
+    #[allow(dead_code)]
+    pub fn migration_quiesce_duration(&self, duration: std::time::Duration) {
+        self.migration_quiesce_duration_us
+            .store(duration.as_micros() as u64, Ordering::Relaxed);
+    }
+
     /// Returns a snapshot of all metrics.
     pub fn snapshot(&self) -> MetricsSnapshot {
         let (avg_latency_us, p50_latency_us, p95_latency_us, p99_latency_us) =
@@ -168,6 +196,11 @@ impl Metrics {
             oom_errors: self.oom_errors.load(Ordering::Relaxed),
             isolate_restarts: self.isolate_restarts.load(Ordering::Relaxed),
             runtime_restarts: self.runtime_restarts.load(Ordering::Relaxed),
+            migration_success: self.migration_success.load(Ordering::Relaxed),
+            migration_timeout: self.migration_timeout.load(Ordering::Relaxed),
+            migration_quiesce_duration_us: self
+                .migration_quiesce_duration_us
+                .load(Ordering::Relaxed),
             avg_latency_us,
             p50_latency_us,
             p95_latency_us,
@@ -207,6 +240,18 @@ flora_isolate_restarts_total {}
 # TYPE flora_runtime_restarts_total counter
 flora_runtime_restarts_total {}
 
+# HELP flora_migration_success_total Total number of successful migrations
+# TYPE flora_migration_success_total counter
+flora_migration_success_total {}
+
+# HELP flora_migration_timeout_total Total number of migration timeouts
+# TYPE flora_migration_timeout_total counter
+flora_migration_timeout_total {}
+
+# HELP flora_migration_quiesce_duration_us Last migration quiesce duration in microseconds
+# TYPE flora_migration_quiesce_duration_us gauge
+flora_migration_quiesce_duration_us {}
+
 # HELP flora_dispatch_latency_avg_us Average dispatch latency in microseconds
 # TYPE flora_dispatch_latency_avg_us gauge
 flora_dispatch_latency_avg_us {}
@@ -230,6 +275,9 @@ flora_dispatch_latency_p99_us {}
             s.oom_errors,
             s.isolate_restarts,
             s.runtime_restarts,
+            s.migration_success,
+            s.migration_timeout,
+            s.migration_quiesce_duration_us,
             s.avg_latency_us,
             s.p50_latency_us,
             s.p95_latency_us,
@@ -248,6 +296,9 @@ pub struct MetricsSnapshot {
     pub oom_errors: u64,
     pub isolate_restarts: u64,
     pub runtime_restarts: u64,
+    pub migration_success: u64,
+    pub migration_timeout: u64,
+    pub migration_quiesce_duration_us: u64,
     pub avg_latency_us: u64,
     pub p50_latency_us: u64,
     pub p95_latency_us: u64,
