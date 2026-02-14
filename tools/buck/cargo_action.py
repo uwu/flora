@@ -63,9 +63,30 @@ def choose_library_artifact(filenames: list[str], kind: str) -> str | None:
     return None
 
 
+def resolve_package_ids(workspace_root: Path, package_name: str, env: dict[str, str]) -> set[str]:
+    cmd = ['cargo', 'metadata', '--no-deps', '--format-version', '1']
+    proc = subprocess.run(cmd, cwd=workspace_root, env=env, capture_output=True, text=True, check=False)
+    if proc.returncode != 0:
+        stderr_output = proc.stderr.strip()
+        raise RuntimeError(f'cargo metadata failed for package={package_name}: {stderr_output}')
+
+    try:
+        metadata = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f'failed to parse cargo metadata output: {exc}') from exc
+
+    package_ids = {pkg.get('id', '') for pkg in metadata.get('packages', []) if pkg.get('name') == package_name}
+    package_ids.discard('')
+    return package_ids
+
+
 def run_artifact_mode(args: argparse.Namespace) -> int:
     workspace_root = resolve_workspace_root(args.workspace_marker)
     env = build_env(args.env)
+    package_ids = resolve_package_ids(workspace_root, args.package, env)
+    if not package_ids:
+        print(f'failed to resolve cargo package id for package={args.package}', file=sys.stderr)
+        return 1
 
     cmd = [
         'cargo',
@@ -115,7 +136,7 @@ def run_artifact_mode(args: argparse.Namespace) -> int:
             continue
 
         package_id = payload.get('package_id', '')
-        package_matches = package_id.startswith(f'{args.package} ') or f'#{args.package}@' in package_id
+        package_matches = package_id in package_ids
         if not package_matches:
             continue
 
