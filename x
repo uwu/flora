@@ -17,26 +17,6 @@ build_runtime_release() {
   BUCK_NO_INTERACTIVE_CONSOLE=1 buck2 build "$RUNTIME_RELEASE_TARGET" --show-full-simple-output | tail -n1
 }
 
-warn_missing_runtime_env() {
-  local required_vars=(
-    "DISCORD_TOKEN"
-    "DISCORD_CLIENT_ID"
-    "DISCORD_CLIENT_SECRET"
-    "API_SECRET"
-  )
-  local missing=()
-  local key
-  for key in "${required_vars[@]}"; do
-    if [[ -z "${!key:-}" ]]; then
-      missing+=("$key")
-    fi
-  done
-
-  if [[ ${#missing[@]} -gt 0 ]]; then
-    echo "warning: missing env vars: ${missing[*]}" >&2
-  fi
-}
-
 usage() {
   cat <<'EOF'
 usage: ./x <command>
@@ -62,13 +42,11 @@ case "$cmd" in
     ;;
   run-dev)
     normalize_bindgen_args
-    warn_missing_runtime_env
     exec cargo run --package flora
     ;;
   run-release)
     shift || true
     normalize_bindgen_args
-    warn_missing_runtime_env
     BIN_PATH="$(build_runtime_release)"
     exec "$BIN_PATH" "$@"
     ;;
