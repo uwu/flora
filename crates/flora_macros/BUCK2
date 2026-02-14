@@ -1,0 +1,22 @@
+filegroup(
+    name = "inputs",
+    srcs = [
+        "Cargo.toml",
+        "src",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+genrule(
+    name = "flora_macros",
+    out = "flora_macros.proc_macro",
+    cmd = "python3 $(location //tools/buck:cargo_action.py) artifact --workspace-marker $(location //:workspace_marker) --out $OUT --package flora_macros --kind proc-macro --target-name flora_macros",
+    srcs = [
+        "//:workspace_marker",
+        "//:rust_root_inputs",
+        ":inputs",
+        "//tools/buck:cargo_action.py",
+    ],
+    enable_sandbox = False,
+    visibility = ["PUBLIC"],
+)

@@ -1,0 +1,109 @@
+filegroup(
+    name = "workspace_marker",
+    srcs = ["Cargo.toml"],
+    visibility = ["PUBLIC"],
+)
+
+filegroup(
+    name = "rust_root_inputs",
+    srcs = [
+        ".cargo",
+        "Cargo.lock",
+        "Cargo.toml",
+        "example/src",
+        "runtime-dist",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+filegroup(
+    name = "rust_deno_inputs",
+    srcs = ["submodules/deno_core"],
+    visibility = ["PUBLIC"],
+)
+
+filegroup(
+    name = "rust_v8_prebuilt_inputs",
+    srcs = [
+        "submodules/rusty_v8/.gn",
+        "submodules/rusty_v8/BUILD.gn",
+        "submodules/rusty_v8/Cargo.toml",
+        "submodules/rusty_v8/build.rs",
+        "submodules/rusty_v8/gen",
+        "submodules/rusty_v8/src",
+        "submodules/rusty_v8/tools",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+filegroup(
+    name = "rust_v8_source_inputs",
+    srcs = glob(
+        [
+            "submodules/rusty_v8/build/**",
+            "submodules/rusty_v8/buildtools/**",
+            "submodules/rusty_v8/third_party/**",
+            "submodules/rusty_v8/v8/**",
+        ],
+        exclude = [
+            "submodules/rusty_v8/third_party/rust/chromium_crates_io/vendor/cxx-v1/**",
+        ],
+    ),
+    visibility = ["PUBLIC"],
+)
+
+genrule(
+    name = "check_rust",
+    out = "check_rust.stamp",
+    cmd = "python3 $(location //tools/buck:cargo_action.py) command --workspace-marker $(location :workspace_marker) --out $OUT -- check --workspace",
+    srcs = {
+        "workspace_marker": ":workspace_marker",
+        "root_inputs": ":rust_root_inputs",
+        "deno_inputs": ":rust_deno_inputs",
+        "v8_prebuilt_inputs": ":rust_v8_prebuilt_inputs",
+        "runtime_inputs": "//apps/runtime:inputs",
+        "cli_inputs": "//apps/cli:inputs",
+        "flora_config_inputs": "//crates/flora_config:inputs",
+        "flora_macros_inputs": "//crates/flora_macros:inputs",
+        "flora_typegen_inputs": "//crates/flora_typegen:inputs",
+        "cargo_action": "//tools/buck:cargo_action.py",
+    },
+    enable_sandbox = False,
+    visibility = ["PUBLIC"],
+)
+
+genrule(
+    name = "test_rust",
+    out = "test_rust.stamp",
+    cmd = "python3 $(location //tools/buck:cargo_action.py) command --workspace-marker $(location :workspace_marker) --out $OUT -- test --workspace --no-run",
+    srcs = {
+        "workspace_marker": ":workspace_marker",
+        "root_inputs": ":rust_root_inputs",
+        "deno_inputs": ":rust_deno_inputs",
+        "v8_prebuilt_inputs": ":rust_v8_prebuilt_inputs",
+        "runtime_inputs": "//apps/runtime:inputs",
+        "cli_inputs": "//apps/cli:inputs",
+        "flora_config_inputs": "//crates/flora_config:inputs",
+        "flora_macros_inputs": "//crates/flora_macros:inputs",
+        "flora_typegen_inputs": "//crates/flora_typegen:inputs",
+        "cargo_action": "//tools/buck:cargo_action.py",
+    },
+    enable_sandbox = False,
+    visibility = ["PUBLIC"],
+)
+
+genrule(
+    name = "build_all_rust",
+    out = "build_all_rust.stamp",
+    cmd = "touch $OUT",
+    srcs = [
+        "//apps/runtime:flora_lib",
+        "//apps/runtime:flora_bin",
+        "//apps/runtime:flora_bin_v8_source",
+        "//apps/cli:flora_cli",
+        "//crates/flora_config:flora_config",
+        "//crates/flora_macros:flora_macros",
+        "//crates/flora_typegen:flora_typegen",
+    ],
+    visibility = ["PUBLIC"],
+)

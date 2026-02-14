@@ -11,3 +11,4 @@ config.toml
 **/.vitepress/dist
 **/.wrangler
 /target-asan
+/buck-out/v2

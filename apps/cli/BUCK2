@@ -1,0 +1,22 @@
+filegroup(
+    name = "inputs",
+    srcs = [
+        "Cargo.toml",
+        "src",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+genrule(
+    name = "flora_cli",
+    out = "flora-cli",
+    cmd = "python3 $(location //tools/buck:cargo_action.py) artifact --workspace-marker $(location //:workspace_marker) --out $OUT --package flora-cli --kind bin",
+    srcs = [
+        "//:workspace_marker",
+        "//:rust_root_inputs",
+        ":inputs",
+        "//tools/buck:cargo_action.py",
+    ],
+    enable_sandbox = False,
+    visibility = ["PUBLIC"],
+)

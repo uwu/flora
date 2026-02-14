@@ -1,0 +1,9 @@
+filegroup(
+    name = "cargo_lock",
+    srcs = ["Cargo.lock.snapshot"],
+)
+
+filegroup(
+    name = "cargo_metadata",
+    srcs = ["cargo-metadata.json"],
+)

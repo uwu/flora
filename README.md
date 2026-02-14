@@ -7,3 +7,7 @@ flora is a fast and secure runtime that lets you write discord bots for your ser
 You deploy scripts on a per-guild basis through a single bot, handled through the V8 JavaScript engine using V8 Isolates.
 
 This is still taking shape, and will have a proper release soon. To stay up to date on flora's progress, watch this repository, or check out the documentation: https://flora.uwu.network/sdk
+
+## Buck2
+
+Buck2 setup for Rust/runtime/cli builds is documented in `docs/buck2.md`.
