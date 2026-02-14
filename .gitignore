@@ -10,3 +10,4 @@ config.toml
 **/.vitepress/cache/deps
 **/.vitepress/dist
 **/.wrangler
+/target-asan
