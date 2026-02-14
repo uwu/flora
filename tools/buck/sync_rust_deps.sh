@@ -1,7 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+resolve_root_dir() {
+  if command -v git >/dev/null 2>&1; then
+    local git_root
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+    if [[ -n "$git_root" && -f "$git_root/Cargo.toml" ]]; then
+      echo "$git_root"
+      return
+    fi
+  fi
+
+  local script_root
+  script_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+  if [[ -f "$script_root/Cargo.toml" ]]; then
+    echo "$script_root"
+    return
+  fi
+
+  echo "failed to locate workspace root (Cargo.toml not found)" >&2
+  exit 1
+}
+
+ROOT_DIR="${ROOT_DIR:-$(resolve_root_dir)}"
 OUTPUT_DIR="$ROOT_DIR/third-party/rust"
 
 mkdir -p "$OUTPUT_DIR"
