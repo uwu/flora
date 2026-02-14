@@ -45,6 +45,24 @@ genrule(
 )
 
 genrule(
+    name = "flora_bin_release",
+    out = "flora_release",
+    cmd = "python3 $(location //tools/buck:cargo_action.py) artifact --workspace-marker $(location //:workspace_marker) --out $OUT --package flora --kind bin --target-name flora --release",
+    srcs = {
+        "workspace_marker": "//:workspace_marker",
+        "root_inputs": "//:rust_root_inputs",
+        "deno_inputs": "//:rust_deno_inputs",
+        "v8_prebuilt_inputs": "//:rust_v8_prebuilt_inputs",
+        "runtime_inputs": ":inputs",
+        "flora_config_inputs": "//crates/flora_config:inputs",
+        "flora_macros_inputs": "//crates/flora_macros:inputs",
+        "cargo_action": "//tools/buck:cargo_action.py",
+    },
+    enable_sandbox = False,
+    visibility = ["PUBLIC"],
+)
+
+genrule(
     name = "flora_bin_v8_source",
     out = "flora_v8_source",
     cmd = "python3 $(location //tools/buck:cargo_action.py) artifact --workspace-marker $(location //:workspace_marker) --out $OUT --package flora --kind bin --target-name flora --env V8_FROM_SOURCE=1",

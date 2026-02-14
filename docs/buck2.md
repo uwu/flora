@@ -24,11 +24,34 @@ buck2 run //tools/buck:sync_rust_deps
 tools/buck/sync_rust_deps.sh
 ```
 
+## Helper Script
+
+From repo root:
+
+```bash
+# build runtime dev
+./x build-dev
+
+# build runtime release path
+./x build-release
+
+# runtime dev run
+./x run-dev
+
+# runtime release run
+./x run-release
+```
+
+`./x` normalizes `BINDGEN_EXTRA_CLANG_ARGS` when needed (nix clang wrapper case).
+
 ## Build Targets
 
 ```bash
 # runtime (default V8 mode)
 buck2 build //apps/runtime:flora_bin
+
+# runtime release binary
+buck2 build //apps/runtime:flora_bin_release
 
 # runtime library
 buck2 build //apps/runtime:flora_lib

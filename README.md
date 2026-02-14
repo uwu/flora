@@ -11,3 +11,19 @@ This is still taking shape, and will have a proper release soon. To stay up to d
 ## Buck2
 
 Buck2 setup for Rust/runtime/cli builds is documented in `docs/buck2.md`.
+
+## Quick Commands
+
+```bash
+# build runtime (dev)
+./x build-dev
+
+# build runtime release with buck2
+./x build-release
+
+# run runtime (dev)
+./x run-dev
+
+# build + run runtime release
+./x run-release
+```
