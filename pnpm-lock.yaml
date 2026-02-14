@@ -147,7 +147,7 @@ importers:
 
   apps/uwu.network:
     devDependencies:
-      sdk:
+      '@uwu/flora-sdk':
         specifier: workspace:*
         version: link:../../sdk
       typescript:
@@ -184,9 +184,11 @@ importers:
 
   example:
     devDependencies:
-      sdk:
+      '@uwu/flora-sdk':
         specifier: workspace:*
         version: link:../sdk
+
+  packages/flora-cli: {}
 
   sdk:
     devDependencies:

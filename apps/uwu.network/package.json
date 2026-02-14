@@ -3,7 +3,7 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "sdk": "workspace:*",
+    "@uwu/flora-sdk": "workspace:*",
     "typescript": "^5.0.0"
   },
   "scripts": {

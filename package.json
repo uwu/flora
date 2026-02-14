@@ -4,7 +4,8 @@
   "workspaces": [
     "sdk",
     "example",
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "format": "dprint fmt"

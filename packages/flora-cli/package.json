@@ -1,0 +1,17 @@
+{
+  "name": "@uwu/flora-cli",
+  "version": "0.0.0",
+  "private": false,
+  "description": "npm wrapper for the flora CLI binary",
+  "type": "module",
+  "bin": {
+    "flora": "./bin/flora.js"
+  },
+  "scripts": {
+    "postinstall": "node ./scripts/install.js"
+  },
+  "files": ["bin", "scripts", "README.md", "package.json"],
+  "publishConfig": {
+    "access": "public"
+  }
+}

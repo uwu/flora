@@ -1,0 +1,45 @@
+name: npm-publish-sdk-canary
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate SDK
+        run: |
+          pnpm --filter @uwu/flora-sdk run typecheck
+
+      - name: Ensure types artifact exists
+        run: test -f sdk/global-types.d.ts
+
+      - name: Set canary version
+        run: |
+          CANARY_VERSION="0.0.0-canary.${GITHUB_RUN_NUMBER}.${GITHUB_SHA::7}"
+          echo "CANARY_VERSION=$CANARY_VERSION" >> "$GITHUB_ENV"
+          pnpm --filter @uwu/flora-sdk exec npm version "$CANARY_VERSION" --no-git-tag-version
+
+      - name: Publish canary
+        run: pnpm --filter @uwu/flora-sdk exec npm publish --provenance --access public --tag canary

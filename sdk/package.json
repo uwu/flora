@@ -1,12 +1,19 @@
 {
-  "name": "sdk",
-  "exports": {
-    "./tsconfig": "./tsconfig.json",
-    "./*": "./dist/*"
-  },
+  "name": "@uwu/flora-sdk",
+  "version": "0.0.0",
   "type": "module",
-  "private": true,
+  "private": false,
+  "exports": {
+    ".": {
+      "types": "./global-types.d.ts"
+    },
+    "./tsconfig": "./tsconfig.json"
+  },
   "types": "./global-types.d.ts",
+  "files": ["global-types.d.ts", "src", "tsconfig.json", "README.md"],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "build": "rolldown -c ./rolldown.config.ts",

@@ -1,0 +1,139 @@
+name: npm-publish-cli-canary
+
+on:
+  workflow_dispatch:
+
+permissions:
+  attestations: write
+  contents: write
+  id-token: write
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      canary_version: ${{ steps.version.outputs.canary_version }}
+      release_tag: ${{ steps.version.outputs.release_tag }}
+    steps:
+      - name: Compute canary version
+        id: version
+        run: |
+          CANARY_VERSION="0.0.0-canary.${GITHUB_RUN_NUMBER}.${GITHUB_SHA::7}"
+          RELEASE_TAG="flora-cli-v${CANARY_VERSION}"
+          echo "canary_version=$CANARY_VERSION" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+  build-binaries:
+    needs: meta
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary_name: flora
+            output_name: flora-x86_64-unknown-linux-gnu
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary_name: flora.exe
+            output_name: flora-x86_64-pc-windows-msvc.exe
+          - runner: macos-13
+            target: x86_64-apple-darwin
+            binary_name: flora
+            output_name: flora-x86_64-apple-darwin
+          - runner: macos-14
+            target: aarch64-apple-darwin
+            binary_name: flora
+            output_name: flora-aarch64-apple-darwin
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build flora-cli
+        run: cargo build --package flora-cli --release --target ${{ matrix.target }}
+
+      - name: Package binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/${{ matrix.binary_name }}" "dist/${{ matrix.output_name }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.target }}
+          path: dist/${{ matrix.output_name }}
+          if-no-files-found: error
+
+  release:
+    needs: [meta, build-binaries]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create checksums
+        run: |
+          cd dist
+          sha256sum flora-* > checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.meta.outputs.release_tag }}
+          name: ${{ needs.meta.outputs.release_tag }}
+          target_commitish: ${{ github.sha }}
+          files: |
+            dist/flora-x86_64-unknown-linux-gnu
+            dist/flora-x86_64-pc-windows-msvc.exe
+            dist/flora-x86_64-apple-darwin
+            dist/flora-aarch64-apple-darwin
+            dist/checksums.txt
+
+      - name: Attest release artifacts
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            dist/flora-x86_64-unknown-linux-gnu
+            dist/flora-x86_64-pc-windows-msvc.exe
+            dist/flora-x86_64-apple-darwin
+            dist/flora-aarch64-apple-darwin
+            dist/checksums.txt
+
+  publish-npm:
+    needs: [meta, release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Set canary version
+        run: pnpm --filter @uwu/flora-cli exec npm version "${{ needs.meta.outputs.canary_version }}" --no-git-tag-version
+
+      - name: Publish npm wrapper
+        run: pnpm --filter @uwu/flora-cli exec npm publish --provenance --access public --tag canary

@@ -1,5 +1,5 @@
 {
-  "extends": "sdk/tsconfig",
-  "include": ["src/**/*.ts", "node_modules/sdk/global-types.d.ts"],
+  "extends": "@uwu/flora-sdk/tsconfig",
+  "include": ["src/**/*.ts", "node_modules/@uwu/flora-sdk/global-types.d.ts"],
   "exclude": ["dist"]
 }
