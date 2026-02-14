@@ -302,7 +302,6 @@ createBot({
 - Modify `crates/flora_config` for runtime options
 - Uses `confique` crate with `#[config]` derive
 - Environment variables override `config.toml` values, which override defaults
-- Required env vars: `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `API_SECRET` (min 32 chars)
 - Config files `.env`, `testbotenv` must NOT be committed
 
 ## Git Workflow
