@@ -11,18 +11,18 @@ The Flora CLI manages deployments, logs, and KV stores against the runtime API.
 From the repo root:
 
 ```bash
-cargo run -p flora-cli -- --help
+pnpm --filter @uwu/flora-cli run dev -- --help
 ```
 
-To install a local binary:
+To build the local CLI:
 
 ```bash
-cargo install --path apps/cli
+pnpm --filter @uwu/flora-cli run build
 ```
 
 ## Auth and config
 
-- The CLI stores config via `confy` (per-user config file).
+- The CLI stores config in a per-user local config file.
 - Set `FLORA_API_URL` or pass `--api-url` to point at your runtime.
 - Authenticate once with a token:
 

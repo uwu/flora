@@ -39,7 +39,7 @@ pub struct ListKeysResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/kv/{guild_id}/{store_name}",
+    path = "/{guild_id}/{store_name}",
     params(
         ("guild_id" = String, Path, description = "Guild ID"),
         ("store_name" = String, Path, description = "Store name"),

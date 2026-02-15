@@ -26,7 +26,7 @@ pub struct CreateStoreResponse {
 /// Create a new KV store for a guild
 #[utoipa::path(
     post,
-    path = "/api/kv/stores",
+    path = "/stores",
     request_body = CreateStoreRequest,
     responses(
         (status = 200, description = "Store created successfully", body = CreateStoreResponse),

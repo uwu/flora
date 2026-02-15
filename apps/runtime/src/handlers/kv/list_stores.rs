@@ -24,7 +24,7 @@ pub struct ListStoresQuery {
 /// List all KV stores for a guild
 #[utoipa::path(
     get,
-    path = "/api/kv/stores",
+    path = "/stores",
     params(
         ListStoresQuery
     ),

@@ -31,7 +31,7 @@ pub struct ExportGuildResponse {
 /// Returns a backup ID for later retrieval.
 #[utoipa::path(
     post,
-    path = "/api/kv/export/{guild_id}",
+    path = "/export/{guild_id}",
     params(
         ("guild_id" = String, Path, description = "Guild ID"),
     ),

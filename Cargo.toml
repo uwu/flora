@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["apps/cli", "apps/runtime", "crates/*"]
+members = ["apps/runtime", "crates/*"]
 [workspace.package]
 authors = ["flora contributors"]
 edition = "2024"

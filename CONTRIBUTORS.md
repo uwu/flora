@@ -24,15 +24,12 @@
 
 1. In GitHub Actions, run workflow `npm-publish-cli-canary` (manual `workflow_dispatch`).
 2. Workflow:
-   - builds Rust CLI for 4 targets
-   - creates release `flora-cli-v0.0.0-canary.<run_number>.<sha7>`
-   - uploads binaries + `checksums.txt`
-   - creates build provenance attestation
+   - computes canary version `0.0.0-canary.<run_number>.<sha7>`
+   - builds TypeScript CLI bundle from `apps/cli`
    - publishes npm package with provenance under tag `canary`
 3. Verify:
    - `npm view @uwu/flora-cli dist-tags`
    - `npm view @uwu/flora-cli versions --json | tail`
-   - check GitHub release assets/checksums for matching version
 
 ### Retry / rollback
 

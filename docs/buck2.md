@@ -3,7 +3,6 @@
 This repository includes a Buck2 setup for Rust builds of:
 
 - `apps/runtime` (`flora` lib + bin)
-- `apps/cli` (`flora-cli` bin)
 - `crates/flora_config`
 - `crates/flora_macros`
 - `crates/flora_typegen`
@@ -103,9 +102,6 @@ buck2 build //apps/runtime:flora_lib
 
 # runtime with source V8 build path
 buck2 build //apps/runtime:flora_bin_v8_source
-
-# cli
-buck2 build //apps/cli:flora_cli
 
 # support crates
 buck2 build //crates/flora_config:flora_config

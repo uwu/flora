@@ -23,7 +23,7 @@ pub struct DeleteKeyParams {
 /// Delete a key from a KV store
 #[utoipa::path(
     delete,
-    path = "/api/kv/{guild_id}/{store_name}/{key}",
+    path = "/{guild_id}/{store_name}/{key}",
     params(
         ("guild_id" = String, Path, description = "Guild ID"),
         ("store_name" = String, Path, description = "Store name"),

@@ -1,0 +1,40 @@
+{
+  "name": "@uwu/flora-cli",
+  "version": "0.0.0",
+  "private": false,
+  "description": "flora command line interface",
+  "type": "module",
+  "bin": {
+    "flora": "./dist/index.mjs"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "scripts": {
+    "generate:api": "openapi-typescript http://localhost:3000/api-docs/openapi.json -o src/generated/openapi-schema.ts",
+    "build": "tsdown",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.0.1",
+    "citty": "^0.2.1",
+    "conf": "^15.1.0",
+    "ignore": "^7.0.5",
+    "openapi-fetch": "^0.17.0",
+    "tinyglobby": "^0.2.15"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "openapi-typescript": "^7.13.0",
+    "tsdown": "^0.20.3",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

@@ -30,7 +30,7 @@ pub struct GetValueResponse {
 /// Get a value from a KV store
 #[utoipa::path(
     get,
-    path = "/api/kv/{guild_id}/{store_name}/{key}",
+    path = "/{guild_id}/{store_name}/{key}",
     params(
         ("guild_id" = String, Path, description = "Guild ID"),
         ("store_name" = String, Path, description = "Store name"),

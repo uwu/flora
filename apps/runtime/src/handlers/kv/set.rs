@@ -36,7 +36,7 @@ pub struct SetValueResponse {
 
 #[utoipa::path(
     put,
-    path = "/api/kv/{guild_id}/{store_name}/{key}",
+    path = "/{guild_id}/{store_name}/{key}",
     params(
         ("guild_id" = String, Path, description = "Guild ID"),
         ("store_name" = String, Path, description = "Store name"),
