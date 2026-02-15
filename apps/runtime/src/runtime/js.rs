@@ -268,7 +268,6 @@ pub(super) fn new_js_runtime(
     JsRuntimeState {
         runtime,
         dispatch_fn: None,
-        guild_id,
         secrets,
     }
 }

@@ -48,11 +48,6 @@ impl CronRegistry {
     pub fn clear_guild(&mut self, guild_id: &str) {
         self.jobs.remove(&Some(guild_id.to_owned()));
     }
-
-    #[allow(dead_code)]
-    pub fn clear_default(&mut self) {
-        self.jobs.remove(&None);
-    }
 }
 
 pub type SharedCronRegistry = Arc<Mutex<CronRegistry>>;

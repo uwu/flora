@@ -18,7 +18,6 @@ use std::{
 use tokio::sync::{mpsc, oneshot};
 
 /// Commands sent to worker threads.
-#[allow(dead_code)]
 pub(super) enum WorkerCommand {
     /// Initialize the worker's default runtime.
     Initialize {
@@ -26,11 +25,6 @@ pub(super) enum WorkerCommand {
     },
     /// Load the SDK bundle into the default runtime.
     LoadSdkBundle {
-        path: PathBuf,
-        respond_to: oneshot::Sender<Result<(), AnyError>>,
-    },
-    /// Load a user script into the default runtime.
-    LoadUserScript {
         path: PathBuf,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
@@ -58,11 +52,6 @@ pub(super) enum WorkerCommand {
         secrets: Arc<SecretsRuntimeData>,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
-    /// Unload a guild's runtime.
-    UnloadGuild {
-        guild_id: String,
-        respond_to: oneshot::Sender<()>,
-    },
     /// Move a guild runtime out of this worker.
     MigrateOut {
         guild_id: String,
@@ -79,7 +68,6 @@ pub(super) enum WorkerCommand {
 }
 
 /// A worker thread that owns multiple guild isolates.
-#[allow(dead_code)]
 pub(super) struct Worker {
     pub(super) id: usize,
     pub(super) sender: mpsc::UnboundedSender<WorkerCommand>,
@@ -113,16 +101,6 @@ impl Worker {
     pub(super) async fn load_sdk_bundle(&self, path: PathBuf) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
         self.send_cmd(WorkerCommand::LoadSdkBundle {
-            path,
-            respond_to: tx,
-        })?;
-        rx.await.map_err(|_| AnyError::msg("worker stopped"))?
-    }
-
-    #[allow(dead_code)]
-    pub(super) async fn load_user_script(&self, path: PathBuf) -> Result<(), AnyError> {
-        let (tx, rx) = oneshot::channel();
-        self.send_cmd(WorkerCommand::LoadUserScript {
             path,
             respond_to: tx,
         })?;
@@ -223,27 +201,11 @@ impl Worker {
             )),
         }
     }
-
-    #[allow(dead_code)]
-    pub(super) async fn unload_guild(&self, guild_id: String) {
-        let (tx, rx) = oneshot::channel();
-        if self
-            .send_cmd(WorkerCommand::UnloadGuild {
-                guild_id,
-                respond_to: tx,
-            })
-            .is_ok()
-        {
-            let _ = rx.await;
-        }
-    }
 }
 
 pub(super) struct JsRuntimeState {
     pub(super) runtime: JsRuntime,
     pub(super) dispatch_fn: Option<Global<v8::Function>>,
-    #[allow(dead_code)]
-    pub(super) guild_id: Option<String>,
     pub(super) secrets: Arc<SecretsRuntimeData>,
 }
 

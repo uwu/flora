@@ -3,12 +3,9 @@
 //! Provides Prometheus-style metrics for monitoring runtime health,
 //! isolate lifecycle, and event dispatch performance.
 
-use std::{
-    sync::{
-        RwLock,
-        atomic::{AtomicU64, Ordering},
-    },
-    time::Instant,
+use std::sync::{
+    RwLock,
+    atomic::{AtomicU64, Ordering},
 };
 
 /// Global metrics instance.
@@ -41,7 +38,6 @@ pub struct Metrics {
 }
 
 /// Tracks latency samples for percentile calculations.
-#[allow(dead_code)]
 struct LatencyTracker {
     samples: Vec<u64>,
     index: usize,
@@ -57,7 +53,6 @@ impl LatencyTracker {
         }
     }
 
-    #[allow(dead_code)]
     fn record(&mut self, latency_us: u64) {
         if self.samples.len() < self.capacity {
             self.samples.push(latency_us);
@@ -104,19 +99,16 @@ impl Metrics {
     }
 
     /// Increments the isolate count.
-    #[allow(dead_code)]
     pub fn isolate_created(&self) {
         self.isolate_count.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Decrements the isolate count.
-    #[allow(dead_code)]
     pub fn isolate_destroyed(&self) {
         self.isolate_count.fetch_sub(1, Ordering::Relaxed);
     }
 
     /// Records a successful dispatch with latency.
-    #[allow(dead_code)]
     pub fn dispatch_success(&self, latency: std::time::Duration) {
         self.dispatch_total.fetch_add(1, Ordering::Relaxed);
         if let Ok(mut tracker) = self.dispatch_latencies.write() {
@@ -125,50 +117,42 @@ impl Metrics {
     }
 
     /// Records a failed dispatch.
-    #[allow(dead_code)]
     pub fn dispatch_error(&self) {
         self.dispatch_total.fetch_add(1, Ordering::Relaxed);
         self.dispatch_errors.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Records a timeout error.
-    #[allow(dead_code)]
     pub fn timeout_error(&self) {
         self.timeout_errors.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Records an OOM error.
-    #[allow(dead_code)]
     pub fn oom_error(&self) {
         self.oom_errors.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Records an isolate restart.
-    #[allow(dead_code)]
     pub fn isolate_restarted(&self) {
         self.isolate_restarts.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Records a runtime thread restart.
-    #[allow(dead_code)]
     pub fn runtime_restarted(&self) {
         self.runtime_restarts.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Records a successful migration.
-    #[allow(dead_code)]
     pub fn migration_success(&self) {
         self.migration_success.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Records a migration timeout.
-    #[allow(dead_code)]
     pub fn migration_timeout(&self) {
         self.migration_timeout.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Records the latest migration quiesce duration.
-    #[allow(dead_code)]
     pub fn migration_quiesce_duration(&self, duration: std::time::Duration) {
         self.migration_quiesce_duration_us
             .store(duration.as_micros() as u64, Ordering::Relaxed);
@@ -308,35 +292,6 @@ pub struct MetricsSnapshot {
 /// Returns the global metrics instance.
 pub fn metrics() -> &'static Metrics {
     &METRICS
-}
-
-/// RAII guard for timing dispatch operations.
-#[allow(dead_code)]
-pub struct DispatchTimer {
-    start: Instant,
-}
-
-#[allow(dead_code)]
-impl DispatchTimer {
-    pub fn new() -> Self {
-        Self {
-            start: Instant::now(),
-        }
-    }
-
-    pub fn success(self) {
-        metrics().dispatch_success(self.start.elapsed());
-    }
-
-    pub fn error(self) {
-        metrics().dispatch_error();
-    }
-}
-
-impl Default for DispatchTimer {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 #[cfg(test)]

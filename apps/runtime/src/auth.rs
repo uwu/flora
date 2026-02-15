@@ -54,24 +54,6 @@ pub struct DiscordUser {
     pub avatar: Option<String>,
 }
 
-/// Identity extracted from either a cookie-based session or a bearer token.
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct AuthIdentity {
-    pub user_id: String,
-    /// When present, a Discord OAuth access token for the user.
-    pub access_token: Option<String>,
-}
-
-impl From<Session> for AuthIdentity {
-    fn from(session: Session) -> Self {
-        Self {
-            user_id: session.user.id.clone(),
-            access_token: Some(session.access_token.clone()),
-        }
-    }
-}
-
 #[derive(Debug, Deserialize, Clone)]
 pub struct TokenResponse {
     pub access_token: String,

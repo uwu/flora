@@ -69,6 +69,7 @@ pub(super) fn spawn_worker(
             );
         })
         .expect("failed to spawn worker thread");
+    metrics().runtime_restarted();
 
     Worker {
         id,
@@ -143,17 +144,6 @@ fn worker_thread(
                             };
                             if let Err(ref err) = result {
                                 error!(target: "flora:runtime", worker_id, ?err, "failed to load SDK bundle");
-                            }
-                            let _ = respond_to.send(result);
-                        }
-
-                        WorkerCommand::LoadUserScript { path, respond_to } => {
-                            let result = match default_runtime.as_mut() {
-                                Some(rt) => load_script_from_path(rt, path, worker_id, &limits).await,
-                                None => Err(AnyError::msg("default runtime not initialized")),
-                            };
-                            if let Err(ref err) = result {
-                                error!(target: "flora:runtime", worker_id, ?err, "failed to load user script");
                             }
                             let _ = respond_to.send(result);
                         }
@@ -251,18 +241,6 @@ fn worker_thread(
                                 error!(target: "flora:runtime", worker_id, error = %err.error, "failed to migrate in guild runtime");
                             }
                             let _ = respond_to.send(result);
-                        }
-
-                        WorkerCommand::UnloadGuild { guild_id, respond_to } => {
-                            {
-                                let mut reg = cron_registry.lock();
-                                reg.clear_guild(&guild_id);
-                            }
-                            if let Some(runtime) = guild_runtimes.remove(&guild_id) {
-                                drop_runtime_state(runtime);
-                            }
-                            info!(target: "flora:runtime", worker_id, guild_id, "unloaded guild");
-                            let _ = respond_to.send(());
                         }
 
                         WorkerCommand::Shutdown => {
@@ -441,7 +419,10 @@ async fn dispatch_cron_into_runtime(
 
     if let Err(ref err) = result {
         if err.is::<RuntimeTimeout>() {
+            metrics().timeout_error();
             terminate_runtime(js_state.runtime_mut(), worker_id, "cron").await;
+        } else if is_oom_error(err) {
+            metrics().oom_error();
         }
     }
 
@@ -582,11 +563,16 @@ pub(super) async fn deploy_guild_to_worker(
 
     match result {
         Ok(runtime) => {
+            let mut restarted = saved_runtime.is_some();
             if let Some(old) = saved_runtime.take() {
                 drop_runtime_state(old);
             }
             if let Some(old) = guild_runtimes.insert(guild_id.clone(), runtime) {
+                restarted = true;
                 drop_runtime_state(old);
+            }
+            if restarted {
+                metrics().isolate_restarted();
             }
             info!(target: "flora:runtime", worker_id, guild_id, "Guild deployment loaded");
             Ok(())
@@ -837,7 +823,10 @@ pub(super) async fn dispatch_into_runtime(
 
     if let Err(ref err) = result {
         if err.is::<RuntimeTimeout>() {
+            metrics().timeout_error();
             terminate_runtime(js_state.runtime_mut(), worker_id, "dispatch").await;
+        } else if is_oom_error(err) {
+            metrics().oom_error();
         }
     }
 
@@ -847,4 +836,10 @@ pub(super) async fn dispatch_into_runtime(
     }
 
     result.map(|_| ())
+}
+
+fn is_oom_error(err: &AnyError) -> bool {
+    err.to_string()
+        .to_ascii_lowercase()
+        .contains("out of memory")
 }

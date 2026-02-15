@@ -47,19 +47,15 @@ pub async fn get_metrics(
     get,
     path = "/json",
     responses(
-        (status = 200, description = "Metrics as JSON", body = MetricsSnapshot)
+        (status = 200, description = "Metrics as JSON", body = metrics::MetricsSnapshot)
     ),
     tag = "metrics"
 )]
 pub async fn get_metrics_json(
     State(state): State<AppState>,
     headers: HeaderMap,
-) -> Result<ApiJson<MetricsSnapshot>, ApiError> {
+) -> Result<ApiJson<metrics::MetricsSnapshot>, ApiError> {
     require_identity(&state, &headers).await?;
     let snapshot = metrics::metrics().snapshot();
     Ok(ApiJson(axum::Json(snapshot)))
 }
-
-/// Alias for utoipa schema generation.
-#[allow(dead_code)]
-type MetricsSnapshot = metrics::MetricsSnapshot;

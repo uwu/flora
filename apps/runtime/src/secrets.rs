@@ -33,7 +33,6 @@ pub struct SecretMetadata {
 #[derive(FromRow)]
 struct SecretRow {
     id: Uuid,
-    guild_id: String,
     name: String,
     ciphertext: Vec<u8>,
     nonce: Vec<u8>,
@@ -42,7 +41,6 @@ struct SecretRow {
 
 #[derive(Debug, Clone)]
 pub struct SecretRuntimeEntry {
-    pub name: String,
     pub placeholder: String,
     pub value: String,
     pub allowed_hosts: Vec<String>,
@@ -121,7 +119,7 @@ impl SecretService {
     pub async fn list_metadata(&self, guild_id: &str) -> Result<Vec<SecretMetadata>> {
         let rows = sqlx::query_as::<_, SecretRow>(
             r#"
-            SELECT id, guild_id, name, ciphertext, nonce, allowed_hosts
+            SELECT id, name, ciphertext, nonce, allowed_hosts
             FROM guild_secrets
             WHERE guild_id = $1
             "#,
@@ -143,7 +141,7 @@ impl SecretService {
     pub async fn load_runtime(&self, guild_id: &str) -> Result<Arc<SecretsRuntimeData>> {
         let rows = sqlx::query_as::<_, SecretRow>(
             r#"
-            SELECT id, guild_id, name, ciphertext, nonce, allowed_hosts
+            SELECT id, name, ciphertext, nonce, allowed_hosts
             FROM guild_secrets
             WHERE guild_id = $1
             "#,
@@ -176,7 +174,6 @@ impl SecretService {
             };
             let placeholder = build_placeholder(row.id, &self.key_bytes);
             let entry = SecretRuntimeEntry {
-                name: row.name.clone(),
                 placeholder: placeholder.clone(),
                 value,
                 allowed_hosts: row.allowed_hosts.clone(),
@@ -224,10 +221,6 @@ impl SecretsRuntimeData {
 
     pub fn placeholder_for(&self, name: &str) -> Option<String> {
         self.by_name.get(name).map(|s| s.placeholder.clone())
-    }
-
-    pub fn find_by_placeholder(&self, value: &str) -> Option<&SecretRuntimeEntry> {
-        self.by_placeholder.get(value)
     }
 }
 

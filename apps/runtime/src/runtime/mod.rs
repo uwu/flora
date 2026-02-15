@@ -84,13 +84,6 @@ impl BotRuntime {
         Ok(())
     }
 
-    /// Load a user script into worker 0's default runtime (for local dev).
-    #[allow(dead_code)]
-    pub async fn load_local_script(&self, path: impl Into<PathBuf>) -> Result<(), AnyError> {
-        let path = path.into();
-        self.workers[0].load_user_script(path).await
-    }
-
     /// Deploy a guild's script to the appropriate worker.
     pub async fn deploy_guild_script(&self, deployment: Deployment) -> Result<(), AnyError> {
         let worker_idx = {
@@ -113,7 +106,6 @@ impl BotRuntime {
         self.workers[worker_idx].deploy_guild(deployment).await
     }
 
-    #[allow(dead_code)]
     pub async fn migrate_guild_runtime(
         &self,
         guild_id: &str,
