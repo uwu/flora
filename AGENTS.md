@@ -347,9 +347,9 @@ createBot({
 
 Before committing or submitting PR:
 
-1. ✅ `cargo fmt` (format Rust)
-2. ✅ `dprint fmt` (format TS/JSON/etc)
-3. ✅ `cargo clippy --all-targets -- -D warnings` (lint with zero warnings)
-4. ✅ `cargo test` (all tests pass)
-5. ✅ `pnpm test` (SDK tests pass, if applicable)
-6. ✅ Verify no secrets in changed files (`.env`, credentials)
+1. `cargo fmt` (format Rust)
+2. `dprint fmt` (format TS/JSON/etc)
+3. `cargo clippy --all-targets -- -D warnings` (lint with zero warnings)
+4. `cargo test` (all tests pass)
+5. `pnpm test` (SDK tests pass, if applicable)
+6. Verify no secrets in changed files (`.env`, credentials)
