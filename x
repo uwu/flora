@@ -26,6 +26,8 @@ commands:
   build-release build runtime release with buck2, print binary path
   run-dev       run runtime in dev mode (cargo run --package flora)
   run-release   build runtime release with buck2, then run it
+  sync-rust-deps update Cargo metadata snapshot for Buck tooling
+  buckify-rust-deps run reindeer vendor + buckify in third-party/rust
   help     show this help
 EOF
 }
@@ -49,6 +51,12 @@ case "$cmd" in
     normalize_bindgen_args
     BIN_PATH="$(build_runtime_release)"
     exec "$BIN_PATH" "$@"
+    ;;
+  sync-rust-deps)
+    exec tools/buck/sync_rust_deps.sh
+    ;;
+  buckify-rust-deps)
+    exec tools/buck/buckify_rust_deps.sh
     ;;
   help | -h | --help)
     usage

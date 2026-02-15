@@ -24,6 +24,21 @@ buck2 run //tools/buck:sync_rust_deps
 tools/buck/sync_rust_deps.sh
 ```
 
+Buckify third-party crates with Reindeer (for Buck-native Rust dependency graph migration):
+
+```bash
+./x buckify-rust-deps
+# or directly:
+tools/buck/buckify_rust_deps.sh
+```
+
+Reindeer config: `third-party/reindeer.toml`.
+
+Important:
+
+- `third-party/rust/vendor` and `third-party/rust/.cargo` are generated-local and not committed.
+- `tools/buck/sync_rust_deps.sh` updates snapshots only (`cargo-metadata.json`, `Cargo.lock.snapshot`) and does not rewrite generated `third-party/rust/BUCK2`.
+
 ## Helper Script
 
 From repo root:
@@ -40,9 +55,39 @@ From repo root:
 
 # runtime release run
 ./x run-release
+
+# snapshot Cargo metadata for Buck tooling
+./x sync-rust-deps
+
+# reindeer vendor + buckify
+./x buckify-rust-deps
 ```
 
 `./x` normalizes `BINDGEN_EXTRA_CLANG_ARGS` when needed (nix clang wrapper case).
+
+## Add/Update Rust Dependencies
+
+Use this flow whenever you add or update crates:
+
+```bash
+# 1) update manifests, then refresh lockfile
+cargo check
+
+# 2) refresh Buck snapshots
+./x sync-rust-deps
+
+# 3) regenerate reindeer Buck third-party rules
+./x buckify-rust-deps
+
+# 4) sanity-check Buck build
+buck2 build //apps/runtime:flora_lib
+```
+
+If `reindeer` is missing:
+
+```bash
+nix profile install nixpkgs#reindeer
+```
 
 ## Build Targets
 

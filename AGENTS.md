@@ -26,6 +26,12 @@ Use these from repo root:
 
 # Run runtime (release): build + execute release binary
 ./x run-release
+
+# Sync Cargo.lock/cargo metadata snapshot for Buck tooling
+./x sync-rust-deps
+
+# Re-generate Buck third-party Rust rules (reindeer)
+./x buckify-rust-deps
 ```
 
 Notes:
@@ -33,6 +39,8 @@ Notes:
 - `./x run-release --help` still performs release build first, then forwards args.
 - `./x` normalizes `BINDGEN_EXTRA_CLANG_ARGS` for nix clang wrapper environments.
 - `./x run-*` warns if required runtime env vars are missing.
+- `./x buckify-rust-deps` generates `third-party/rust/BUCK2` and updates local `third-party/rust/vendor`.
+- `third-party/rust/vendor` and `third-party/rust/.cargo` are local/generated and must not be committed.
 
 ## Build, Test & Lint Commands
 
@@ -84,11 +92,31 @@ cargo check
 
 - Buck2 entrypoints are in `BUCK2` and package `BUCK2` files.
 - Buck release runtime target is `//apps/runtime:flora_bin_release`.
-- Buck actions currently invoke Cargo through `tools/buck/cargo_action.py`.
+- First-party crate builds currently invoke Cargo through `tools/buck/cargo_action.py`.
+- Third-party Rust Buck rules are generated with `reindeer` into `third-party/rust/BUCK2`.
 - Cargo remains the Rust build backend and owns dependency resolution/lockfile.
 - Artifacts/caches:
   - Cargo: `target/`
   - Buck2: `buck-out/v2/`
+
+### Adding Rust Crates (New Workflow)
+
+When adding/updating Rust dependencies, use this order:
+
+1. Edit dependency declarations (`Cargo.toml` / crate manifests).
+2. Resolve/update lockfile (`cargo check` or `cargo build`).
+3. Refresh Buck snapshot files:
+   - `./x sync-rust-deps`
+4. Re-generate third-party Buck deps:
+   - `./x buckify-rust-deps`
+5. Verify Buck still builds:
+   - `buck2 build //apps/runtime:flora_lib`
+
+Notes:
+
+- Reindeer config is `third-party/reindeer.toml`.
+- If `reindeer` is missing, install via nixpkgs (`nix profile install nixpkgs#reindeer`).
+- Do not commit `third-party/rust/vendor` or `third-party/rust/.cargo`.
 
 ### TypeScript/SDK
 

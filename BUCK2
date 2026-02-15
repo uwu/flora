@@ -5,11 +5,18 @@ filegroup(
 )
 
 filegroup(
-    name = "rust_root_inputs",
+    name = "rust_workspace_inputs",
     srcs = [
         ".cargo",
         "Cargo.lock",
         "Cargo.toml",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+filegroup(
+    name = "rust_runtime_embed_inputs",
+    srcs = [
         "example/src",
         "runtime-dist",
     ],
@@ -58,7 +65,8 @@ genrule(
     cmd = "python3 $(location //tools/buck:cargo_action.py) command --workspace-marker $(location :workspace_marker) --out $OUT -- check --workspace",
     srcs = {
         "workspace_marker": ":workspace_marker",
-        "root_inputs": ":rust_root_inputs",
+        "workspace_inputs": ":rust_workspace_inputs",
+        "runtime_embed_inputs": ":rust_runtime_embed_inputs",
         "deno_inputs": ":rust_deno_inputs",
         "v8_prebuilt_inputs": ":rust_v8_prebuilt_inputs",
         "runtime_inputs": "//apps/runtime:inputs",
@@ -78,7 +86,8 @@ genrule(
     cmd = "python3 $(location //tools/buck:cargo_action.py) command --workspace-marker $(location :workspace_marker) --out $OUT -- test --workspace --no-run",
     srcs = {
         "workspace_marker": ":workspace_marker",
-        "root_inputs": ":rust_root_inputs",
+        "workspace_inputs": ":rust_workspace_inputs",
+        "runtime_embed_inputs": ":rust_runtime_embed_inputs",
         "deno_inputs": ":rust_deno_inputs",
         "v8_prebuilt_inputs": ":rust_v8_prebuilt_inputs",
         "runtime_inputs": "//apps/runtime:inputs",

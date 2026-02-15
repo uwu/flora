@@ -14,7 +14,8 @@ genrule(
     cmd = "python3 $(location //tools/buck:cargo_action.py) artifact --workspace-marker $(location //:workspace_marker) --out $OUT --package flora --kind lib --target-name flora",
     srcs = {
         "workspace_marker": "//:workspace_marker",
-        "root_inputs": "//:rust_root_inputs",
+        "workspace_inputs": "//:rust_workspace_inputs",
+        "runtime_embed_inputs": "//:rust_runtime_embed_inputs",
         "deno_inputs": "//:rust_deno_inputs",
         "v8_prebuilt_inputs": "//:rust_v8_prebuilt_inputs",
         "runtime_inputs": ":inputs",
@@ -32,7 +33,8 @@ genrule(
     cmd = "python3 $(location //tools/buck:cargo_action.py) artifact --workspace-marker $(location //:workspace_marker) --out $OUT --package flora --kind bin --target-name flora",
     srcs = {
         "workspace_marker": "//:workspace_marker",
-        "root_inputs": "//:rust_root_inputs",
+        "workspace_inputs": "//:rust_workspace_inputs",
+        "runtime_embed_inputs": "//:rust_runtime_embed_inputs",
         "deno_inputs": "//:rust_deno_inputs",
         "v8_prebuilt_inputs": "//:rust_v8_prebuilt_inputs",
         "runtime_inputs": ":inputs",
@@ -50,7 +52,8 @@ genrule(
     cmd = "python3 $(location //tools/buck:cargo_action.py) artifact --workspace-marker $(location //:workspace_marker) --out $OUT --package flora --kind bin --target-name flora --release",
     srcs = {
         "workspace_marker": "//:workspace_marker",
-        "root_inputs": "//:rust_root_inputs",
+        "workspace_inputs": "//:rust_workspace_inputs",
+        "runtime_embed_inputs": "//:rust_runtime_embed_inputs",
         "deno_inputs": "//:rust_deno_inputs",
         "v8_prebuilt_inputs": "//:rust_v8_prebuilt_inputs",
         "runtime_inputs": ":inputs",
@@ -68,7 +71,8 @@ genrule(
     cmd = "python3 $(location //tools/buck:cargo_action.py) artifact --workspace-marker $(location //:workspace_marker) --out $OUT --package flora --kind bin --target-name flora --env V8_FROM_SOURCE=1",
     srcs = {
         "workspace_marker": "//:workspace_marker",
-        "root_inputs": "//:rust_root_inputs",
+        "workspace_inputs": "//:rust_workspace_inputs",
+        "runtime_embed_inputs": "//:rust_runtime_embed_inputs",
         "deno_inputs": "//:rust_deno_inputs",
         "v8_prebuilt_inputs": "//:rust_v8_prebuilt_inputs",
         "v8_source_inputs": "//:rust_v8_source_inputs",

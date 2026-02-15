@@ -9,3 +9,9 @@ sh_binary(
     main = "sync_rust_deps.sh",
     visibility = ["PUBLIC"],
 )
+
+sh_binary(
+    name = "buckify_rust_deps",
+    main = "buckify_rust_deps.sh",
+    visibility = ["PUBLIC"],
+)

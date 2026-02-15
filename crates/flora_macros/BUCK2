@@ -13,7 +13,7 @@ genrule(
     cmd = "python3 $(location //tools/buck:cargo_action.py) artifact --workspace-marker $(location //:workspace_marker) --out $OUT --package flora_macros --kind proc-macro --target-name flora_macros",
     srcs = [
         "//:workspace_marker",
-        "//:rust_root_inputs",
+        "//:rust_workspace_inputs",
         ":inputs",
         "//tools/buck:cargo_action.py",
     ],

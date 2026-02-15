@@ -12,3 +12,5 @@ config.toml
 **/.wrangler
 /target-asan
 /buck-out/v2
+/third-party/rust/.cargo
+/third-party/rust/vendor
