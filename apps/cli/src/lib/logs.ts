@@ -1,3 +1,5 @@
+import { logger } from './logger'
+
 export type LogEntry = {
   timestamp: number
   level: string
@@ -15,7 +17,7 @@ export function printLogEntry(entry: LogEntry): void {
   const level = colorLevel(entry.level)
   const guild = entry.guild_id ?? '-'
 
-  process.stdout.write(`${timestamp} ${level} [${guild}] ${entry.target}: ${entry.message}\n`)
+  logger.log(`${timestamp} ${level} [${guild}] ${entry.target}: ${entry.message}`)
 }
 
 function colorLevel(level: string): string {

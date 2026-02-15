@@ -1,20 +1,17 @@
-import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, expect, it } from 'vitest'
 
 import { normalizeUrl } from '../src/lib/http'
 
 describe('normalizeUrl', () => {
   it('removes trailing slash for non-root path', () => {
-    assert.equal(
-      normalizeUrl('http://localhost:3000/api/health/'),
-      'http://localhost:3000/api/health'
-    )
+    expect(
+      normalizeUrl('http://localhost:3000/api/health/')
+    ).toBe('http://localhost:3000/api/health')
   })
 
   it('normalizes duplicated kv api prefix', () => {
-    assert.equal(
-      normalizeUrl('http://localhost:3000/api/kv/api/kv/stores'),
-      'http://localhost:3000/api/kv/stores'
-    )
+    expect(
+      normalizeUrl('http://localhost:3000/api/kv/api/kv/stores')
+    ).toBe('http://localhost:3000/api/kv/stores')
   })
 })

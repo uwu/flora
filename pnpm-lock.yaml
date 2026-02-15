@@ -44,6 +44,9 @@ importers:
       conf:
         specifier: ^15.1.0
         version: 15.1.0
+      consola:
+        specifier: ^3.4.2
+        version: 3.4.2
       ignore:
         specifier: ^7.0.5
         version: 7.0.5
@@ -69,6 +72,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vitest:
+        specifier: npm:@voidzero-dev/vite-plus-test@0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab
+        version: '@voidzero-dev/vite-plus-test@0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab(@types/node@24.10.13)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)'
 
   apps/frontend:
     dependencies:
@@ -9217,6 +9223,21 @@ snapshots:
       vite: '@voidzero-dev/vite-plus-core@0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab(@types/node@25.1.0)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)'
       vue: 3.5.27(typescript@5.9.3)
 
+  '@voidzero-dev/vite-plus-core@0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab(@types/node@24.10.13)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)':
+    dependencies:
+      '@oxc-project/runtime': 0.111.0
+      '@oxc-project/types': 0.111.0
+      lightningcss: 1.31.1
+      postcss: 8.5.6
+    optionalDependencies:
+      '@types/node': 24.10.13
+      esbuild: 0.27.2
+      fsevents: 2.3.3
+      jiti: 2.6.1
+      sass: 1.97.3
+      tsx: 4.21.0
+      typescript: 5.9.3
+
   '@voidzero-dev/vite-plus-core@0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab(@types/node@25.1.0)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)':
     dependencies:
       '@oxc-project/runtime': 0.111.0
@@ -9243,6 +9264,43 @@ snapshots:
 
   '@voidzero-dev/vite-plus-linux-x64-gnu@0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab':
     optional: true
+
+  '@voidzero-dev/vite-plus-test@0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab(@types/node@24.10.13)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)':
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      '@types/chai': 5.2.3
+      '@voidzero-dev/vite-plus-core': 0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab(@types/node@24.10.13)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)
+      es-module-lexer: 1.7.0
+      obug: 2.1.1
+      pixelmatch: 7.1.0
+      pngjs: 7.0.0
+      sirv: 3.0.2
+      std-env: 3.10.0
+      tinybench: 2.9.0
+      tinyexec: 1.0.2
+      tinyglobby: 0.2.15
+      ws: 8.19.0
+    optionalDependencies:
+      '@types/node': 24.10.13
+    transitivePeerDependencies:
+      - '@arethetypeswrong/core'
+      - '@vitejs/devtools'
+      - bufferutil
+      - esbuild
+      - jiti
+      - less
+      - publint
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - typescript
+      - unplugin-lightningcss
+      - unplugin-unused
+      - utf-8-validate
+      - yaml
 
   '@voidzero-dev/vite-plus-test@0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab(@types/node@25.1.0)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)':
     dependencies:

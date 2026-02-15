@@ -1,5 +1,6 @@
 import type { components } from '../generated/openapi-schema'
 import { authHeaders, createApiClient, expectOk } from '../lib/http'
+import { logger } from '../lib/logger'
 import { promptIfMissing } from '../lib/prompts'
 import type { CliConfig } from '../lib/types'
 
@@ -22,8 +23,8 @@ export async function createStore(
     })
   )
 
-  process.stdout.write(
-    `Created KV store '${response.store.store_name}' for guild ${response.store.guild_id}\n`
+  logger.log(
+    `Created KV store '${response.store.store_name}' for guild ${response.store.guild_id}`
   )
 }
 
@@ -39,13 +40,13 @@ export async function listStores(config: CliConfig, guildArg?: string): Promise<
   )
 
   if (stores.length === 0) {
-    process.stdout.write(`No KV stores found for guild ${guild}\n`)
+    logger.log(`No KV stores found for guild ${guild}`)
     return
   }
 
-  process.stdout.write(`KV stores for guild ${guild}:\n`)
+  logger.log(`KV stores for guild ${guild}:`)
   for (const store of stores) {
-    process.stdout.write(`  - ${store.store_name}\n`)
+    logger.log(`  - ${store.store_name}`)
   }
 }
 
@@ -70,7 +71,7 @@ export async function deleteStore(
     })
   )
 
-  process.stdout.write(`Deleted KV store '${name}' for guild ${guild}\n`)
+  logger.log(`Deleted KV store '${name}' for guild ${guild}`)
 }
 
 export async function setValue(
@@ -108,7 +109,7 @@ export async function setValue(
     })
   )
 
-  process.stdout.write(`Set ${key}=${value} in store '${store}' for guild ${guild}\n`)
+  logger.log(`Set ${key}=${value} in store '${store}' for guild ${guild}`)
 }
 
 export async function getValue(
@@ -136,11 +137,11 @@ export async function getValue(
   )
 
   if (response.value == null) {
-    process.stdout.write(`Key '${key}' not found\n`)
+    logger.log(`Key '${key}' not found`)
     return
   }
 
-  process.stdout.write(`${response.value}\n`)
+  logger.log(`${response.value}`)
 }
 
 export async function deleteValue(
@@ -167,7 +168,7 @@ export async function deleteValue(
     })
   )
 
-  process.stdout.write(`Deleted key '${key}' from store '${store}' for guild ${guild}\n`)
+  logger.log(`Deleted key '${key}' from store '${store}' for guild ${guild}`)
 }
 
 export async function listKeys(
@@ -200,19 +201,19 @@ export async function listKeys(
   )
 
   if (response.keys.length === 0) {
-    process.stdout.write(`No keys found in store '${store}'\n`)
+    logger.log(`No keys found in store '${store}'`)
     return
   }
 
-  process.stdout.write(`Keys in store '${store}' (${response.keys.length} shown):\n`)
+  logger.log(`Keys in store '${store}' (${response.keys.length} shown):`)
   for (const key of response.keys) {
     const expires = key.expiration ? ` (expires: ${key.expiration})` : ''
     const meta = key.metadata ? ` [metadata: ${JSON.stringify(key.metadata)}]` : ''
-    process.stdout.write(`  - ${key.name}${expires}${meta}\n`)
+    logger.log(`  - ${key.name}${expires}${meta}`)
   }
 
   const listComplete = 'list_complete' in response ? response.list_complete : response.listComplete
   if (!listComplete && response.cursor) {
-    process.stdout.write(`More keys available. Use --cursor ${response.cursor}\n`)
+    logger.log(`More keys available. Use --cursor ${response.cursor}`)
   }
 }

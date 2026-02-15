@@ -17,6 +17,7 @@ import {
 import { login } from './commands/login'
 import { logs, streamLogs } from './commands/logs'
 import { loadConfig } from './lib/config'
+import { logger } from './lib/logger'
 import type { CliConfig } from './lib/types'
 
 function positional(args: Record<string, unknown>, index: number): string | undefined {
@@ -260,6 +261,6 @@ const main = defineCommand({
 
 runMain(main).catch((error) => {
   const message = error instanceof Error ? error.message : String(error)
-  process.stderr.write(`${message}\n`)
+  logger.error(message)
   process.exit(1)
 })

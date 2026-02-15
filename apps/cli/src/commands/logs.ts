@@ -1,4 +1,5 @@
 import { authHeaders, createApiClient, expectOk } from '../lib/http'
+import { logger } from '../lib/logger'
 import { type LogEntry, printLogEntry, streamSseLogs } from '../lib/logs'
 import type { CliConfig } from '../lib/types'
 
@@ -23,7 +24,7 @@ export async function logs(config: CliConfig, guild?: string, limit = 100): Prom
     )
 
   if (entries.length === 0) {
-    process.stdout.write('No logs found\n')
+    logger.log('No logs found')
     return
   }
 
@@ -41,6 +42,6 @@ export async function streamLogs(config: CliConfig, guild?: string): Promise<voi
     throw new Error(`Stream request failed: ${response.status} ${response.statusText}`)
   }
 
-  process.stdout.write('Streaming logs... (press Ctrl+C to stop)\n')
+  logger.log('Streaming logs... (press Ctrl+C to stop)')
   await streamSseLogs(response, printLogEntry)
 }

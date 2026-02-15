@@ -1,8 +1,7 @@
-import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { describe, it } from 'node:test'
+import { describe, expect, it } from 'vitest'
 
 import { collectFiles } from '../src/lib/files'
 
@@ -21,7 +20,7 @@ describe('collectFiles ignore rules', () => {
       const files = await collectFiles(root)
       const paths = files.map((file) => file.path).sort()
 
-      assert.deepEqual(paths, ['src/main.ts'])
+      expect(paths).toEqual(['src/main.ts'])
     } finally {
       await rm(root, { recursive: true, force: true })
     }

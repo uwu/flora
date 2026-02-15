@@ -2,6 +2,7 @@ import path from 'node:path'
 
 import { collectFiles, toRelative } from '../lib/files'
 import { authHeaders, createApiClient, expectOk } from '../lib/http'
+import { logger } from '../lib/logger'
 import { promptIfMissing } from '../lib/prompts'
 import type { CliConfig } from '../lib/types'
 
@@ -32,8 +33,8 @@ export async function deploy(
     })
   )
 
-  process.stdout.write(
-    `Deployed guild ${response.guild_id} entry=${response.entry} updated=${response.updated_at}\n`
+  logger.log(
+    `Deployed guild ${response.guild_id} entry=${response.entry} updated=${response.updated_at}`
   )
 }
 
@@ -48,8 +49,8 @@ export async function get(config: CliConfig, guildArg: string | undefined): Prom
     })
   )
 
-  process.stdout.write(
-    `Guild ${deployment.guild_id}\n  entry: ${deployment.entry}\n  created: ${deployment.created_at}\n  updated: ${deployment.updated_at}\n`
+  logger.log(
+    `Guild ${deployment.guild_id}\n  entry: ${deployment.entry}\n  created: ${deployment.created_at}\n  updated: ${deployment.updated_at}`
   )
 }
 
@@ -62,13 +63,13 @@ export async function list(config: CliConfig): Promise<void> {
   )
 
   if (deployments.length === 0) {
-    process.stdout.write('No deployments found\n')
+    logger.log('No deployments found')
     return
   }
 
   for (const deployment of deployments) {
-    process.stdout.write(
-      `${deployment.guild_id} entry=${deployment.entry} created=${deployment.created_at} updated=${deployment.updated_at}\n`
+    logger.log(
+      `${deployment.guild_id} entry=${deployment.entry} created=${deployment.created_at} updated=${deployment.updated_at}`
     )
   }
 }
@@ -82,5 +83,5 @@ export async function health(config: CliConfig): Promise<void> {
     })
   )
 
-  process.stdout.write(`${response}\n`)
+  logger.log(`${response}`)
 }

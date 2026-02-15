@@ -17,7 +17,7 @@
     "build": "tsdown",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/*.test.ts"
+    "test": "vite test --run"
   },
   "publishConfig": {
     "access": "public"
@@ -25,6 +25,7 @@
   "dependencies": {
     "@clack/prompts": "^1.0.1",
     "citty": "^0.2.1",
+    "consola": "^3.4.2",
     "conf": "^15.1.0",
     "ignore": "^7.0.5",
     "openapi-fetch": "^0.17.0",
@@ -35,6 +36,7 @@
     "openapi-typescript": "^7.13.0",
     "tsdown": "^0.20.3",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "catalog:"
   }
 }

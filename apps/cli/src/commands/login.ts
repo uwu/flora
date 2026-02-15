@@ -1,4 +1,5 @@
 import { loadConfig, saveConfig } from '../lib/config'
+import { logger } from '../lib/logger'
 import { promptIfMissing } from '../lib/prompts'
 
 export async function login(tokenArg?: string): Promise<void> {
@@ -9,5 +10,5 @@ export async function login(tokenArg?: string): Promise<void> {
     token
   })
 
-  process.stdout.write('Saved token to config\n')
+  logger.log('Saved token to config')
 }
