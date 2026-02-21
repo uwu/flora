@@ -55,7 +55,32 @@ export type SubcommandMap = Record<
   Record<string, (ctx: InteractionContext) => Promise<void> | void>
 >
 
+type CreateBotState = {
+  initialized: boolean
+}
+
+declare global {
+  // Internal sdk marker to keep createBot idempotent.
+  var __floraCreateBotState: CreateBotState | undefined
+}
+
+function getCreateBotState(): CreateBotState {
+  const state = globalThis.__floraCreateBotState
+  if (state) return state
+
+  const initialState = { initialized: false }
+  globalThis.__floraCreateBotState = initialState
+  return initialState
+}
+
 export function createBot(options: CreateOptions) {
+  const state = getCreateBotState()
+  if (state.initialized) {
+    console.log('[flora/sdk] createBot called multiple times; skipping duplicate registration')
+    return
+  }
+  state.initialized = true
+
   const prefix = options.prefix ?? '!'
   const commands = options.commands ?? options.prefixCommands ?? []
   const slashCommands = options.slashCommands ?? []

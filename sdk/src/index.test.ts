@@ -1,8 +1,13 @@
-import { describe, expect, it, vi } from 'vitest'
-import type { InteractionContext } from './index'
-import { createBot, slash } from './index'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createBot, slash } from './sdk/commands'
+import type { InteractionContext } from './sdk/types'
 
 describe('createBot slash commands', () => {
+  beforeEach(() => {
+    // @ts-expect-error test-only reset
+    globalThis.__floraCreateBotState = undefined
+  })
+
   it('routes interactionCreate to matching slash command', async () => {
     const handlers: Record<string, (ctx: InteractionContext) => void | Promise<void>> = {}
     // mock global on
@@ -27,7 +32,7 @@ describe('createBot slash commands', () => {
         interaction_id: '123',
         interaction_token: 'token',
         application_id: 'app',
-        command_name: 'ping',
+        commandName: 'ping',
         data: {
           options: [
             { name: 'text', value: 'hello' },
