@@ -1,6 +1,5 @@
 use crate::{
-    bundler::{BundleLimits, DeploymentFile, bundle_files},
-    deployments::DeploymentService,
+    deployments::{DeploymentService, DeploymentSourceMapFile},
     runtime::BotRuntime,
 };
 use color_eyre::{Report, eyre::eyre};
@@ -19,7 +18,6 @@ pub struct DiscordHandler {
     pub runtime: Arc<BotRuntime>,
     pub http: Arc<serenity::http::Http>,
     pub application_id: Arc<std::sync::RwLock<Option<ApplicationId>>>,
-    pub bundle_limits: BundleLimits,
     pub deployments: DeploymentService,
 }
 
@@ -807,31 +805,13 @@ impl DiscordHandler {
             return Ok(());
         }
 
-        let files = vec![
-            DeploymentFile {
-                path: DEFAULT_GUILD_ENTRY.to_string(),
-                contents: DEFAULT_GUILD_SCRIPT.to_string(),
-            },
-            DeploymentFile {
-                path: "src/utils/reply.ts".to_string(),
-                contents: DEFAULT_GUILD_UTILS_REPLY.to_string(),
-            },
-        ];
-        let bundle_name = format!("guild:{guild_str}.bundle.js");
-        let bundle = bundle_files(
-            &bundle_name,
-            DEFAULT_GUILD_ENTRY,
-            &files,
-            self.bundle_limits,
-        )
-        .map_err(|err| eyre!(err.to_string()))?;
         let deployment = self
             .deployments
             .upsert_deployment(
                 guild_str.clone(),
                 DEFAULT_GUILD_ENTRY.to_string(),
-                files,
-                bundle.code,
+                DEFAULT_GUILD_BUNDLE.to_string(),
+                Some(default_guild_source_map()),
             )
             .await?;
         self.runtime
@@ -863,5 +843,13 @@ impl From<&Ready> for EventReady {
 
 // Ship a minimal starter bot to new guilds without deployments.
 const DEFAULT_GUILD_ENTRY: &str = "src/main.ts";
-const DEFAULT_GUILD_SCRIPT: &str = include_str!("../../../example/src/main.ts");
-const DEFAULT_GUILD_UTILS_REPLY: &str = include_str!("../../../example/src/utils/reply.ts");
+const DEFAULT_GUILD_BUNDLE: &str = include_str!("../../../runtime-dist/default_guild_bundle.js");
+const DEFAULT_GUILD_SOURCE_MAP_CONTENTS: &str =
+    include_str!("../../../runtime-dist/default_guild_bundle.js.map");
+
+fn default_guild_source_map() -> DeploymentSourceMapFile {
+    DeploymentSourceMapFile {
+        path: "default_guild_bundle.js.map".to_string(),
+        contents: DEFAULT_GUILD_SOURCE_MAP_CONTENTS.to_string(),
+    }
+}

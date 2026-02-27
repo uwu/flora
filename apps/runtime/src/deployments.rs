@@ -7,14 +7,18 @@ use std::sync::Arc;
 use tracing::{info, warn};
 use utoipa::ToSchema;
 
-use crate::bundler::DeploymentFile;
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct DeploymentSourceMapFile {
+    pub path: String,
+    pub contents: String,
+}
 
 /// Stored representation of a guild deployment.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Deployment {
     pub guild_id: String,
     pub entry: String,
-    pub files: Vec<DeploymentFile>,
+    pub source_map: Option<DeploymentSourceMapFile>,
     pub bundle: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -31,7 +35,7 @@ pub struct DeploymentService {
 struct DeploymentRow {
     guild_id: String,
     entry: String,
-    files: sqlx::types::Json<Vec<DeploymentFile>>,
+    source_map: Option<sqlx::types::Json<DeploymentSourceMapFile>>,
     bundle: String,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
@@ -54,25 +58,25 @@ impl DeploymentService {
         &self,
         guild_id: String,
         entry: String,
-        files: Vec<DeploymentFile>,
         bundle: String,
+        source_map: Option<DeploymentSourceMapFile>,
     ) -> Result<Deployment> {
         let record = sqlx::query_as::<_, DeploymentRow>(
             r#"
-            INSERT INTO deployments (guild_id, entry, files, bundle)
+            INSERT INTO deployments (guild_id, entry, bundle, source_map)
             VALUES ($1, $2, $3, $4)
             ON CONFLICT (guild_id) DO UPDATE
             SET entry = EXCLUDED.entry,
-                files = EXCLUDED.files,
                 bundle = EXCLUDED.bundle,
+                source_map = EXCLUDED.source_map,
                 updated_at = NOW()
-            RETURNING guild_id, entry, files, bundle, created_at, updated_at
+            RETURNING guild_id, entry, source_map, bundle, created_at, updated_at
             "#,
         )
         .bind(&guild_id)
         .bind(&entry)
-        .bind(sqlx::types::Json(&files))
         .bind(&bundle)
+        .bind(source_map.map(sqlx::types::Json))
         .fetch_one(&self.db_pool)
         .await?;
 
@@ -89,7 +93,7 @@ impl DeploymentService {
 
         let row = sqlx::query_as::<_, DeploymentRow>(
             r#"
-            SELECT guild_id, entry, files, bundle, created_at, updated_at
+            SELECT guild_id, entry, source_map, bundle, created_at, updated_at
             FROM deployments
             WHERE guild_id = $1
             "#,
@@ -110,7 +114,7 @@ impl DeploymentService {
     pub async fn list_deployments(&self) -> Result<Vec<Deployment>> {
         let rows = sqlx::query_as::<_, DeploymentRow>(
             r#"
-            SELECT guild_id, entry, files, bundle, created_at, updated_at
+            SELECT guild_id, entry, source_map, bundle, created_at, updated_at
             FROM deployments
             "#,
         )
@@ -157,7 +161,7 @@ fn to_deployment(row: DeploymentRow) -> Result<Deployment> {
     Ok(Deployment {
         guild_id: row.guild_id,
         entry: row.entry,
-        files: row.files.0,
+        source_map: row.source_map.map(|source_map| source_map.0),
         bundle: row.bundle,
         created_at: row.created_at,
         updated_at: row.updated_at,
@@ -168,5 +172,52 @@ impl Deployment {
     /// Derive a synthetic module name for bundled modules.
     pub fn module_name(&self) -> String {
         format!("guild:{}.bundle.js", self.guild_id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
+    use serde_json::json;
+
+    use super::{Deployment, DeploymentSourceMapFile};
+
+    #[test]
+    fn deployment_json_roundtrip_preserves_source_map() {
+        let deployment = Deployment {
+            guild_id: "123".to_string(),
+            entry: "src/main.ts".to_string(),
+            source_map: Some(DeploymentSourceMapFile {
+                path: "bundle.js.map".to_string(),
+                contents: "{\"version\":3}".to_string(),
+            }),
+            bundle: "console.log('hi')".to_string(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let encoded = serde_json::to_string(&deployment).expect("serialize deployment");
+        let decoded: Deployment = serde_json::from_str(&encoded).expect("deserialize deployment");
+
+        assert_eq!(
+            decoded.source_map.expect("source map").path,
+            "bundle.js.map"
+        );
+    }
+
+    #[test]
+    fn deployment_json_allows_missing_source_map() {
+        let value = json!({
+            "guild_id": "123",
+            "entry": "src/main.ts",
+            "bundle": "console.log('hi')",
+            "created_at": Utc::now().to_rfc3339(),
+            "updated_at": Utc::now().to_rfc3339()
+        });
+
+        let deployment: Deployment =
+            serde_json::from_value(value).expect("deserialize deployment without source map");
+
+        assert!(deployment.source_map.is_none());
     }
 }

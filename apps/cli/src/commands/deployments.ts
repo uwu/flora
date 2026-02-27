@@ -1,25 +1,33 @@
-import path from 'node:path'
-
-import { collectFiles, toRelative } from '../lib/files'
+import { loadProjectConfig } from '../lib/config'
+import { bundleDeploymentSource } from '../lib/deploy_bundle'
 import { authHeaders, createApiClient, expectOk } from '../lib/http'
 import { logger } from '../lib/logger'
 import { promptIfMissing } from '../lib/prompts'
-import type { CliConfig } from '../lib/types'
+import type { CliConfig, DeploySourceMapMode } from '../lib/types'
+
+export type DeployOverrides = {
+  root?: string
+  sourcemap?: DeploySourceMapMode
+  minify?: boolean
+  external?: string[]
+}
 
 export async function deploy(
   config: CliConfig,
   guildArg: string | undefined,
   entryArg: string | undefined,
-  rootArg?: string
+  overrides: DeployOverrides = {}
 ): Promise<void> {
   const guild = await promptIfMissing(guildArg, 'Guild ID')
-  const entryPath = await promptIfMissing(entryArg, 'Entry file path')
+  const projectConfig = await loadProjectConfig()
 
-  const entry = path.resolve(entryPath)
-  const root = rootArg ? path.resolve(rootArg) : path.dirname(entry)
-
-  const files = await collectFiles(root)
-  const entryRel = toRelative(entry, root)
+  const bundled = await bundleDeploymentSource({
+    root: overrides.root ?? projectConfig.root,
+    entry: entryArg ?? projectConfig.entry,
+    sourcemap: overrides.sourcemap ?? projectConfig.sourcemap,
+    minify: overrides.minify ?? projectConfig.minify,
+    external: overrides.external ?? projectConfig.external
+  })
 
   const client = createApiClient(config)
   const response = await expectOk(
@@ -27,8 +35,9 @@ export async function deploy(
       params: { path: { guild_id: guild } },
       headers: authHeaders(config),
       body: {
-        entry: entryRel,
-        files
+        entry: bundled.entry,
+        bundle: bundled.bundle,
+        source_map: bundled.sourceMap
       }
     })
   )

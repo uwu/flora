@@ -1,0 +1,14 @@
+{
+  "version": 3,
+  "file": "default_guild_bundle.js",
+  "sources": [
+    "src/main.ts",
+    "src/utils/reply.ts"
+  ],
+  "sourcesContent": [
+    "import { buildPong } from './utils/reply'\n\n// Prefix command example\nconst ping = defineCommand({\n  name: 'ping',\n  description: 'Respond with pong',\n  run: async (ctx) => {\n    await ctx.reply(buildPong(ctx.args))\n  }\n})\n\n// Slash command example\nconst hello = defineSlashCommand({\n  name: 'hello',\n  description: 'Say hello',\n  options: [\n    {\n      name: 'name',\n      description: 'Who to greet',\n      type: 'string',\n      required: false\n    }\n  ],\n  run: async (ctx) => {\n    const name = (ctx.options.name as string) || 'world'\n    await ctx.reply({\n      content: `Hello, ${name}!`,\n      ephemeral: true\n    })\n  }\n})\n\n// Slash command with subcommands\nconst counter = defineSlashCommand({\n  name: 'counter',\n  description: 'A simple counter using KV storage',\n  subcommands: [\n    {\n      name: 'get',\n      description: 'Get current count',\n      run: async (ctx) => {\n        const store = kv.store('counters')\n        const count = await store.get('main')\n        await ctx.reply(`Current count: ${count || 0}`)\n      }\n    },\n    {\n      name: 'increment',\n      description: 'Increment the counter',\n      run: async (ctx) => {\n        const store = kv.store('counters')\n        const current = parseInt(await store.get('main') || '0', 10)\n        const newCount = current + 1\n        await store.set('main', String(newCount))\n        await ctx.reply(`Count is now: ${newCount}`)\n      }\n    },\n    {\n      name: 'reset',\n      description: 'Reset the counter',\n      run: async (ctx) => {\n        const store = kv.store('counters')\n        await store.set('main', '0')\n        await ctx.reply('Counter reset to 0')\n      }\n    }\n  ]\n})\n\n// Register the bot\ncreateBot({\n  prefix: '!',\n  commands: [ping],\n  slashCommands: [hello, counter]\n})\n",
+    "export function buildPong(args: string[]): string {\n  const suffix = args.length > 0 ? ` (${args.join(' ')})` : ''\n  return `pong${suffix}`\n}\n"
+  ],
+  "names": [],
+  "mappings": ""
+}
