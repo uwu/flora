@@ -1,5 +1,5 @@
 use crate::{
-    bundler::{DeploymentFile, bundle_files},
+    bundler::{BundleLimits, DeploymentFile, bundle_files},
     deployments::DeploymentService,
     runtime::BotRuntime,
 };
@@ -19,6 +19,7 @@ pub struct DiscordHandler {
     pub runtime: Arc<BotRuntime>,
     pub http: Arc<serenity::http::Http>,
     pub application_id: Arc<std::sync::RwLock<Option<ApplicationId>>>,
+    pub bundle_limits: BundleLimits,
     pub deployments: DeploymentService,
 }
 
@@ -817,8 +818,13 @@ impl DiscordHandler {
             },
         ];
         let bundle_name = format!("guild:{guild_str}.bundle.js");
-        let bundle = bundle_files(&bundle_name, DEFAULT_GUILD_ENTRY, &files)
-            .map_err(|err| eyre!(err.to_string()))?;
+        let bundle = bundle_files(
+            &bundle_name,
+            DEFAULT_GUILD_ENTRY,
+            &files,
+            self.bundle_limits,
+        )
+        .map_err(|err| eyre!(err.to_string()))?;
         let deployment = self
             .deployments
             .upsert_deployment(
