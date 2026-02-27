@@ -25,9 +25,18 @@ pub struct DeploymentFile {
     pub contents: String,
 }
 
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, utoipa::ToSchema, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum SourceMapMode {
+    #[default]
+    Inline,
+    External,
+}
+
 #[derive(Debug)]
 pub struct BundleOutput {
     pub code: String,
+    pub source_map_file: Option<DeploymentFile>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -53,6 +62,15 @@ pub fn bundle_files(
     bundle_name: &str,
     entry: &str,
     files: &[DeploymentFile],
+) -> Result<BundleOutput, BundleError> {
+    bundle_files_with_sourcemap_mode(bundle_name, entry, files, SourceMapMode::Inline)
+}
+
+pub fn bundle_files_with_sourcemap_mode(
+    bundle_name: &str,
+    entry: &str,
+    files: &[DeploymentFile],
+    sourcemap_mode: SourceMapMode,
 ) -> Result<BundleOutput, BundleError> {
     if files.len() > MAX_FILES {
         return Err(BundleError::InvalidPath(format!(
@@ -117,11 +135,29 @@ pub fn bundle_files(
         sourcemap.add_source_and_content(&id, &module.source);
     }
     let sm = sourcemap.into_sourcemap();
-    output.push_str("//# sourceMappingURL=");
-    output.push_str(&sm.to_data_url());
-    output.push('\n');
+    let source_map_path = format!("{bundle_name}.map");
+    let source_map_file = match sourcemap_mode {
+        SourceMapMode::Inline => {
+            output.push_str("//# sourceMappingURL=");
+            output.push_str(&sm.to_data_url());
+            output.push('\n');
+            None
+        }
+        SourceMapMode::External => {
+            output.push_str("//# sourceMappingURL=");
+            output.push_str(&source_map_path);
+            output.push('\n');
+            Some(DeploymentFile {
+                path: source_map_path,
+                contents: sm.to_json_string(),
+            })
+        }
+    };
 
-    Ok(BundleOutput { code: output })
+    Ok(BundleOutput {
+        code: output,
+        source_map_file,
+    })
 }
 
 struct ModuleOutput {
@@ -589,4 +625,50 @@ fn normalize_path(input: &str) -> Result<String, BundleError> {
         return Err(BundleError::InvalidPath(input.to_string()));
     }
     Ok(normalized)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DeploymentFile, SourceMapMode, bundle_files, bundle_files_with_sourcemap_mode};
+
+    #[test]
+    fn bundle_files_inlines_sourcemap_by_default() {
+        let files = vec![DeploymentFile {
+            path: "src/main.ts".to_string(),
+            contents: "export const value = 1".to_string(),
+        }];
+
+        let bundled = bundle_files("guild:123.bundle.js", "src/main.ts", &files)
+            .expect("bundle should succeed");
+
+        assert!(bundled.code.contains("//# sourceMappingURL=data:"));
+        assert!(bundled.source_map_file.is_none());
+    }
+
+    #[test]
+    fn bundle_files_can_emit_external_sourcemap() {
+        let files = vec![DeploymentFile {
+            path: "src/main.ts".to_string(),
+            contents: "export const value = 1".to_string(),
+        }];
+
+        let bundled = bundle_files_with_sourcemap_mode(
+            "guild:123.bundle.js",
+            "src/main.ts",
+            &files,
+            SourceMapMode::External,
+        )
+        .expect("bundle should succeed");
+
+        assert!(
+            bundled
+                .code
+                .contains("//# sourceMappingURL=guild:123.bundle.js.map")
+        );
+        let source_map_file = bundled
+            .source_map_file
+            .expect("external sourcemap file should be generated");
+        assert_eq!(source_map_file.path, "guild:123.bundle.js.map");
+        assert!(source_map_file.contents.contains("\"version\":3"));
+    }
 }
