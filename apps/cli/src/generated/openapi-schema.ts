@@ -391,24 +391,25 @@ export interface components {
       guild_id: string
       store_name: string
     }
-    DeploymentFile: {
+    DeploymentSourceMapFile: {
       contents: string
       path: string
     }
     /** @description Body for creating or replacing a deployment. */
     DeploymentRequest: {
+      /** @description Prebuilt JavaScript bundle source. */
+      bundle: string
       /** @description Entry point path for the bundle (e.g. src/main.ts). */
       entry: string
-      /** @description Files included in this deployment. */
-      files: components['schemas']['DeploymentFile'][]
+      source_map?: components['schemas']['DeploymentSourceMapFile'] | null
     }
     /** @description API representation of a deployment. */
     DeploymentResponse: {
       bundle?: string | null
       created_at: string
       entry: string
-      files?: components['schemas']['DeploymentFile'][] | null
       guild_id: string
+      source_map?: components['schemas']['DeploymentSourceMapFile'] | null
       updated_at: string
     }
     /** @description Canonical error envelope returned by the HTTP API. */
@@ -829,8 +830,8 @@ export interface operations {
             bundle?: string | null
             created_at: string
             entry: string
-            files?: components['schemas']['DeploymentFile'][] | null
             guild_id: string
+            source_map?: components['schemas']['DeploymentSourceMapFile'] | null
             updated_at: string
           }[]
         }
@@ -922,8 +923,8 @@ export interface operations {
             bundle?: string | null
             created_at: string
             entry: string
-            files?: components['schemas']['DeploymentFile'][] | null
             guild_id: string
+            source_map?: components['schemas']['DeploymentSourceMapFile'] | null
             updated_at: string
           }
         }
@@ -1016,8 +1017,8 @@ export interface operations {
             bundle?: string | null
             created_at: string
             entry: string
-            files?: components['schemas']['DeploymentFile'][] | null
             guild_id: string
+            source_map?: components['schemas']['DeploymentSourceMapFile'] | null
             updated_at: string
           }
         }
