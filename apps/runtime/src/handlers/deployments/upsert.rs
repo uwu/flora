@@ -8,8 +8,7 @@ use tracing::error;
 use utoipa::ToSchema;
 
 use crate::{
-    bundler::{DeploymentFile, SourceMapMode, bundle_files_with_sourcemap_mode},
-    deployments::Deployment,
+    deployments::{Deployment, DeploymentSourceMapFile},
     handlers::{
         auth::{ensure_guild_admin, require_identity},
         error::ApiError,
@@ -23,11 +22,11 @@ use crate::{
 pub struct DeploymentRequest {
     /// Entry point path for the bundle (e.g. src/main.ts).
     pub entry: String,
-    /// Files included in this deployment.
-    pub files: Vec<DeploymentFile>,
-    /// How to emit source maps for the bundled output.
-    #[serde(default)]
-    pub source_map_mode: SourceMapMode,
+    /// Prebuilt JavaScript bundle source.
+    pub bundle: String,
+    /// Optional source map file for the prebuilt bundle.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_map: Option<DeploymentSourceMapFile>,
 }
 
 /// API representation of a deployment.
@@ -38,7 +37,7 @@ pub struct DeploymentResponse {
     pub updated_at: String,
     pub entry: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub files: Option<Vec<DeploymentFile>>,
+    pub source_map: Option<DeploymentSourceMapFile>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bundle: Option<String>,
 }
@@ -50,15 +49,15 @@ impl From<Deployment> for DeploymentResponse {
             created_at: value.created_at.to_rfc3339(),
             updated_at: value.updated_at.to_rfc3339(),
             entry: value.entry,
-            files: None,
+            source_map: None,
             bundle: None,
         }
     }
 }
 
 impl DeploymentResponse {
-    pub fn with_files(mut self, files: Vec<DeploymentFile>) -> Self {
-        self.files = Some(files);
+    pub fn with_source_map(mut self, source_map: Option<DeploymentSourceMapFile>) -> Self {
+        self.source_map = source_map;
         self
     }
 
@@ -66,6 +65,34 @@ impl DeploymentResponse {
         self.bundle = Some(bundle);
         self
     }
+}
+
+fn validate_request(request: &DeploymentRequest) -> Result<(), ApiError> {
+    if request.entry.trim().is_empty() {
+        return Err(ApiError::bad_request("entry must not be empty"));
+    }
+
+    if request.bundle.trim().is_empty() {
+        return Err(ApiError::bad_request("bundle must not be empty"));
+    }
+
+    if let Some(source_map) = &request.source_map {
+        if source_map.path.trim().is_empty() {
+            return Err(ApiError::bad_request("source_map.path must not be empty"));
+        }
+
+        if source_map.contents.trim().is_empty() {
+            return Err(ApiError::bad_request(
+                "source_map.contents must not be empty",
+            ));
+        }
+
+        if !source_map.path.ends_with(".map") {
+            return Err(ApiError::bad_request("source_map.path must end with .map"));
+        }
+    }
+
+    Ok(())
 }
 
 /// Create or update a deployment for a guild.
@@ -91,25 +118,16 @@ pub async fn upsert_deployment_handler(
     let identity = require_identity(&state, &headers).await?;
     ensure_guild_admin(&state, &identity, &guild_id).await?;
 
-    let bundle_name = format!("guild:{guild_id}.bundle.js");
-    let bundled = bundle_files_with_sourcemap_mode(
-        &bundle_name,
-        &request.entry,
-        &request.files,
-        state.bundle_limits,
-        request.source_map_mode,
-    )
-    .map_err(|err| ApiError::bad_request(err.to_string()))?;
-
-    let mut files = request.files;
-    if let Some(source_map_file) = bundled.source_map_file {
-        files.retain(|file| file.path != source_map_file.path);
-        files.push(source_map_file);
-    }
+    validate_request(&request)?;
 
     let deployment = state
         .deployments
-        .upsert_deployment(guild_id.clone(), request.entry, files, bundled.code)
+        .upsert_deployment(
+            guild_id.clone(),
+            request.entry,
+            request.bundle,
+            request.source_map,
+        )
         .await
         .map_err(|err| {
             error!(target: "flora:api", guild_id, ?err, "failed to upsert deployment");
@@ -126,4 +144,51 @@ pub async fn upsert_deployment_handler(
         })?;
 
     Ok(ApiJson(Json(deployment.into())))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DeploymentRequest, validate_request};
+    use crate::{deployments::DeploymentSourceMapFile, handlers::error::ApiError};
+
+    #[test]
+    fn validate_request_rejects_empty_bundle() {
+        let request = DeploymentRequest {
+            entry: "src/main.ts".to_string(),
+            bundle: "   ".to_string(),
+            source_map: None,
+        };
+
+        let result = validate_request(&request);
+        assert!(matches!(result, Err(ApiError::BadRequest { .. })));
+    }
+
+    #[test]
+    fn validate_request_rejects_invalid_source_map() {
+        let request = DeploymentRequest {
+            entry: "src/main.ts".to_string(),
+            bundle: "console.log('ok')".to_string(),
+            source_map: Some(DeploymentSourceMapFile {
+                path: "source-map.txt".to_string(),
+                contents: "{}".to_string(),
+            }),
+        };
+
+        let result = validate_request(&request);
+        assert!(matches!(result, Err(ApiError::BadRequest { .. })));
+    }
+
+    #[test]
+    fn validate_request_accepts_bundle_with_source_map() {
+        let request = DeploymentRequest {
+            entry: "src/main.ts".to_string(),
+            bundle: "console.log('ok')".to_string(),
+            source_map: Some(DeploymentSourceMapFile {
+                path: "bundle.js.map".to_string(),
+                contents: "{}".to_string(),
+            }),
+        };
+
+        validate_request(&request).expect("request should be valid");
+    }
 }

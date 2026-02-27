@@ -117,7 +117,7 @@ fn make_deployment(iteration: usize) -> Deployment {
     Deployment {
         guild_id: GUILD_ID.to_string(),
         entry: "main.js".to_string(),
-        files: Vec::new(),
+        source_map: None,
         bundle,
         created_at: Utc::now(),
         updated_at: Utc::now(),

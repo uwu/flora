@@ -1,5 +1,4 @@
 mod auth;
-mod bundler;
 mod deployments;
 mod discord_handler;
 mod handlers;
@@ -141,7 +140,6 @@ async fn main() -> Result<()> {
     let app_info = http.get_current_application_info().await?;
     http.set_application_id(app_info.id);
 
-    let bundle_limits = bundler::BundleLimits::from_config(&config.runtime);
     let runtime = Arc::new(BotRuntime::new(
         http.clone(),
         kv_service.clone(),
@@ -173,7 +171,6 @@ async fn main() -> Result<()> {
         runtime: runtime.clone(),
         http: http.clone(),
         application_id: Arc::new(std::sync::RwLock::new(Some(app_info.id))),
-        bundle_limits,
         deployments: deployment_service.clone(),
     });
 
@@ -188,7 +185,6 @@ async fn main() -> Result<()> {
         tokens: token_service.clone(),
         kv: kv_service.clone(),
         secrets: secret_service.clone(),
-        bundle_limits,
         http: http.clone(),
     };
 
