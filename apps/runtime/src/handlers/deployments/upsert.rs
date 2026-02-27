@@ -8,7 +8,7 @@ use tracing::error;
 use utoipa::ToSchema;
 
 use crate::{
-    bundler::{DeploymentFile, bundle_files},
+    bundler::{DeploymentFile, SourceMapMode, bundle_files_with_sourcemap_mode},
     deployments::Deployment,
     handlers::{
         auth::{ensure_guild_admin, require_identity},
@@ -25,6 +25,9 @@ pub struct DeploymentRequest {
     pub entry: String,
     /// Files included in this deployment.
     pub files: Vec<DeploymentFile>,
+    /// How to emit source maps for the bundled output.
+    #[serde(default)]
+    pub source_map_mode: SourceMapMode,
 }
 
 /// API representation of a deployment.
@@ -89,17 +92,24 @@ pub async fn upsert_deployment_handler(
     ensure_guild_admin(&state, &identity, &guild_id).await?;
 
     let bundle_name = format!("guild:{guild_id}.bundle.js");
-    let bundled = bundle_files(
+    let bundled = bundle_files_with_sourcemap_mode(
         &bundle_name,
         &request.entry,
         &request.files,
         state.bundle_limits,
+        request.source_map_mode,
     )
     .map_err(|err| ApiError::bad_request(err.to_string()))?;
 
+    let mut files = request.files;
+    if let Some(source_map_file) = bundled.source_map_file {
+        files.retain(|file| file.path != source_map_file.path);
+        files.push(source_map_file);
+    }
+
     let deployment = state
         .deployments
-        .upsert_deployment(guild_id.clone(), request.entry, request.files, bundled.code)
+        .upsert_deployment(guild_id.clone(), request.entry, files, bundled.code)
         .await
         .map_err(|err| {
             error!(target: "flora:api", guild_id, ?err, "failed to upsert deployment");
