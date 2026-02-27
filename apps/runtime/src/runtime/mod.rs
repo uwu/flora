@@ -21,7 +21,7 @@ use std::{
     path::PathBuf,
     sync::{Arc, atomic::Ordering},
 };
-use tokio::runtime::Builder;
+use tokio::{runtime::Builder, sync::Mutex};
 use tracing::{error, info};
 use types::{QueuedGuildEvent, Worker};
 use worker::spawn_worker;
@@ -33,7 +33,7 @@ pub struct BotRuntime {
     num_workers: usize,
     secrets: Arc<SecretService>,
     guild_routes: Arc<parking_lot::Mutex<HashMap<String, usize>>>,
-    migration_queues: Arc<parking_lot::Mutex<HashMap<String, Vec<QueuedGuildEvent>>>>,
+    migration_queues: Arc<Mutex<HashMap<String, Vec<QueuedGuildEvent>>>>,
 }
 
 impl BotRuntime {
@@ -57,7 +57,7 @@ impl BotRuntime {
             num_workers,
             secrets: Arc::new(secrets),
             guild_routes: Arc::new(parking_lot::Mutex::new(HashMap::new())),
-            migration_queues: Arc::new(parking_lot::Mutex::new(HashMap::new())),
+            migration_queues: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -117,7 +117,7 @@ impl BotRuntime {
             return Ok(());
         }
 
-        self.begin_guild_migration(guild_id)?;
+        self.begin_guild_migration(guild_id).await?;
 
         let mut final_worker = source_worker;
         let mut migration_result = async {
@@ -158,7 +158,7 @@ impl BotRuntime {
         }
         .await;
 
-        let queued_events = self.finish_guild_migration(guild_id);
+        let queued_events = self.finish_guild_migration(guild_id).await;
         let replay_result = self
             .flush_queued_events(guild_id, final_worker, queued_events)
             .await;
@@ -182,13 +182,16 @@ impl BotRuntime {
     ) -> Result<(), AnyError> {
         match &guild_id {
             Some(gid) => {
-                if self.enqueue_migrating_event(
-                    gid,
-                    QueuedGuildEvent {
-                        event: event.to_string(),
-                        payload: payload.clone(),
-                    },
-                ) {
+                if self
+                    .enqueue_migrating_event(
+                        gid,
+                        QueuedGuildEvent {
+                            event: event.to_string(),
+                            payload: payload.clone(),
+                        },
+                    )
+                    .await
+                {
                     return Ok(());
                 }
                 let worker_idx = self.worker_for_guild(gid);
@@ -249,8 +252,8 @@ impl BotRuntime {
         (hasher.finish() as usize) % self.num_workers
     }
 
-    fn begin_guild_migration(&self, guild_id: &str) -> Result<(), AnyError> {
-        let mut queues = self.migration_queues.lock();
+    async fn begin_guild_migration(&self, guild_id: &str) -> Result<(), AnyError> {
+        let mut queues = self.migration_queues.lock().await;
         if queues.contains_key(guild_id) {
             return Err(AnyError::msg("guild migration already in progress"));
         }
@@ -258,15 +261,16 @@ impl BotRuntime {
         Ok(())
     }
 
-    fn finish_guild_migration(&self, guild_id: &str) -> Vec<QueuedGuildEvent> {
+    async fn finish_guild_migration(&self, guild_id: &str) -> Vec<QueuedGuildEvent> {
         self.migration_queues
             .lock()
+            .await
             .remove(guild_id)
             .unwrap_or_default()
     }
 
-    fn enqueue_migrating_event(&self, guild_id: &str, event: QueuedGuildEvent) -> bool {
-        let mut queues = self.migration_queues.lock();
+    async fn enqueue_migrating_event(&self, guild_id: &str, event: QueuedGuildEvent) -> bool {
+        let mut queues = self.migration_queues.lock().await;
         let Some(queue) = queues.get_mut(guild_id) else {
             return false;
         };
