@@ -1,5 +1,6 @@
 use crate::transpile::transpile_if_typescript;
 use deno_core::ModuleName;
+use flora_config::RuntimeConfig;
 use oxc::{
     allocator::Allocator,
     ast::ast::{
@@ -49,14 +50,40 @@ pub enum BundleError {
 const MAX_FILES: usize = 200;
 const MAX_TOTAL_BYTES: usize = 1_048_576;
 
+#[derive(Debug, Clone, Copy)]
+pub struct BundleLimits {
+    pub max_files: usize,
+    pub max_total_bytes: usize,
+}
+
+impl BundleLimits {
+    pub fn from_config(config: &RuntimeConfig) -> Self {
+        Self {
+            max_files: config.max_bundle_files,
+            max_total_bytes: config.max_bundle_total_bytes,
+        }
+    }
+}
+
+impl Default for BundleLimits {
+    fn default() -> Self {
+        Self {
+            max_files: MAX_FILES,
+            max_total_bytes: MAX_TOTAL_BYTES,
+        }
+    }
+}
+
 pub fn bundle_files(
     bundle_name: &str,
     entry: &str,
     files: &[DeploymentFile],
+    limits: BundleLimits,
 ) -> Result<BundleOutput, BundleError> {
-    if files.len() > MAX_FILES {
+    if files.len() > limits.max_files {
         return Err(BundleError::InvalidPath(format!(
-            "too many files (max {MAX_FILES})"
+            "too many files (max {})",
+            limits.max_files
         )));
     }
 
@@ -64,9 +91,10 @@ pub fn bundle_files(
     let mut file_map = HashMap::new();
     for file in files {
         total_bytes = total_bytes.saturating_add(file.contents.len());
-        if total_bytes > MAX_TOTAL_BYTES {
+        if total_bytes > limits.max_total_bytes {
             return Err(BundleError::InvalidPath(format!(
-                "bundle exceeds size limit (max {MAX_TOTAL_BYTES} bytes)"
+                "bundle exceeds size limit (max {} bytes)",
+                limits.max_total_bytes
             )));
         }
         let normalized = normalize_path(&file.path)?;

@@ -93,6 +93,12 @@ pub struct RuntimeConfig {
     /// Max script size in bytes (SDK + deployment). Default: 1MB.
     #[config(env = "RUNTIME_MAX_SCRIPT_BYTES", default = 1_048_576)]
     pub max_script_bytes: usize,
+    /// Maximum number of deployment files accepted by bundler.
+    #[config(env = "RUNTIME_MAX_BUNDLE_FILES", default = 200)]
+    pub max_bundle_files: usize,
+    /// Maximum total deployment bundle source bytes accepted by bundler.
+    #[config(env = "RUNTIME_MAX_BUNDLE_TOTAL_BYTES", default = 1_048_576)]
+    pub max_bundle_total_bytes: usize,
     /// Maximum number of cron jobs per guild (or default runtime).
     #[config(env = "RUNTIME_MAX_CRON_JOBS", default = 32)]
     pub max_cron_jobs: usize,

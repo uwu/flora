@@ -116,6 +116,20 @@
 # Default value: 1048576
 # max_script_bytes = 1048576
 
+# Maximum number of deployment files accepted by bundler.
+#
+# Can also be specified via environment variable `RUNTIME_MAX_BUNDLE_FILES`.
+#
+# Default value: 200
+# max_bundle_files = 200
+
+# Maximum total deployment bundle source bytes accepted by bundler.
+#
+# Can also be specified via environment variable `RUNTIME_MAX_BUNDLE_TOTAL_BYTES`.
+#
+# Default value: 1048576
+# max_bundle_total_bytes = 1048576
+
 # Maximum number of cron jobs per guild (or default runtime).
 #
 # Can also be specified via environment variable `RUNTIME_MAX_CRON_JOBS`.

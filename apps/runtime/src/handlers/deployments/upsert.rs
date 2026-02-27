@@ -89,8 +89,13 @@ pub async fn upsert_deployment_handler(
     ensure_guild_admin(&state, &identity, &guild_id).await?;
 
     let bundle_name = format!("guild:{guild_id}.bundle.js");
-    let bundled = bundle_files(&bundle_name, &request.entry, &request.files)
-        .map_err(|err| ApiError::bad_request(err.to_string()))?;
+    let bundled = bundle_files(
+        &bundle_name,
+        &request.entry,
+        &request.files,
+        state.bundle_limits,
+    )
+    .map_err(|err| ApiError::bad_request(err.to_string()))?;
 
     let deployment = state
         .deployments
