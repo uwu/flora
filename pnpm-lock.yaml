@@ -33,6 +33,34 @@ importers:
         specifier: 3.2.4
         version: 3.2.4(typescript@5.9.3)
 
+  apps/build-service:
+    dependencies:
+      consola:
+        specifier: ^3.4.2
+        version: 3.4.2
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
+      h3:
+        specifier: 2.0.1-rc.14
+        version: 2.0.1-rc.14
+      rolldown:
+        specifier: ^1.0.0-beta.43
+        version: 1.0.0-rc.3
+    devDependencies:
+      '@types/node':
+        specifier: ^24.3.0
+        version: 24.10.13
+      tsdown:
+        specifier: ^0.20.3
+        version: 0.20.3(@typescript/native-preview@7.0.0-dev.20260131.1)(typescript@5.9.3)(vue-tsc@3.2.4(typescript@5.9.3))
+      tsx:
+        specifier: ^4.20.6
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   apps/cli:
     dependencies:
       '@clack/prompts':
@@ -4609,6 +4637,11 @@ packages:
     }
     engines: { node: ^12.20 || >= 14.13 }
 
+  fflate@0.8.2:
+    resolution: {
+      integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==,
+    }
+
   figures@6.1.0:
     resolution: {
       integrity: sha512-d+l3qxjSesT4V7v2fh+QnmFnUWv9lSpjarhShNTgBOfA0ttejbQUAlHLitbjkoRiDulW0OPoQPYIGhIC8ohejg==,
@@ -4828,6 +4861,18 @@ packages:
       integrity: sha512-ax7ZYomf6jqPTQ4+XCpUGyXKHk5WweS+e05MBO4/y3WJ5RkmPXNKvX+bx1behVILVwr6JSQvZAku021CHPXG3Q==,
     }
     engines: { node: '>=10' }
+
+  h3@2.0.1-rc.14:
+    resolution: {
+      integrity: sha512-163qbGmTr/9rqQRNuqMqtgXnOUAkE4KTdauiC9y0E5iG1I65kte9NyfWvZw5RTDMt6eY+DtyoNzrQ9wA2BfvGQ==,
+    }
+    engines: { node: '>=20.11.1' }
+    hasBin: true
+    peerDependencies:
+      crossws: ^0.4.1
+    peerDependenciesMeta:
+      crossws:
+        optional: true
 
   has-flag@4.0.0:
     resolution: {
@@ -6324,6 +6369,11 @@ packages:
     engines: { node: '>=18.0.0', npm: '>=8.0.0' }
     hasBin: true
 
+  rou3@0.7.12:
+    resolution: {
+      integrity: sha512-iFE4hLDuloSWcD7mjdCDhx2bKcIsYbtOTpfH5MHHLSKMOUyjqQXTeZVa289uuwEGEKFoE/BAPbhaU4B774nceg==,
+    }
+
   router@2.2.0:
     resolution: {
       integrity: sha512-nLTrUKm2UyiL7rlhapu/Zl45FwNgkZGaCpZbIHajDYgwlJCOzLSk+cIPAnsEqV955GjILJnKbdQC1nVPz+gAYQ==,
@@ -6490,6 +6540,13 @@ packages:
       integrity: sha512-1POYv7uv2gXoyGFpBCmpDVSNV74IfsWlDW216UPjbWufNf+bSU6GdbDsxdcxtfwb4xlI3yxzOTKClUosxARYrQ==,
     }
     engines: { node: '>=0.10.0' }
+
+  srvx@0.11.8:
+    resolution: {
+      integrity: sha512-2n9t0YnAXPJjinytvxccNgs7rOA5gmE7Wowt/8Dy2dx2fDC6sBhfBpbrCvjYKALlVukPS/Uq3QwkolKNa7P/2Q==,
+    }
+    engines: { node: '>=20.16.0' }
+    hasBin: true
 
   state-local@1.0.7:
     resolution: {
@@ -10218,6 +10275,8 @@ snapshots:
       node-domexception: 1.0.0
       web-streams-polyfill: 3.3.3
 
+  fflate@0.8.2: {}
+
   figures@6.1.0:
     dependencies:
       is-unicode-supported: 2.1.0
@@ -10358,6 +10417,11 @@ snapshots:
   gzip-size@6.0.0:
     dependencies:
       duplexer: 0.1.2
+
+  h3@2.0.1-rc.14:
+    dependencies:
+      rou3: 0.7.12
+      srvx: 0.11.8
 
   has-flag@4.0.0: {}
 
@@ -11319,6 +11383,8 @@ snapshots:
       '@rollup/rollup-win32-x64-msvc': 4.57.1
       fsevents: 2.3.3
 
+  rou3@0.7.12: {}
+
   router@2.2.0:
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
@@ -11519,6 +11585,8 @@ snapshots:
   space-separated-tokens@2.0.2: {}
 
   speakingurl@14.0.1: {}
+
+  srvx@0.11.8: {}
 
   state-local@1.0.7: {}
 
