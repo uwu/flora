@@ -5,7 +5,7 @@
 # Can also be specified via environment variable `RUST_LOG`.
 #
 # Default value: "flora::runtime=info,flora=info"
-#log_level = "flora::runtime=info,flora=info"
+# log_level = "flora::runtime=info,flora=info"
 
 # Secrets configuration.
 [secrets]
@@ -15,7 +15,7 @@
 # Can also be specified via environment variable `SECRETS_MASTER_KEY`.
 #
 # Required! This value must be specified.
-#master_key =
+# master_key =
 
 # Discord config.
 [discord]
@@ -24,28 +24,28 @@
 # Can also be specified via environment variable `DISCORD_TOKEN`.
 #
 # Required! This value must be specified.
-#bot_token =
+# bot_token =
 
 # Discord client ID for OAuth.
 #
 # Can also be specified via environment variable `DISCORD_CLIENT_ID`.
 #
 # Required! This value must be specified.
-#client_id =
+# client_id =
 
 # Discord client secret for OAuth.
 #
 # Can also be specified via environment variable `DISCORD_CLIENT_SECRET`.
 #
 # Required! This value must be specified.
-#client_secret =
+# client_secret =
 
 # Discord redirect URI for OAuth. Must match the one in the Discord developer portal, and has to be exposed like so: `https://<host>/auth/callback`
 #
 # Can also be specified via environment variable `DISCORD_REDIRECT_URI`.
 #
 # Default value: "http://localhost:3000/auth/callback"
-#redirect_uri = "http://localhost:3000/auth/callback"
+# redirect_uri = "http://localhost:3000/auth/callback"
 
 # Database (PostgreSQL) config.
 [database]
@@ -54,14 +54,14 @@
 # Can also be specified via environment variable `DATABASE_URL`.
 #
 # Default value: "postgres://user:pass@localhost:5433/flora"
-#url = "postgres://user:pass@localhost:5433/flora"
+# url = "postgres://user:pass@localhost:5433/flora"
 
 # Maximum number of connections to the database.
 #
 # Can also be specified via environment variable `DATABASE_MAX_CONNECTIONS`.
 #
 # Default value: 5
-#max_connections = 5
+# max_connections = 5
 
 # Cache (Valkey) config.
 [cache]
@@ -70,14 +70,14 @@
 # Can also be specified via environment variable `CACHE_URL`.
 #
 # Default value: "redis://127.0.0.1:5434/0"
-#url = "redis://127.0.0.1:5434/0"
+# url = "redis://127.0.0.1:5434/0"
 
 # Pool size.
 #
 # Can also be specified via environment variable `CACHE_POOL_SIZE`.
 #
 # Default value: 10
-#pool_size = 10
+# pool_size = 10
 
 # Runtime config.
 [runtime]
@@ -88,70 +88,70 @@
 # Can also be specified via environment variable `RUNTIME_MAX_WORKERS`.
 #
 # Default value: 4
-#max_workers = 4
+# max_workers = 4
 
 # Timeout in seconds for runtime bootstrap (0 disables).
 #
 # Can also be specified via environment variable `RUNTIME_BOOT_TIMEOUT_SECS`.
 #
 # Default value: 5
-#boot_timeout_secs = 5
+# boot_timeout_secs = 5
 
 # Timeout in seconds for script/module load (0 disables).
 #
 # Can also be specified via environment variable `RUNTIME_LOAD_TIMEOUT_SECS`.
 #
 # Default value: 30
-#load_timeout_secs = 30
+# load_timeout_secs = 30
 
 # Timeout in seconds for per-event dispatch (0 disables).
 #
 # Can also be specified via environment variable `RUNTIME_DISPATCH_TIMEOUT_SECS`.
 #
 # Default value: 3
-#dispatch_timeout_secs = 3
+# dispatch_timeout_secs = 3
 
 # Max script size in bytes (SDK + deployment). Default: 1MB.
 #
 # Can also be specified via environment variable `RUNTIME_MAX_SCRIPT_BYTES`.
 #
 # Default value: 1048576
-#max_script_bytes = 1048576
+# max_script_bytes = 1048576
 
 # Maximum number of deployment files accepted by bundler.
 #
 # Can also be specified via environment variable `RUNTIME_MAX_BUNDLE_FILES`.
 #
 # Default value: 200
-#max_bundle_files = 200
+# max_bundle_files = 200
 
 # Maximum total deployment bundle source bytes accepted by bundler.
 #
 # Can also be specified via environment variable `RUNTIME_MAX_BUNDLE_TOTAL_BYTES`.
 #
 # Default value: 1048576
-#max_bundle_total_bytes = 1048576
+# max_bundle_total_bytes = 1048576
 
 # Maximum number of cron jobs per guild (or default runtime).
 #
 # Can also be specified via environment variable `RUNTIME_MAX_CRON_JOBS`.
 #
 # Default value: 32
-#max_cron_jobs = 32
+# max_cron_jobs = 32
 
 # Timeout in seconds for cron handler execution (0 disables).
 #
 # Can also be specified via environment variable `RUNTIME_CRON_TIMEOUT_SECS`.
 #
 # Default value: 5
-#cron_timeout_secs = 5
+# cron_timeout_secs = 5
 
 # Timeout in milliseconds for migration quiesce (0 disables).
 #
 # Can also be specified via environment variable `RUNTIME_MIGRATION_TIMEOUT_MS`.
 #
 # Default value: 500
-#migration_timeout_ms = 500
+# migration_timeout_ms = 500
 
 # API server config.
 [api]
@@ -160,35 +160,35 @@
 # Can also be specified via environment variable `API_PORT`.
 #
 # Default value: 3000
-#port = 3000
+# port = 3000
 
 # Bind address.
 #
 # Can also be specified via environment variable `API_ADDRESS`.
 #
 # Default value: "0.0.0.0"
-#address = "0.0.0.0"
+# address = "0.0.0.0"
 
 # Secret key for signing cookies.
 #
 # Can also be specified via environment variable `API_SECRET`.
 #
 # Required! This value must be specified.
-#secret =
+# secret =
 
 # Cookie TTL in seconds. Default is 30 days.
 #
 # Can also be specified via environment variable `API_COOKIE_TTL_SECS`.
 #
 # Default value: 2592000
-#cookie_ttl_secs = 2592000
+# cookie_ttl_secs = 2592000
 
 # Whether to use secure cookies.
 #
 # Can also be specified via environment variable `API_COOKIE_SECURE`.
 #
 # Default value: false
-#cookie_secure = false
+# cookie_secure = false
 
 # Build service configuration.
 [build_service]
@@ -197,11 +197,11 @@
 # Can also be specified via environment variable `BUILD_SERVICE_URL`.
 #
 # Default value: "http://localhost:3001"
-#url = "http://localhost:3001"
+# url = "http://localhost:3001"
 
 # Shared secret for authenticating requests to the build service.
 #
 # Can also be specified via environment variable `BUILD_SERVICE_SECRET`.
 #
 # Required! This value must be specified.
-#secret =
+# secret =
