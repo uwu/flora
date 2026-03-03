@@ -25,12 +25,12 @@ dotenvy.workspace = true
 eyre.workspace = true
 flora_config = { path = "../../crates/flora_config" }
 flora_macros = { path = "../../crates/flora_macros" }
-fred = "10.1.0"
+fred.workspace = true
 futures.workspace = true
 futures-util.workspace = true
 hex.workspace = true
 hmac.workspace = true
-http = "1"
+http.workspace = true
 num_cpus.workspace = true
 openssl.workspace = true
 oxc.workspace = true

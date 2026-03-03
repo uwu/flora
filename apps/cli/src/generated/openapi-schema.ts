@@ -55,6 +55,38 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/builds/': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['create_build_handler']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/builds/{build_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['get_build_handler']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/deployments/': {
     parameters: {
       query?: never
@@ -124,7 +156,7 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/kv/api/kv/export/{guild_id}': {
+  '/kv/export/{guild_id}': {
     parameters: {
       query?: never
       header?: never
@@ -145,7 +177,7 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/kv/api/kv/stores': {
+  '/kv/stores': {
     parameters: {
       query?: never
       header?: never
@@ -163,7 +195,7 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/kv/api/kv/stores/{guild_id}/{store_name}': {
+  '/kv/stores/{guild_id}/{store_name}': {
     parameters: {
       query?: never
       header?: never
@@ -180,7 +212,7 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/kv/api/kv/{guild_id}/{store_name}': {
+  '/kv/{guild_id}/{store_name}': {
     parameters: {
       query?: never
       header?: never
@@ -196,7 +228,7 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/kv/api/kv/{guild_id}/{store_name}/{key}': {
+  '/kv/{guild_id}/{store_name}/{key}': {
     parameters: {
       query?: never
       header?: never
@@ -364,6 +396,20 @@ export interface components {
       id: string
       username: string
     }
+    BuildStatusResponse: {
+      build_id: string
+      entry: string
+      error?: string | null
+      finished_at?: string | null
+      guild_id: string
+      logs: string[]
+      started_at?: string | null
+      status: string
+    }
+    CreateBuildResponse: {
+      build_id: string
+      status: string
+    }
     CreateStoreRequest: {
       guild_id: string
       store_name: string
@@ -391,17 +437,13 @@ export interface components {
       guild_id: string
       store_name: string
     }
-    DeploymentSourceMapFile: {
-      contents: string
-      path: string
-    }
     /** @description Body for creating or replacing a deployment. */
     DeploymentRequest: {
       /** @description Prebuilt JavaScript bundle source. */
       bundle: string
       /** @description Entry point path for the bundle (e.g. src/main.ts). */
       entry: string
-      source_map?: components['schemas']['DeploymentSourceMapFile'] | null
+      source_map?: null | components['schemas']['DeploymentSourceMapFile']
     }
     /** @description API representation of a deployment. */
     DeploymentResponse: {
@@ -409,8 +451,12 @@ export interface components {
       created_at: string
       entry: string
       guild_id: string
-      source_map?: components['schemas']['DeploymentSourceMapFile'] | null
+      source_map?: null | components['schemas']['DeploymentSourceMapFile']
       updated_at: string
+    }
+    DeploymentSourceMapFile: {
+      contents: string
+      path: string
     }
     /** @description Canonical error envelope returned by the HTTP API. */
     ErrorResponse: {
@@ -811,6 +857,181 @@ export interface operations {
       }
     }
   }
+  create_build_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            build_id: string
+            status: string
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  get_build_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description Build ID */
+        build_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            build_id: string
+            entry: string
+            error?: string | null
+            finished_at?: string | null
+            guild_id: string
+            logs: string[]
+            started_at?: string | null
+            status: string
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
   list_deployments_handler: {
     parameters: {
       query?: never
@@ -831,7 +1052,7 @@ export interface operations {
             created_at: string
             entry: string
             guild_id: string
-            source_map?: components['schemas']['DeploymentSourceMapFile'] | null
+            source_map?: null | components['schemas']['DeploymentSourceMapFile']
             updated_at: string
           }[]
         }
@@ -924,7 +1145,7 @@ export interface operations {
             created_at: string
             entry: string
             guild_id: string
-            source_map?: components['schemas']['DeploymentSourceMapFile'] | null
+            source_map?: null | components['schemas']['DeploymentSourceMapFile']
             updated_at: string
           }
         }
@@ -1018,7 +1239,7 @@ export interface operations {
             created_at: string
             entry: string
             guild_id: string
-            source_map?: components['schemas']['DeploymentSourceMapFile'] | null
+            source_map?: null | components['schemas']['DeploymentSourceMapFile']
             updated_at: string
           }
         }
