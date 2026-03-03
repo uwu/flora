@@ -1,6 +1,9 @@
 use crate::{
-    auth::AuthService, build_service::BuildServiceClient, deployments::DeploymentService,
-    kv::KvService, runtime::BotRuntime, secrets::SecretService, tokens::TokenService,
+    runtime::BotRuntime,
+    services::{
+        auth::AuthService, build::BuildServiceClient, deployments::DeploymentService,
+        kv::KvService, secrets::SecretService, tokens::TokenService,
+    },
 };
 use serenity::http::Http;
 use std::sync::Arc;

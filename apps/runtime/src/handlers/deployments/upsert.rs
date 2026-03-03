@@ -1,3 +1,12 @@
+use crate::{
+    handlers::{
+        auth::{ensure_guild_admin, require_identity},
+        error::ApiError,
+        response::ApiJson,
+    },
+    services::deployments::{Deployment, DeploymentSourceMapFile},
+    state::AppState,
+};
 use axum::{
     Json,
     extract::{Path, State},
@@ -6,16 +15,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tracing::error;
 use utoipa::ToSchema;
-
-use crate::{
-    deployments::{Deployment, DeploymentSourceMapFile},
-    handlers::{
-        auth::{ensure_guild_admin, require_identity},
-        error::ApiError,
-        response::ApiJson,
-    },
-    state::AppState,
-};
 
 /// Body for creating or replacing a deployment.
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
@@ -149,7 +148,7 @@ pub async fn upsert_deployment_handler(
 #[cfg(test)]
 mod tests {
     use super::{DeploymentRequest, validate_request};
-    use crate::{deployments::DeploymentSourceMapFile, handlers::error::ApiError};
+    use crate::{handlers::error::ApiError, services::deployments::DeploymentSourceMapFile};
 
     #[test]
     fn validate_request_rejects_empty_bundle() {

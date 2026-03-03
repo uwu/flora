@@ -1,5 +1,3 @@
-use std::{collections::HashMap, sync::Arc};
-
 use chacha20poly1305::{
     XChaCha20Poly1305, XNonce,
     aead::{Aead, KeyInit},
@@ -10,6 +8,7 @@ use rand::{RngCore, rngs::OsRng};
 use serde::Serialize;
 use sha2::Sha256;
 use sqlx::{FromRow, Pool, Postgres};
+use std::{collections::HashMap, sync::Arc};
 use tracing::warn;
 use uuid::Uuid;
 

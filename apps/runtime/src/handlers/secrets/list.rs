@@ -12,7 +12,7 @@ use crate::{
         error::ApiError,
         response::ApiJson,
     },
-    secrets::SecretMetadata,
+    services::secrets::SecretMetadata,
     state::AppState,
 };
 

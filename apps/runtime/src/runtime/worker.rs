@@ -12,11 +12,13 @@ use super::{
     },
 };
 use crate::{
-    deployments::Deployment,
-    kv::KvService,
     metrics::metrics,
     ops::{CronRegistry, SharedCronRegistry},
-    secrets::{SecretService, SecretsRuntimeData},
+    services::{
+        deployments::Deployment,
+        kv::KvService,
+        secrets::{SecretService, SecretsRuntimeData},
+    },
 };
 use deno_core::{
     ModuleName, PollEventLoopOptions,

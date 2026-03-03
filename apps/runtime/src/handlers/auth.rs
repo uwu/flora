@@ -1,3 +1,13 @@
+use crate::{
+    handlers::{
+        error::ApiError,
+        response::{ApiJson, ApiRedirect, ApiRedirectWithCookies},
+    },
+    services::auth::{
+        AuthService, CurrentUserGuildMember, DiscordUser, SESSION_COOKIE, STATE_COOKIE, Session,
+    },
+    state::AppState,
+};
 use axum::{
     Json,
     extract::{Query, State},
@@ -10,15 +20,6 @@ use serde::{Deserialize, Serialize};
 use time::Duration;
 use tracing::error;
 use utoipa::{OpenApi, ToSchema};
-
-use crate::{
-    auth::{AuthService, DiscordUser, SESSION_COOKIE, STATE_COOKIE, Session},
-    handlers::{
-        error::ApiError,
-        response::{ApiJson, ApiRedirect, ApiRedirectWithCookies},
-    },
-    state::AppState,
-};
 
 /// Authentication routes.
 #[derive(OpenApi)]
@@ -277,7 +278,7 @@ pub async fn ensure_guild_admin(
             guild.member_permissions(&member).bits()
         };
 
-        Some(crate::auth::CurrentUserGuildMember {
+        Some(CurrentUserGuildMember {
             permissions: Some(permissions.to_string()),
         })
     };

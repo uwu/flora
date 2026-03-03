@@ -1,6 +1,6 @@
 use crate::{
-    deployments::{DeploymentService, DeploymentSourceMapFile},
     runtime::BotRuntime,
+    services::deployments::{DeploymentService, DeploymentSourceMapFile},
 };
 use color_eyre::{Report, eyre::eyre};
 use flora_macros::expose_payload;

@@ -1,51 +1,39 @@
-mod auth;
-mod build_service;
-mod deployments;
-mod discord_handler;
-mod handlers;
-mod kv;
-mod layers;
-mod log_sink;
-mod metrics;
-mod ops;
-mod runtime;
-mod secrets;
-mod state;
-mod tokens;
-mod transpile;
-mod v8_init;
-
-use auth::{AuthConfig, AuthService};
 use color_eyre::eyre::Result;
 use confique::Config;
 use deno_tls::{rustls, rustls::crypto::CryptoProvider};
-use deployments::DeploymentService;
-use discord_handler::DiscordHandler;
 use eyre::{Context, eyre};
+use flora::{
+    discord_handler::DiscordHandler,
+    handlers::create_router,
+    layers::logger::LoggingMiddleware,
+    runtime::BotRuntime,
+    services::{
+        auth::{AuthConfig, AuthService},
+        build::BuildServiceClient,
+        deployments::DeploymentService,
+        kv::KvService,
+        secrets::SecretService,
+        tokens::TokenService,
+    },
+    state::AppState,
+    v8_init,
+};
 use flora_config::AppConfig;
 use fred::prelude::*;
-use handlers::create_router;
-use kv::KvService;
-use layers::logger::LoggingMiddleware;
 use reqwest::StatusCode;
-use runtime::BotRuntime;
-use secrets::SecretService;
 use serenity::all::{Client, GatewayIntents, Token};
 use sqlx::{migrate::Migrator, postgres::PgPoolOptions};
-use state::AppState;
-use std::time::Duration;
-use std::{future::IntoFuture, sync::Arc};
+use std::{future::IntoFuture, sync::Arc, time::Duration};
 use time::macros::format_description;
-use tokens::TokenService;
 use tokio::net::TcpListener;
 use tower_http::timeout::TimeoutLayer;
 use tower_layer::layer_fn;
 use tracing::error;
 use tracing_error::ErrorLayer;
-use tracing_subscriber::prelude::*;
 use tracing_subscriber::{
     EnvFilter,
     fmt::{format::FmtSpan, layer, time::UtcTime},
+    prelude::*,
 };
 
 #[tokio::main]
@@ -127,13 +115,10 @@ async fn main() -> Result<()> {
         cache_client.clone(),
         auth_task,
     )?;
+    let build_service =
+        BuildServiceClient::new(config.build_service.url, config.build_service.secret)?;
 
     v8_init::init();
-
-    let build_service = build_service::BuildServiceClient::new(
-        config.build_service.url,
-        config.build_service.secret,
-    )?;
 
     let token: Token = config
         .discord

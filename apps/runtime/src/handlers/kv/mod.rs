@@ -1,10 +1,9 @@
+use crate::{services::kv::KvStore, state::AppState};
 use axum::{
     Router,
     routing::{delete, get, post, put},
 };
 use utoipa::OpenApi;
-
-use crate::state::AppState;
 
 mod create_store;
 mod delete_key;
@@ -52,7 +51,7 @@ pub fn router() -> Router<AppState> {
         export_guild_handler,
     ),
     components(schemas(
-        crate::kv::KvStore,
+        KvStore,
         CreateStoreRequest,
         CreateStoreResponse,
         ListStoresQuery,

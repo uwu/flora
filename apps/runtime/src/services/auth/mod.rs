@@ -19,9 +19,9 @@ use tracing::warn;
 type HmacSha256 = Hmac<Sha256>;
 
 /// Cookie name used to persist the session token.
-pub const SESSION_COOKIE: &str = "om_session";
+pub const SESSION_COOKIE: &str = "flora_session";
 /// Cookie name used for OAuth state tracking.
-pub const STATE_COOKIE: &str = "om_oauth_state";
+pub const STATE_COOKIE: &str = "flora_oauth_state";
 
 /// Discord OAuth client configuration.
 #[derive(Clone)]

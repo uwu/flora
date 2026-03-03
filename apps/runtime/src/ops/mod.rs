@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
+use crate::services::kv::KvService;
 use serenity::http::Http;
-
-use crate::kv::KvService;
+use std::sync::Arc;
 
 pub mod channels;
 pub mod commands;
-mod components;
+pub mod components;
 pub mod cron;
 pub mod guilds;
 pub mod interaction;
@@ -15,7 +13,6 @@ pub mod message;
 pub mod secrets;
 mod tls;
 pub mod webhooks;
-
 pub use cron::{CronRegistry, SharedCronRegistry};
 
 deno_core::extension!(

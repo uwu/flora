@@ -3,7 +3,10 @@ use super::{
     types::JsRuntimeState,
     worker::{deploy_guild_to_worker, dispatch_into_runtime, drop_runtime_state},
 };
-use crate::{deployments::Deployment, kv::KvService, ops::CronRegistry, secrets::SecretService};
+use crate::{
+    ops::CronRegistry,
+    services::{deployments::Deployment, kv::KvService, secrets::SecretService},
+};
 use chrono::Utc;
 use parking_lot::Mutex;
 use serde_json::json;

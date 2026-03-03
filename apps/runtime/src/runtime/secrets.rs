@@ -1,4 +1,4 @@
-use crate::secrets::SecretsRuntimeData;
+use crate::services::secrets::SecretsRuntimeData;
 use deno_error::JsErrorBox;
 use std::{cell::RefCell, sync::Arc};
 

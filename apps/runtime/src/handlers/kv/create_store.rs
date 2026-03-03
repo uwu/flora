@@ -1,16 +1,15 @@
-use axum::{Json, extract::State, http::HeaderMap};
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
-
 use crate::{
     handlers::{
         auth::{ensure_guild_admin, require_identity},
         error::ApiError,
         response::ApiJson,
     },
-    kv::KvStore,
+    services::kv::KvStore,
     state::AppState,
 };
+use axum::{Json, extract::State, http::HeaderMap};
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateStoreRequest {
