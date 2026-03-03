@@ -12,6 +12,9 @@ importers:
 
   .:
     devDependencies:
+      '@uwu/flora-cli':
+        specifier: workspace:*
+        version: link:apps/cli
       '@voidzero-dev/vite-plus-core':
         specifier: 0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab
         version: 0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab(@types/node@25.1.0)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)
@@ -228,6 +231,9 @@ importers:
 
   apps/uwu.network:
     devDependencies:
+      '@uwu/flora-cli':
+        specifier: workspace:*
+        version: link:../cli
       '@uwu/flora-sdk':
         specifier: workspace:*
         version: link:../../sdk

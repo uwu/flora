@@ -11,6 +11,7 @@
     "format": "dprint fmt"
   },
   "devDependencies": {
+    "@uwu/flora-cli": "workspace:*",
     "@voidzero-dev/vite-plus-core": "0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab",
     "dprint": "0.51.1",
     "lefthook": "^2.0.15",
