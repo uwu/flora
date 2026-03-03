@@ -20,8 +20,6 @@ app.post('/internal/builds', handleCreateBuild)
 app.get('/internal/builds/:build_id', handleGetBuild)
 app.get('/internal/builds/:build_id/logs', handleStreamLogs)
 
-// health check (no auth)
 app.get('/health', () => ({ status: 'ok' }))
 
-serve(app, { port })
-consola.info(`Build service listening on port ${port}`)
+serve(app, { port, hostname: '127.0.0.1' })
