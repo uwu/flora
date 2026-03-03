@@ -1,4 +1,5 @@
 mod auth;
+mod build_service;
 mod deployments;
 mod discord_handler;
 mod handlers;
@@ -129,6 +130,11 @@ async fn main() -> Result<()> {
 
     v8_init::init();
 
+    let build_service = build_service::BuildServiceClient::new(
+        config.build_service.url,
+        config.build_service.secret,
+    )?;
+
     let token: Token = config
         .discord
         .bot_token
@@ -185,6 +191,7 @@ async fn main() -> Result<()> {
         tokens: token_service.clone(),
         kv: kv_service.clone(),
         secrets: secret_service.clone(),
+        build_service,
         http: http.clone(),
     };
 

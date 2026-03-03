@@ -18,7 +18,7 @@ import { login } from './commands/login'
 import { logs, streamLogs } from './commands/logs'
 import { loadConfig } from './lib/config'
 import { logger } from './lib/logger'
-import type { CliConfig, DeploySourceMapMode } from './lib/types'
+import type { CliConfig } from './lib/types'
 
 function positional(args: Record<string, unknown>, index: number): string | undefined {
   const values = Array.isArray(args._) ? args._ : []
@@ -54,31 +54,6 @@ function resolveConfig(args: Record<string, unknown>): CliConfig {
     config.apiUrl = apiUrl
   }
   return config
-}
-
-function parseSourcemap(value: unknown): DeploySourceMapMode | undefined {
-  if (typeof value !== 'string' || value.length === 0) {
-    return undefined
-  }
-
-  if (value === 'none' || value === 'inline' || value === 'external') {
-    return value
-  }
-
-  throw new Error(`invalid --sourcemap value: ${value}`)
-}
-
-function parseExternal(value: unknown): string[] | undefined {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    return undefined
-  }
-
-  const values = value
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0)
-
-  return values.length > 0 ? values : undefined
 }
 
 const kvCommand = defineCommand({
@@ -218,10 +193,7 @@ const main = defineCommand({
     deploy: defineCommand({
       args: {
         guild: { type: 'string', required: false },
-        root: { type: 'string', required: false },
-        sourcemap: { type: 'string', required: false },
-        minify: { type: 'boolean', required: false },
-        external: { type: 'string', required: false }
+        root: { type: 'string', required: false }
       },
       async run({ args }) {
         const config = resolveConfig(args as Record<string, unknown>)
@@ -230,12 +202,7 @@ const main = defineCommand({
           config,
           args.guild as string | undefined,
           entry,
-          {
-            root: args.root as string | undefined,
-            sourcemap: parseSourcemap(args.sourcemap),
-            minify: args.minify as boolean | undefined,
-            external: parseExternal(args.external)
-          }
+          args.root as string | undefined
         )
       }
     }),

@@ -26,6 +26,9 @@ pub struct AppConfig {
     /// API server config.
     #[config(nested)]
     pub api: ApiConfig,
+    /// Build service configuration.
+    #[config(nested)]
+    pub build_service: BuildServiceConfig,
 }
 
 /// Discord OAuth configuration.
@@ -137,6 +140,17 @@ pub struct SecretsConfig {
     /// Example: a 64-char hex string or 32 raw ASCII bytes.
     #[config(env = "SECRETS_MASTER_KEY")]
     pub master_key: String,
+}
+
+/// Build service (server-side bundling) configuration.
+#[derive(Debug, Config)]
+pub struct BuildServiceConfig {
+    /// Base URL of the internal build service.
+    #[config(env = "BUILD_SERVICE_URL", default = "http://localhost:3001")]
+    pub url: String,
+    /// Shared secret for authenticating requests to the build service.
+    #[config(env = "BUILD_SERVICE_SECRET")]
+    pub secret: String,
 }
 
 #[cfg(test)]

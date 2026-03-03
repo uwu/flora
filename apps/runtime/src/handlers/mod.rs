@@ -6,6 +6,7 @@ use utoipa_scalar::{Scalar, Servable as ScalarServable};
 use crate::state::AppState;
 
 pub mod auth;
+pub mod builds;
 pub mod deployments;
 pub mod error;
 pub mod guilds;
@@ -23,6 +24,7 @@ pub fn create_router() -> Router<AppState> {
     #[openapi(
         nest(
             (path = "/auth", api = auth::AuthApi),
+            (path = "/builds", api = builds::BuildApi),
             (path = "/guilds", api = guilds::GuildApi),
             (path = "/tokens", api = tokens::TokenApi),
             (path = "/deployments", api = deployments::DeploymentApi),
@@ -42,6 +44,7 @@ pub fn create_router() -> Router<AppState> {
 
     let compressed_api = Router::new()
         .nest("/auth", auth::router())
+        .nest("/builds", builds::router())
         .nest("/guilds", guilds::router())
         .nest("/tokens", tokens::router())
         .nest("/deployments", deployments::router())

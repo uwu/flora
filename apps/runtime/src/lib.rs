@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod build_service;
 pub mod bundler;
 pub mod deployments;
 pub mod discord_enums;
