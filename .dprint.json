@@ -19,6 +19,7 @@
   "excludes": [
     "**/node_modules",
     "**/*-lock.json",
+    "pnpm-lock.yaml",
     "**/bun.lock",
     "**/submodules/**",
     "**/dist",
