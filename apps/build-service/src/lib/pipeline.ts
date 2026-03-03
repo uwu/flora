@@ -1,11 +1,11 @@
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import path from 'node:path'
 
+import { getBuildRunsDir } from '../env'
 import { appendLog, setBuildArtifact, setBuildError, updateBuildStatus } from './builds'
 import { bundleProject } from './bundle'
 import { pnpmInstall } from './pnpm'
-import { validateAndSanitizePackageJson } from './validate_package'
+import { validateAndSanitizePackageJson } from './validate-package'
 import { extractZip } from './zip'
 
 const BUILD_TIMEOUT = 120_000 // 120 seconds
@@ -17,7 +17,9 @@ export async function runBuildPipeline(
   entry: string,
   zipData: Uint8Array
 ): Promise<void> {
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), `flora-build-${buildId}-`))
+  const runsDir = getBuildRunsDir()
+  await fs.mkdir(runsDir, { recursive: true })
+  const tmpDir = await fs.mkdtemp(path.join(runsDir, `build-${buildId}-`))
 
   const log = (line: string) => appendLog(buildId, line)
 

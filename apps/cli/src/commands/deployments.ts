@@ -1,3 +1,5 @@
+import { colors } from 'consola/utils'
+
 import { loadProjectConfig } from '../lib/config'
 import { authHeaders, createApiClient, expectOk } from '../lib/http'
 import { logger } from '../lib/logger'
@@ -18,10 +20,10 @@ export async function deploy(
   const entry = entryArg ?? projectConfig.entry ?? 'src/main.ts'
   const projectRoot = root ?? projectConfig.root ?? '.'
 
-  logger.log('Uploading project...')
+  logger.info('Uploading project...')
   const { zip, fileCount } = await zipProject(projectRoot)
   const zipSize = formatBytes(zip.byteLength)
-  logger.log(`Uploading project... done (${fileCount} files, ${zipSize})`)
+  logger.success(`Upload complete (${fileCount} files, ${zipSize})`)
 
   const formData = new FormData()
   formData.append('guild_id', guild)
@@ -42,16 +44,18 @@ export async function deploy(
     throw new Error(`Build creation failed (${createRes.status}): ${body}`)
   }
 
-  const { build_id, status } = (await createRes.json()) as { build_id: string; status: string }
-  logger.log(`Building... (${build_id})`)
+  const { build_id } = (await createRes.json()) as { build_id: string; status: string }
+  logger.info(`Building... (${build_id})`)
 
   // stream build logs via SSE
   const logsUrl = `${baseUrl}/builds/${build_id}/logs`
   const finished = await streamBuildLogs(logsUrl, headers, BUILD_SSE_TIMEOUT)
 
   if (!finished) {
-    logger.log(`Build still running: ${build_id}`)
-    logger.log(`Run \`flora builds tail ${build_id}\` to follow logs.`)
+    logger.warn(`Build still running: ${build_id}`)
+    logger.info(
+      `Run ${colors.cyan('flora builds tail')} ${colors.yellow(build_id)} to follow logs.`
+    )
     return
   }
 
@@ -72,9 +76,9 @@ export async function deploy(
     throw new Error(`Build failed: ${build.error ?? 'unknown error'}`)
   }
 
-  logger.log(`\nDeployed guild ${build.guild_id}`)
-  logger.log(`  entry: ${build.entry}`)
-  logger.log(`  updated: ${new Date().toISOString()}`)
+  logger.success(`Deployed guild ${build.guild_id}`)
+  logger.info(`${colors.cyan('•')} ${colors.cyan('entry:')} ${build.entry}`)
+  logger.info(`${colors.gray('•')} ${colors.gray('updated:')} ${new Date().toISOString()}`)
 }
 
 async function streamBuildLogs(
@@ -114,7 +118,7 @@ async function streamBuildLogs(
           }
           if (line.startsWith('data: ')) {
             const data = line.slice(6)
-            logger.log(`  ↳ ${data}`)
+            logger.log(`  ${colors.cyan('↳')} ${colors.dim(data)}`)
           }
         }
       }

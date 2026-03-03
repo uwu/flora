@@ -4,6 +4,7 @@ import process from 'node:process'
 
 import { defineCommand, runMain } from 'citty'
 
+import { description, name, version } from '../package.json'
 import { deploy, get, health, list } from './commands/deployments'
 import {
   createStore,
@@ -161,9 +162,9 @@ const kvCommand = defineCommand({
 
 const main = defineCommand({
   meta: {
-    name: 'flora',
-    description: 'Deployment CLI for flora guild scripts',
-    version: '0.0.0'
+    name,
+    description,
+    version
   },
   args: {
     'api': {

@@ -2,12 +2,18 @@ import { execFile } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { getPnpmStoreDir } from '../env'
+
 const PNPM_INSTALL_TIMEOUT = 60_000 // 60 seconds
 
 export async function pnpmInstall(
   workspaceDir: string,
   onLog: (line: string) => void
 ): Promise<void> {
+  const storeDir = getPnpmStoreDir()
+  await fs.mkdir(storeDir, { recursive: true })
+  onLog(`Using pnpm store: ${storeDir}`)
+
   const hasLockfile = await fs
     .access(path.join(workspaceDir, 'pnpm-lock.yaml'))
     .then(() => true)
@@ -15,11 +21,33 @@ export async function pnpmInstall(
 
   if (!hasLockfile) {
     onLog('No lockfile found, resolving dependencies...')
-    await runPnpm(workspaceDir, ['install', '--lockfile-only', '--ignore-scripts'], onLog)
+    await runPnpm(
+      workspaceDir,
+      [
+        'install',
+        '--lockfile-only',
+        '--ignore-scripts',
+        '--ignore-workspace',
+        '--store-dir',
+        storeDir
+      ],
+      onLog
+    )
   }
 
   onLog('Installing dependencies...')
-  await runPnpm(workspaceDir, ['install', '--frozen-lockfile', '--ignore-scripts'], onLog)
+  await runPnpm(
+    workspaceDir,
+    [
+      'install',
+      '--frozen-lockfile',
+      '--ignore-scripts',
+      '--ignore-workspace',
+      '--store-dir',
+      storeDir
+    ],
+    onLog
+  )
 }
 
 function runPnpm(cwd: string, args: string[], onLog: (line: string) => void): Promise<void> {
@@ -29,6 +57,7 @@ function runPnpm(cwd: string, args: string[], onLog: (line: string) => void): Pr
       timeout: PNPM_INSTALL_TIMEOUT,
       env: {
         ...process.env,
+        CI: 'true',
         npm_config_ignore_scripts: 'true'
       }
     }, (error, stdout, stderr) => {

@@ -1,3 +1,5 @@
+import path from 'node:path'
+
 export function requireEnv(key: string): string {
   const value = process.env[key]
   if (!value) {
@@ -13,4 +15,22 @@ export function getPort(): number {
     throw new Error(`Invalid port: ${raw}`)
   }
   return port
+}
+
+export function getBuildWorkspaceDir(): string {
+  const configured = process.env.BUILD_SERVICE_WORKSPACE_DIR
+  if (configured) return path.resolve(configured)
+
+  return path.resolve(process.cwd(), 'build-workspace')
+}
+
+export function getBuildRunsDir(): string {
+  return path.join(getBuildWorkspaceDir(), 'runs')
+}
+
+export function getPnpmStoreDir(): string {
+  const configured = process.env.BUILD_SERVICE_PNPM_STORE_DIR
+  if (configured) return path.resolve(configured)
+
+  return path.join(getBuildWorkspaceDir(), 'pnpm-store')
 }

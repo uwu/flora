@@ -230,6 +230,10 @@ importers:
         version: '@voidzero-dev/vite-plus-core@0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab(@types/node@25.1.0)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)'
 
   apps/uwu.network:
+    dependencies:
+      dayjs:
+        specifier: ^1.11.18
+        version: 1.11.19
     devDependencies:
       '@uwu/flora-cli':
         specifier: workspace:*
@@ -3071,6 +3075,9 @@ packages:
 
   date-fns@4.1.0:
     resolution: {integrity: sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg==}
+
+  dayjs@1.11.19:
+    resolution: {integrity: sha512-t5EcLVS6QPBNqM2z8fakk/NKel+Xzshgt8FFKAn+qwlD1pzZWxh0nVCrvFK7ZDb6XucZeF9z8C7CBWTRIVApAw==}
 
   debounce-fn@6.0.0:
     resolution: {integrity: sha512-rBMW+F2TXryBwB54Q0d8drNEI+TfoS9JpNTAoVpukbWEhjXQq4rySFYLaqXMFXwdv61Zb2OHtj5bviSoimqxRQ==}
@@ -7783,6 +7790,8 @@ snapshots:
   data-uri-to-buffer@4.0.1: {}
 
   date-fns@4.1.0: {}
+
+  dayjs@1.11.19: {}
 
   debounce-fn@6.0.0:
     dependencies:

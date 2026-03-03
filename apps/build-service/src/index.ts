@@ -3,9 +3,9 @@ import { H3, serve } from 'h3'
 
 import { bearerAuth } from './auth'
 import { getPort, requireEnv } from './env'
-import { handleCreateBuild } from './routes/create_build'
-import { handleGetBuild } from './routes/get_build'
-import { handleStreamLogs } from './routes/stream_logs'
+import { handleCreateBuild } from './routes/create-build'
+import { handleGetBuild } from './routes/get-build'
+import { handleStreamLogs } from './routes/stream-logs'
 
 const secret = requireEnv('BUILD_SERVICE_SECRET')
 const port = getPort()
