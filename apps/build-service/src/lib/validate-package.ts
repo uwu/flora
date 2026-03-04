@@ -6,11 +6,21 @@ const MAX_DEPENDENCY_COUNT = 50
 const DISALLOWED_SPECIFIER_PREFIXES = [
   'file:',
   'link:',
+  'workspace:',
+  'catalog:',
   'git+ssh:',
   'git+https:',
   'git:',
-  'github:'
+  'github:',
+  'bitbucket:',
+  'gitlab:',
+  'http://',
+  'https://'
 ]
+
+// Matches bare GitHub shorthands like "user/repo" or "user/repo#ref"
+// Scoped npm packages (@org/pkg) are excluded since they start with "@"
+const BARE_GIT_SHORTHAND_RE = /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]/
 
 export type ValidatedPackageJson = {
   name?: string
@@ -31,12 +41,15 @@ export async function validateAndSanitizePackageJson(
   }
 
   if (
-    pkg.dependencies && typeof pkg.dependencies === 'object' && !Array.isArray(pkg.dependencies)
+    pkg.dependencies &&
+    typeof pkg.dependencies === 'object' &&
+    !Array.isArray(pkg.dependencies)
   ) {
     const deps = pkg.dependencies as Record<string, unknown>
     const validDeps: Record<string, string> = {}
 
     const entries = Object.entries(deps)
+
     if (entries.length > MAX_DEPENDENCY_COUNT) {
       throw new Error(
         `Too many dependencies: ${entries.length} exceeds limit of ${MAX_DEPENDENCY_COUNT}`
@@ -45,7 +58,9 @@ export async function validateAndSanitizePackageJson(
 
     for (const [name, specifier] of entries) {
       if (typeof specifier !== 'string') {
-        throw new Error(`Invalid specifier for dependency "${name}": must be a string`)
+        throw new Error(
+          `Invalid specifier for dependency "${name}": must be a string`
+        )
       }
 
       for (const prefix of DISALLOWED_SPECIFIER_PREFIXES) {
@@ -56,9 +71,21 @@ export async function validateAndSanitizePackageJson(
         }
       }
 
-      if (specifier.startsWith('/') || specifier.startsWith('./') || specifier.startsWith('../')) {
+      if (
+        specifier.startsWith('/') ||
+        specifier.startsWith('./') ||
+        specifier.startsWith('../')
+      ) {
         throw new Error(
           `Disallowed local path specifier for dependency "${name}": "${specifier}"`
+        )
+      }
+
+      // Block bare GitHub shorthands like "user/repo" or "user/repo#ref"
+      // Scoped packages like "@org/pkg" are safe — they start with "@"
+      if (!specifier.startsWith('@') && BARE_GIT_SHORTHAND_RE.test(specifier)) {
+        throw new Error(
+          `Disallowed bare Git shorthand for dependency "${name}": "${specifier}"`
         )
       }
 
@@ -68,7 +95,7 @@ export async function validateAndSanitizePackageJson(
     sanitized.dependencies = validDeps
   }
 
-  // write sanitized package.json back (strips scripts, devDependencies, etc.)
+  // Write sanitized package.json back (strips scripts, devDependencies, etc.)
   await fs.writeFile(pkgPath, JSON.stringify(sanitized, null, 2) + '\n')
 
   return sanitized
