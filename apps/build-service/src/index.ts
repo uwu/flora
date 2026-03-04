@@ -1,4 +1,3 @@
-import consola from 'consola'
 import { H3, serve } from 'h3'
 
 import { bearerAuth } from './auth'
