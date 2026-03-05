@@ -7,7 +7,6 @@ use flora::{
         EventMessageDelete, EventMessageDeleteBulk, EventMessageUpdate, EventModalSubmit,
         EventReaction, EventReactionRemoveAll, EventReady, EventUser,
     },
-    kv::{RawKvKeyInfo, RawKvKeyMetadata, RawKvListKeysResult},
     ops::{
         channels::{
             RawCreateChannel, RawCreateThread, RawCreateThreadFromMessage, RawDeleteChannel,
@@ -33,6 +32,7 @@ use flora::{
         },
         webhooks::{RawDeleteWebhook, RawEditWebhook, RawExecuteWebhook},
     },
+    services::kv::{RawKvKeyInfo, RawKvKeyMetadata, RawKvListKeysResult},
 };
 use t0x::{export, serde_json::json_value_def};
 

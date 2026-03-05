@@ -14,7 +14,7 @@ export async function createStore(
 
   const client = createApiClient(config)
   const response = await expectOk<components['schemas']['CreateStoreResponse']>(
-    client.POST('/kv/api/kv/stores', {
+    client.POST('/kv/stores', {
       headers: authHeaders(config),
       body: {
         guild_id: guild,
@@ -33,7 +33,7 @@ export async function listStores(config: CliConfig, guildArg?: string): Promise<
 
   const client = createApiClient(config)
   const stores = await expectOk<components['schemas']['KvStore'][]>(
-    client.GET('/kv/api/kv/stores', {
+    client.GET('/kv/stores', {
       headers: authHeaders(config),
       params: { query: { guild_id: guild } }
     })
@@ -60,7 +60,7 @@ export async function deleteStore(
 
   const client = createApiClient(config)
   await expectOk(
-    client.DELETE('/kv/api/kv/stores/{guild_id}/{store_name}', {
+    client.DELETE('/kv/stores/{guild_id}/{store_name}', {
       headers: authHeaders(config),
       params: {
         path: {
@@ -92,7 +92,7 @@ export async function setValue(
 
   const client = createApiClient(config)
   await expectOk(
-    client.PUT('/kv/api/kv/{guild_id}/{store_name}/{key}', {
+    client.PUT('/kv/{guild_id}/{store_name}/{key}', {
       headers: authHeaders(config),
       params: {
         path: {
@@ -124,7 +124,7 @@ export async function getValue(
 
   const client = createApiClient(config)
   const response = await expectOk<components['schemas']['GetValueResponse']>(
-    client.GET('/kv/api/kv/{guild_id}/{store_name}/{key}', {
+    client.GET('/kv/{guild_id}/{store_name}/{key}', {
       headers: authHeaders(config),
       params: {
         path: {
@@ -156,7 +156,7 @@ export async function deleteValue(
 
   const client = createApiClient(config)
   await expectOk(
-    client.DELETE('/kv/api/kv/{guild_id}/{store_name}/{key}', {
+    client.DELETE('/kv/{guild_id}/{store_name}/{key}', {
       headers: authHeaders(config),
       params: {
         path: {
@@ -184,7 +184,7 @@ export async function listKeys(
 
   const client = createApiClient(config)
   const response = await expectOk(
-    client.GET('/kv/api/kv/{guild_id}/{store_name}', {
+    client.GET('/kv/{guild_id}/{store_name}', {
       headers: authHeaders(config),
       params: {
         path: {

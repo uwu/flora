@@ -1,7 +1,6 @@
+use crate::services::secrets::SecretsRuntimeData;
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
-
-use crate::secrets::SecretsRuntimeData;
 
 #[op2]
 #[string]

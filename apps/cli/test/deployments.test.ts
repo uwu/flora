@@ -4,31 +4,21 @@ import { deploy } from '../src/commands/deployments'
 import type { CliConfig } from '../src/lib/types'
 
 const {
-  postMock,
-  expectOkMock,
   loadProjectConfigMock,
-  bundleDeploymentSourceMock
+  zipProjectMock,
+  fetchMock
 } = vi.hoisted(() => ({
-  postMock: vi.fn(),
-  expectOkMock: vi.fn(),
   loadProjectConfigMock: vi.fn(),
-  bundleDeploymentSourceMock: vi.fn()
-}))
-
-vi.mock('../src/lib/http', () => ({
-  authHeaders: vi.fn(() => ({ authorization: 'Bearer token' })),
-  createApiClient: vi.fn(() => ({
-    POST: postMock
-  })),
-  expectOk: expectOkMock
+  zipProjectMock: vi.fn(),
+  fetchMock: vi.fn()
 }))
 
 vi.mock('../src/lib/config', () => ({
   loadProjectConfig: loadProjectConfigMock
 }))
 
-vi.mock('../src/lib/deploy_bundle', () => ({
-  bundleDeploymentSource: bundleDeploymentSourceMock
+vi.mock('../src/lib/zip', () => ({
+  zipProject: zipProjectMock
 }))
 
 vi.mock('../src/lib/logger', () => ({
@@ -37,6 +27,8 @@ vi.mock('../src/lib/logger', () => ({
   }
 }))
 
+vi.stubGlobal('fetch', fetchMock)
+
 describe('deploy command', () => {
   const config: CliConfig = {
     apiUrl: 'http://localhost:3000/api',
@@ -44,68 +36,71 @@ describe('deploy command', () => {
   }
 
   beforeEach(() => {
-    postMock.mockReset()
-    expectOkMock.mockReset()
     loadProjectConfigMock.mockReset()
-    bundleDeploymentSourceMock.mockReset()
+    zipProjectMock.mockReset()
+    fetchMock.mockReset()
 
     loadProjectConfigMock.mockResolvedValue({})
-    bundleDeploymentSourceMock.mockResolvedValue({
-      entry: 'src/main.ts',
-      bundle: 'console.log(1)',
-      sourceMap: {
-        path: 'main.js.map',
-        contents: '{"version":3}'
-      }
+    zipProjectMock.mockResolvedValue({
+      zip: new Uint8Array([1, 2, 3]),
+      fileCount: 5
     })
-    expectOkMock.mockResolvedValue({
-      guild_id: '123',
-      entry: 'src/main.ts',
-      updated_at: 'now'
-    })
-    postMock.mockResolvedValue({})
   })
 
-  it('posts prebundled deployment payload', async () => {
+  it('zips project and posts to /builds', async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ build_id: 'b1', status: 'queued' })))
+      .mockResolvedValueOnce(new Response('event: done\ndata: ok\n\n'))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ status: 'success', guild_id: '123', entry: 'src/main.ts' })
+        )
+      )
+
     await deploy(config, '123', undefined)
 
-    expect(postMock).toHaveBeenCalledOnce()
-    const request = postMock.mock.calls[0]?.[1]
+    expect(zipProjectMock).toHaveBeenCalledWith('.')
+    expect(fetchMock).toHaveBeenCalledTimes(3)
 
-    expect(request).toMatchObject({
-      body: {
-        entry: 'src/main.ts',
-        bundle: 'console.log(1)',
-        source_map: {
-          path: 'main.js.map',
-          contents: '{"version":3}'
-        }
-      }
-    })
+    const [url, opts] = fetchMock.mock.calls[0]!
+    expect(url).toBe('http://localhost:3000/api/builds')
+    expect(opts.method).toBe('POST')
+    expect(opts.body).toBeInstanceOf(FormData)
   })
 
-  it('merges cli overrides over project config', async () => {
-    loadProjectConfigMock.mockResolvedValue({
-      entry: 'config/entry.ts',
-      root: './bot',
-      sourcemap: 'external',
-      minify: false,
-      external: ['discord.js']
-    })
+  it('uses entry from cli arg over project config', async () => {
+    loadProjectConfigMock.mockResolvedValue({ entry: 'config/entry.ts' })
 
-    await deploy(config, '123', 'src/cli-entry.ts', {
-      root: './cli-root',
-      sourcemap: 'inline',
-      minify: true,
-      external: ['node:fs']
-    })
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ build_id: 'b2', status: 'queued' })))
+      .mockResolvedValueOnce(new Response('event: done\ndata: ok\n\n'))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ status: 'success', guild_id: '123', entry: 'src/cli-entry.ts' })
+        )
+      )
 
-    expect(bundleDeploymentSourceMock).toHaveBeenCalledWith({
-      root: './cli-root',
-      entry: 'src/cli-entry.ts',
-      sourcemap: 'inline',
-      minify: true,
-      external: ['node:fs']
-    })
+    await deploy(config, '123', 'src/cli-entry.ts')
+
+    const [, opts] = fetchMock.mock.calls[0]!
+    const formData = opts.body as FormData
+    expect(formData.get('entry')).toBe('src/cli-entry.ts')
+  })
+
+  it('uses root from arg over project config', async () => {
+    loadProjectConfigMock.mockResolvedValue({ root: './bot' })
+
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ build_id: 'b3', status: 'queued' })))
+      .mockResolvedValueOnce(new Response('event: done\ndata: ok\n\n'))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ status: 'success', guild_id: '123', entry: 'src/main.ts' })
+        )
+      )
+
+    await deploy(config, '123', undefined, './cli-root')
+
+    expect(zipProjectMock).toHaveBeenCalledWith('./cli-root')
   })
 })

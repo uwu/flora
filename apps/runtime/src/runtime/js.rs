@@ -5,11 +5,10 @@ use super::{
     types::{JsRuntimeState, RuntimeTimeout},
 };
 use crate::{
-    kv::KvService,
     metrics::metrics,
     ops,
     ops::{SharedCronRegistry, interaction::CommandHashCache},
-    secrets::SecretsRuntimeData,
+    services::{kv::KvService, secrets::SecretsRuntimeData},
 };
 use deno_core::{
     Extension, ExtensionFileSource, FastString, FsModuleLoader, JsRuntime, ModuleName,

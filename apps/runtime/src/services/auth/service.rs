@@ -1,6 +1,6 @@
 use axum::http::Uri;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
 use color_eyre::eyre::{Context, Result, eyre};
 use cookie::{Cookie, SameSite};
 use fred::{
@@ -10,110 +10,17 @@ use fred::{
 use hmac::{Hmac, Mac};
 use rand::{Rng, distributions::Alphanumeric};
 use reqwest::Client as HttpClient;
-use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::sync::Arc;
 use time::Duration as TimeDuration;
 use tracing::warn;
 
+use super::types::{
+    AuthConfig, CurrentUserGuildMember, DiscordUser, SESSION_COOKIE, STATE_COOKIE, Session,
+    TokenResponse, UserGuild,
+};
+
 type HmacSha256 = Hmac<Sha256>;
-
-/// Cookie name used to persist the session token.
-pub const SESSION_COOKIE: &str = "om_session";
-/// Cookie name used for OAuth state tracking.
-pub const STATE_COOKIE: &str = "om_oauth_state";
-
-/// Discord OAuth client configuration.
-#[derive(Clone)]
-pub struct AuthConfig {
-    pub client_id: String,
-    pub client_secret: String,
-    pub redirect_uri: String,
-    pub session_secret: String,
-    pub session_ttl_secs: u64,
-    pub cookie_secure: bool,
-}
-
-/// Persisted session data stored in Valkey.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Session {
-    pub user: DiscordUser,
-    pub access_token: String,
-    pub refresh_token: Option<String>,
-    pub token_type: String,
-    pub scope: String,
-    pub expires_at: DateTime<Utc>,
-}
-
-/// Minimal Discord user profile shape.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiscordUser {
-    pub id: String,
-    pub username: String,
-    pub global_name: Option<String>,
-    pub avatar: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct TokenResponse {
-    pub access_token: String,
-    pub refresh_token: Option<String>,
-    pub expires_in: i64,
-    pub scope: String,
-    pub token_type: String,
-}
-
-/// Membership information returned by Discord for the current user in a guild.
-#[derive(Debug, Deserialize, Clone)]
-pub struct CurrentUserGuildMember {
-    #[serde(default, deserialize_with = "deserialize_permission_field")]
-    pub permissions: Option<String>,
-}
-
-fn deserialize_permission_field<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    use serde::de::Deserialize;
-    use serde_json::Value;
-
-    let value = Option::<Value>::deserialize(deserializer)?;
-    Ok(value.and_then(|v| match v {
-        Value::String(s) => Some(s),
-        Value::Number(n) => Some(n.to_string()),
-        _ => None,
-    }))
-}
-
-/// Guild entry returned by /users/@me/guilds.
-#[derive(Debug, Deserialize, Clone)]
-pub struct UserGuild {
-    pub id: String,
-    pub name: String,
-    #[serde(default)]
-    pub icon: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_permission_string_or_number")]
-    pub permissions: Option<String>,
-    #[serde(default)]
-    pub permissions_new: Option<String>,
-}
-
-fn deserialize_permission_string_or_number<'de, D>(
-    deserializer: D,
-) -> Result<Option<String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    use serde::de::Deserialize;
-    use serde_json::Value;
-
-    let value = Option::<Value>::deserialize(deserializer)?;
-    Ok(value.and_then(|v| match v {
-        Value::String(s) => Some(s),
-        Value::Number(n) => Some(n.to_string()),
-        _ => None,
-    }))
-}
 
 /// Service responsible for OAuth exchanges and session management.
 #[derive(Clone)]

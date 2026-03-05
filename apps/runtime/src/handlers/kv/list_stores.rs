@@ -1,3 +1,12 @@
+use crate::{
+    handlers::{
+        auth::{ensure_guild_admin, require_identity},
+        error::ApiError,
+        response::ApiJson,
+    },
+    services::kv::KvStore,
+    state::AppState,
+};
 use axum::{
     Json,
     extract::{Query, State},
@@ -5,16 +14,6 @@ use axum::{
 };
 use serde::Deserialize;
 use utoipa::{IntoParams, ToSchema};
-
-use crate::{
-    handlers::{
-        auth::{ensure_guild_admin, require_identity},
-        error::ApiError,
-        response::ApiJson,
-    },
-    kv::KvStore,
-    state::AppState,
-};
 
 #[derive(Debug, Deserialize, IntoParams, ToSchema)]
 pub struct ListStoresQuery {

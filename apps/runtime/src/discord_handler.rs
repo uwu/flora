@@ -1,6 +1,6 @@
 use crate::{
-    deployments::{DeploymentService, DeploymentSourceMapFile},
     runtime::BotRuntime,
+    services::deployments::{DeploymentService, DeploymentSourceMapFile},
 };
 use color_eyre::{Report, eyre::eyre};
 use flora_macros::expose_payload;
@@ -62,13 +62,6 @@ impl EventHandler for DiscordHandler {
             FullEvent::Message {
                 new_message: msg, ..
             } => {
-                info!(
-                    target: "flora:discord",
-                    "message event channel={} author={} content={}",
-                    msg.channel_id,
-                    msg.author.id,
-                    msg.content
-                );
                 let payload = EventMessage::from(msg);
                 let value = match serde_json::to_value(payload) {
                     Ok(value) => value,

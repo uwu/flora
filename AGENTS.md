@@ -62,9 +62,6 @@ cargo build
 # Run runtime (release) [preferred wrapper]
 ./x run-release
 
-# Build CLI tool
-cargo run --package flora-cli
-
 # Run all tests
 cargo test
 
@@ -123,6 +120,9 @@ Notes:
 ```bash
 # Install dependencies (from root)
 pnpm install
+
+# Build CLI tool (located in apps/cli)
+pnpm flora
 
 # Build SDK
 pnpm --filter sdk run build

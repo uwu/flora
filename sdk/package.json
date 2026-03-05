@@ -10,7 +10,12 @@
     "./tsconfig": "./tsconfig.json"
   },
   "types": "./global-types.d.ts",
-  "files": ["global-types.d.ts", "src", "tsconfig.json", "README.md"],
+  "files": [
+    "global-types.d.ts",
+    "src",
+    "tsconfig.json",
+    "README.md"
+  ],
   "publishConfig": {
     "access": "public"
   },

@@ -14,3 +14,5 @@ config.toml
 /buck-out/v2
 /third-party/rust/.cargo
 /third-party/rust/vendor
+**/pnpm-store
+**/build-workspace

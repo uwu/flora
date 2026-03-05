@@ -7,8 +7,10 @@
 # Default value: "flora::runtime=info,flora=info"
 # log_level = "flora::runtime=info,flora=info"
 
+# Secrets configuration.
 [secrets]
-# 32-byte key for encrypting secrets (hex or raw ASCII).
+# 32-byte key for encrypting stored secrets and deriving placeholders.
+# Example: a 64-char hex string or 32 raw ASCII bytes.
 #
 # Can also be specified via environment variable `SECRETS_MASTER_KEY`.
 #
@@ -99,8 +101,8 @@
 #
 # Can also be specified via environment variable `RUNTIME_LOAD_TIMEOUT_SECS`.
 #
-# Default value: 10
-# load_timeout_secs = 10
+# Default value: 30
+# load_timeout_secs = 30
 
 # Timeout in seconds for per-event dispatch (0 disables).
 #
@@ -144,6 +146,13 @@
 # Default value: 5
 # cron_timeout_secs = 5
 
+# Timeout in milliseconds for migration quiesce (0 disables).
+#
+# Can also be specified via environment variable `RUNTIME_MIGRATION_TIMEOUT_MS`.
+#
+# Default value: 500
+# migration_timeout_ms = 500
+
 # API server config.
 [api]
 # Port to listen on.
@@ -180,3 +189,19 @@
 #
 # Default value: false
 # cookie_secure = false
+
+# Build service configuration.
+[build_service]
+# Base URL of the internal build service.
+#
+# Can also be specified via environment variable `BUILD_SERVICE_URL`.
+#
+# Default value: "http://localhost:3001"
+# url = "http://localhost:3001"
+
+# Shared secret for authenticating requests to the build service.
+#
+# Can also be specified via environment variable `BUILD_SERVICE_SECRET`.
+#
+# Required! This value must be specified.
+# secret =

@@ -1,8 +1,12 @@
 {
-  "name": "@flora/uwu.network",
+  "name": "@flora-internal/uwu.network",
   "type": "module",
   "private": true,
+  "dependencies": {
+    "dayjs": "^1.11.18"
+  },
   "devDependencies": {
+    "@uwu/flora-cli": "workspace:*",
     "@uwu/flora-sdk": "workspace:*",
     "typescript": "^5.0.0"
   },

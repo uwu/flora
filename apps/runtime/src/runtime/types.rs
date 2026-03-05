@@ -1,5 +1,7 @@
 use crate::{
-    deployments::Deployment, metrics::metrics, ops::cron::CronJob, secrets::SecretsRuntimeData,
+    metrics::metrics,
+    ops::cron::CronJob,
+    services::{deployments::Deployment, secrets::SecretsRuntimeData},
 };
 use deno_core::{
     JsRuntime,

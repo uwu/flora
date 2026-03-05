@@ -13,8 +13,8 @@ use crate::{
         error::ApiError,
         response::ApiJson,
     },
+    services::tokens::UserToken,
     state::AppState,
-    tokens::UserToken,
 };
 
 /// Token management endpoints.

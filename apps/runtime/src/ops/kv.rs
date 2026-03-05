@@ -1,10 +1,9 @@
+use crate::services::kv::{KvService, RawKvKeyMetadata, RawKvListKeysResult};
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
 use std::{cell::RefCell, rc::Rc};
 use t0x::T0x;
-
-use crate::kv::{KvService, RawKvKeyMetadata};
 
 #[op2(async)]
 #[string]
@@ -92,7 +91,7 @@ pub async fn op_kv_list_keys(
     state: Rc<RefCell<OpState>>,
     #[serde(default)] options: Option<RawKvListKeysOptions>,
     #[string] store_name: String,
-) -> Result<crate::kv::RawKvListKeysResult, JsErrorBox> {
+) -> Result<RawKvListKeysResult, JsErrorBox> {
     let (kv, guild_id) = {
         let state = state.borrow();
         let kv = state.borrow::<KvService>().clone();

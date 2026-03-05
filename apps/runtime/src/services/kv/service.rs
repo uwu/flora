@@ -1,119 +1,24 @@
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use color_eyre::eyre::{Result, eyre};
-use flora_macros::expose_payload;
-use serde::{Deserialize, Serialize};
 use sled::Db;
-use sqlx::{FromRow, Pool, Postgres};
+use sqlx::{Pool, Postgres};
 use std::{
-    collections::{HashMap, VecDeque},
     path::PathBuf,
     sync::{Arc, RwLock},
 };
-use t0x::T0x;
 use tracing::{info, warn};
-use utoipa::ToSchema;
 
-const MAX_VALUE_SIZE: usize = 1024 * 1024;
-const DEFAULT_LIST_LIMIT: u32 = 100;
-const MAX_LIST_LIMIT: u32 = 1000;
+use super::{
+    cache::{BoundedCache, MAX_DB_CACHE_SIZE},
+    models::{KvStore, KvStoreRow, RawKvKeyInfo, RawKvKeyMetadata, RawKvListKeysResult},
+    utils::{copy_dir_all, db_key, to_kv_store},
+    validation::{
+        DEFAULT_LIST_LIMIT, MAX_LIST_LIMIT, MAX_VALUE_SIZE, validate_guild_id, validate_key,
+        validate_prefix, validate_store_name,
+    },
+};
+
 const METADATA_TREE_NAME: &str = "__metadata";
-const MAX_KEY_SIZE: usize = 512;
-const MAX_STORE_NAME_SIZE: usize = 64;
-const MAX_GUILD_ID_SIZE: usize = 32;
-const MAX_DB_CACHE_SIZE: usize = 64;
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct KvStore {
-    pub id: String,
-    pub guild_id: String,
-    pub store_name: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(FromRow)]
-struct KvStoreRow {
-    id: sqlx::types::Uuid,
-    guild_id: String,
-    store_name: String,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
-}
-
-/// Metadata associated with a KV key.
-#[expose_payload]
-#[derive(Clone, Deserialize, ToSchema)]
-pub struct RawKvKeyMetadata {
-    /// Unix timestamp (seconds) when this key expires.
-    pub expiration: Option<i64>,
-    /// Arbitrary JSON metadata attached to the key.
-    #[serde(default)]
-    pub metadata: Option<serde_json::Value>,
-}
-
-/// Information about a single KV key.
-#[expose_payload]
-#[derive(Clone, Deserialize, ToSchema)]
-pub struct RawKvKeyInfo {
-    /// The key's name.
-    pub name: String,
-    /// Unix timestamp (seconds) when this key expires.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub expiration: Option<i64>,
-    /// Arbitrary JSON metadata attached to the key.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<serde_json::Value>,
-}
-
-/// Result of listing keys in a KV store.
-#[expose_payload]
-#[derive(Clone, Deserialize, ToSchema)]
-pub struct RawKvListKeysResult {
-    /// The keys returned by this list operation.
-    pub keys: Vec<RawKvKeyInfo>,
-    /// Whether all matching keys have been returned.
-    pub list_complete: bool,
-    /// Cursor for fetching the next page of results.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cursor: Option<String>,
-}
-
-struct BoundedCache {
-    map: HashMap<String, Arc<Db>>,
-    order: VecDeque<String>,
-    capacity: usize,
-}
-
-impl BoundedCache {
-    fn new(capacity: usize) -> Self {
-        Self {
-            map: HashMap::new(),
-            order: VecDeque::new(),
-            capacity,
-        }
-    }
-
-    fn get(&self, key: &str) -> Option<&Arc<Db>> {
-        self.map.get(key)
-    }
-
-    fn insert(&mut self, key: String, db: Arc<Db>) {
-        if self.map.len() >= self.capacity {
-            if let Some(oldest) = self.order.pop_back() {
-                self.map.remove(&oldest);
-            }
-        }
-        self.order.push_front(key.clone());
-        self.map.insert(key, db);
-    }
-
-    fn remove(&mut self, key: &str) {
-        if let Some(pos) = self.order.iter().position(|k| k == key) {
-            self.order.remove(pos);
-        }
-        self.map.remove(key);
-    }
-}
 
 #[derive(Clone)]
 pub struct KvService {
@@ -477,87 +382,4 @@ impl KvService {
     fn db_path(&self, guild_id: &str, store_name: &str) -> PathBuf {
         self.base_path.join(guild_id).join(store_name)
     }
-}
-
-fn validate_guild_id(guild_id: &str) -> Result<()> {
-    if guild_id.is_empty() {
-        return Err(eyre!("guild_id cannot be empty"));
-    }
-    if guild_id.len() > MAX_GUILD_ID_SIZE {
-        return Err(eyre!(
-            "guild_id exceeds maximum size of {} characters",
-            MAX_GUILD_ID_SIZE
-        ));
-    }
-    if guild_id.contains('/') || guild_id.contains('.') || guild_id.contains("..") {
-        return Err(eyre!("guild_id contains invalid characters"));
-    }
-    Ok(())
-}
-
-fn validate_store_name(store_name: &str) -> Result<()> {
-    if store_name.is_empty() {
-        return Err(eyre!("store_name cannot be empty"));
-    }
-    if store_name.len() > MAX_STORE_NAME_SIZE {
-        return Err(eyre!(
-            "store_name exceeds maximum size of {} characters",
-            MAX_STORE_NAME_SIZE
-        ));
-    }
-    if store_name.contains('/') || store_name.contains('.') || store_name.contains("..") {
-        return Err(eyre!("store_name contains invalid characters"));
-    }
-    Ok(())
-}
-
-fn validate_key(key: &str) -> Result<()> {
-    if key.is_empty() {
-        return Err(eyre!("key cannot be empty"));
-    }
-    if key.len() > MAX_KEY_SIZE {
-        return Err(eyre!(
-            "key exceeds maximum size of {} characters",
-            MAX_KEY_SIZE
-        ));
-    }
-    if key.contains('\0') {
-        return Err(eyre!("key contains null character"));
-    }
-    Ok(())
-}
-
-fn validate_prefix(prefix: &str) -> Result<()> {
-    if prefix.contains('\0') {
-        return Err(eyre!("prefix contains null character"));
-    }
-    Ok(())
-}
-
-fn db_key(guild_id: &str, store_name: &str) -> String {
-    format!("{}:{}", guild_id, store_name)
-}
-
-fn to_kv_store(row: KvStoreRow) -> KvStore {
-    KvStore {
-        id: row.id.to_string(),
-        guild_id: row.guild_id,
-        store_name: row.store_name,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-    }
-}
-
-fn copy_dir_all(src: &PathBuf, dst: &PathBuf) -> Result<()> {
-    std::fs::create_dir_all(dst)?;
-    for entry in std::fs::read_dir(src)? {
-        let entry = entry?;
-        let ty = entry.file_type()?;
-        if ty.is_dir() {
-            copy_dir_all(&entry.path(), &dst.join(entry.file_name()))?;
-        } else {
-            std::fs::copy(entry.path(), dst.join(entry.file_name()))?;
-        }
-    }
-    Ok(())
 }

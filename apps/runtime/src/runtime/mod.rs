@@ -8,7 +8,10 @@ mod worker;
 #[cfg(test)]
 mod tests;
 
-use crate::{deployments::Deployment, kv::KvService, metrics::metrics, secrets::SecretService};
+use crate::{
+    metrics::metrics,
+    services::{deployments::Deployment, kv::KvService, secrets::SecretService},
+};
 use constants::{DROPPABLE_EVENTS, MAX_DROPPABLE_BACKLOG, MAX_WORKERS_LIMIT};
 use deno_core::error::AnyError;
 use flora_config::RuntimeConfig;

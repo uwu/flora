@@ -1,28 +1,9 @@
-use chrono::{DateTime, Utc};
 use color_eyre::eyre::Result;
 use rand::{Rng, distributions::Alphanumeric};
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use sqlx::{FromRow, Pool, Postgres};
+use sqlx::{Pool, Postgres};
 
-/// Persisted API token metadata.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserToken {
-    pub token_id: String,
-    pub user_id: String,
-    pub label: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub last_used_at: Option<DateTime<Utc>>,
-}
-
-#[derive(Debug, FromRow)]
-struct TokenRow {
-    token_id: String,
-    user_id: String,
-    label: Option<String>,
-    created_at: DateTime<Utc>,
-    last_used_at: Option<DateTime<Utc>>,
-}
+use super::models::{TokenRow, UserToken};
 
 #[derive(Clone)]
 pub struct TokenService {
@@ -117,17 +98,5 @@ impl TokenService {
         hasher.update(token.as_bytes());
         let digest = hasher.finalize();
         Ok(hex::encode(digest))
-    }
-}
-
-impl From<TokenRow> for UserToken {
-    fn from(value: TokenRow) -> Self {
-        Self {
-            token_id: value.token_id,
-            user_id: value.user_id,
-            label: value.label,
-            created_at: value.created_at,
-            last_used_at: value.last_used_at,
-        }
     }
 }
