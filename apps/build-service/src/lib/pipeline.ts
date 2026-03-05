@@ -1,9 +1,12 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { colors, stripAnsi } from 'consola/utils'
+
 import { getBuildRunsDir } from '../env'
 import { appendLog, setBuildArtifact, setBuildError, updateBuildStatus } from './builds'
 import { bundleProject } from './bundle'
+import { logger } from './logger'
 import { pnpmInstall } from './pnpm'
 import { validateAndSanitizePackageJson } from './validate-package'
 import { extractZip } from './zip'
@@ -20,8 +23,16 @@ export async function runBuildPipeline(
   const runsDir = getBuildRunsDir()
   await fs.mkdir(runsDir, { recursive: true })
   const tmpDir = await fs.mkdtemp(path.join(runsDir, `build-${buildId}-`))
+  const buildLogger = logger.withTag(colors.magenta(`build:${buildId.slice(0, 8)}`))
 
-  const log = (line: string) => appendLog(buildId, line)
+  const log = (line: string) => {
+    appendLog(buildId, stripAnsi(line))
+    if (line.includes('\x1b[')) {
+      buildLogger.log(line)
+      return
+    }
+    buildLogger.info(line)
+  }
 
   const timeout = setTimeout(() => {
     setBuildError(buildId, 'Build timed out')

@@ -24,6 +24,7 @@ export async function pnpmInstall(
     await runPnpm(
       workspaceDir,
       [
+        '--color=always',
         'install',
         '--lockfile-only',
         '--ignore-scripts',
@@ -39,6 +40,7 @@ export async function pnpmInstall(
   await runPnpm(
     workspaceDir,
     [
+      '--color=always',
       'install',
       '--frozen-lockfile',
       '--ignore-scripts',
@@ -58,29 +60,51 @@ function runPnpm(cwd: string, args: string[], onLog: (line: string) => void): Pr
       env: {
         ...process.env,
         CI: 'true',
+        FORCE_COLOR: '1',
+        npm_config_color: 'always',
         npm_config_ignore_scripts: 'true'
       }
     }, (error, stdout, stderr) => {
       if (error) {
-        if (stderr) onLog(stderr)
+        emitBufferedLines(stderr, onLog)
         reject(new Error(`pnpm ${args.join(' ')} failed: ${error.message}`))
         return
       }
       resolve()
     })
 
-    child.stdout?.on('data', (data: Buffer) => {
-      for (const line of data.toString().split('\n')) {
-        const trimmed = line.trim()
-        if (trimmed) onLog(trimmed)
-      }
-    })
-
-    child.stderr?.on('data', (data: Buffer) => {
-      for (const line of data.toString().split('\n')) {
-        const trimmed = line.trim()
-        if (trimmed) onLog(trimmed)
-      }
-    })
+    streamLines(child.stdout, onLog)
+    streamLines(child.stderr, onLog)
   })
+}
+
+function streamLines(
+  stream: NodeJS.ReadableStream | null | undefined,
+  onLog: (line: string) => void
+): void {
+  if (!stream) return
+
+  let pending = ''
+  stream.on('data', (chunk: Buffer) => {
+    pending += chunk.toString()
+    let newlineIndex = pending.indexOf('\n')
+    while (newlineIndex !== -1) {
+      const line = pending.slice(0, newlineIndex).replace(/\r$/, '')
+      if (line.length > 0) onLog(line)
+      pending = pending.slice(newlineIndex + 1)
+      newlineIndex = pending.indexOf('\n')
+    }
+  })
+
+  stream.on('end', () => {
+    const line = pending.replace(/\r$/, '')
+    if (line.length > 0) onLog(line)
+  })
+}
+
+function emitBufferedLines(output: string, onLog: (line: string) => void): void {
+  for (const line of output.split('\n')) {
+    const next = line.replace(/\r$/, '')
+    if (next.length > 0) onLog(next)
+  }
 }

@@ -16,6 +16,9 @@ use uuid::Uuid;
 use sqlx::postgres::PgPoolOptions;
 
 const PLACEHOLDER_PREFIX: &str = "__FLORA_SECRET__";
+pub const THIRDPARTY_DISCORD_TOKEN_MAGIC: &str = "__FLORA_THIRDPARTY_DISCORD_TOKEN__";
+const THIRDPARTY_DISCORD_TOKEN_ALLOWED_HOSTS: [&str; 3] =
+    ["discord.com", "discord.gg", "gateway.discord.gg"];
 
 #[derive(Clone)]
 pub struct SecretService {
@@ -181,6 +184,24 @@ impl SecretService {
             by_name.insert(row.name, entry);
         }
 
+        // Flora-only magic marker used by discord.js polyfills.
+        let third_party_entry = SecretRuntimeEntry {
+            placeholder: THIRDPARTY_DISCORD_TOKEN_MAGIC.to_string(),
+            value: THIRDPARTY_DISCORD_TOKEN_MAGIC.to_string(),
+            allowed_hosts: THIRDPARTY_DISCORD_TOKEN_ALLOWED_HOSTS
+                .iter()
+                .map(|host| host.to_string())
+                .collect(),
+        };
+        by_placeholder.insert(
+            THIRDPARTY_DISCORD_TOKEN_MAGIC.to_string(),
+            third_party_entry.clone(),
+        );
+        by_name.insert(
+            THIRDPARTY_DISCORD_TOKEN_MAGIC.to_string(),
+            third_party_entry,
+        );
+
         Ok(Arc::new(SecretsRuntimeData {
             by_name,
             by_placeholder,
@@ -219,6 +240,10 @@ impl SecretsRuntimeData {
     }
 
     pub fn placeholder_for(&self, name: &str) -> Option<String> {
+        if name == THIRDPARTY_DISCORD_TOKEN_MAGIC {
+            return Some(THIRDPARTY_DISCORD_TOKEN_MAGIC.to_string());
+        }
+
         self.by_name.get(name).map(|s| s.placeholder.clone())
     }
 }
@@ -257,5 +282,19 @@ impl SecretService {
 
     pub async fn load_runtime_for_tests(&self, _guild_id: &str) -> Result<Arc<SecretsRuntimeData>> {
         Ok(SecretsRuntimeData::empty())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SecretsRuntimeData, THIRDPARTY_DISCORD_TOKEN_MAGIC};
+
+    #[test]
+    fn placeholder_for_returns_third_party_discord_magic() {
+        let data = SecretsRuntimeData::default();
+        assert_eq!(
+            data.placeholder_for(THIRDPARTY_DISCORD_TOKEN_MAGIC),
+            Some(THIRDPARTY_DISCORD_TOKEN_MAGIC.to_string())
+        );
     }
 }

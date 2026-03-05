@@ -39,6 +39,12 @@ client.on('messageCreate', async (message) => {
   }
 })
 
-client.login('__FLORA_THIRDPARTY_DISCORD_TOKEN__').catch((err) => {
-  console.log('discord.js login failed', err)
-})
+const token = secrets.get('__FLORA_THIRDPARTY_DISCORD_TOKEN__')
+
+if (!token) {
+  console.log('discord.js login failed: missing flora third-party token marker')
+} else {
+  client.login(token).catch((err) => {
+    console.log('discord.js login failed', err)
+  })
+}

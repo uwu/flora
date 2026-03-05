@@ -46,6 +46,8 @@ class WS extends EventEmitter {
   private _identified = false
   private _seq = 0
   private _readyPayload: ReadyPayload | null = null
+  private _emittedGuildCreate = new Set<string>()
+  private _knownGuildChannels = new Map<string, Set<string>>()
 
   binaryType: string = 'blob'
 
@@ -114,12 +116,13 @@ class WS extends EventEmitter {
     floraOn('ready', ({ msg }) => {
       this._readyPayload = (msg as ReadyPayload) ?? null
       if (this._identified) {
-        this._emitDispatch('READY', this._buildReadyDispatch())
+        this._emitReadyAndGuilds()
       }
     })
 
     floraOn('messageCreate', ({ msg }) => {
       if (!this._identified) return
+      this._ensureGuildChannelContext(msg as MessagePayload)
       this._emitDispatch(
         'MESSAGE_CREATE',
         this._buildMessageDispatch(msg as MessagePayload)
@@ -163,7 +166,7 @@ class WS extends EventEmitter {
       }
 
       this._identified = true
-      this._emitDispatch('READY', this._buildReadyDispatch())
+      this._emitReadyAndGuilds()
     }
   }
 
@@ -203,6 +206,69 @@ class WS extends EventEmitter {
   private _emitRaw(payload: unknown) {
     const str = JSON.stringify(payload)
     this.emit('message', { data: str, type: 'message', target: this })
+  }
+
+  private _emitReadyAndGuilds() {
+    this._emitDispatch('READY', this._buildReadyDispatch())
+    this._emitGuildCreateDispatches()
+  }
+
+  private _emitGuildCreateDispatches() {
+    const guildIds = this._readyPayload?.guildIds ?? []
+    for (const guildId of guildIds) {
+      if (this._emittedGuildCreate.has(guildId)) {
+        continue
+      }
+
+      this._emittedGuildCreate.add(guildId)
+      this._emitDispatch('GUILD_CREATE', {
+        id: guildId,
+        unavailable: true
+      })
+    }
+  }
+
+  private _ensureGuildChannelContext(msg: MessagePayload) {
+    const guildId = msg.guildId
+    const channelId = msg.channelId
+    if (!guildId || !channelId) {
+      return
+    }
+
+    let knownChannels = this._knownGuildChannels.get(guildId)
+    if (!knownChannels) {
+      knownChannels = new Set<string>()
+      this._knownGuildChannels.set(guildId, knownChannels)
+    }
+
+    if (knownChannels.has(channelId)) {
+      return
+    }
+    knownChannels.add(channelId)
+
+    // discord.js MessageCreate action resolves channels from guild cache first.
+    // We synthesize a minimal guild patch carrying this channel so messageCreate can emit.
+    this._emitDispatch('GUILD_CREATE', {
+      id: guildId,
+      unavailable: false,
+      channels: [this._buildGuildTextChannel(guildId, channelId)]
+    })
+  }
+
+  private _buildGuildTextChannel(guildId: string, channelId: string) {
+    return {
+      id: channelId,
+      guild_id: guildId,
+      type: 0,
+      name: `channel-${channelId}`,
+      position: 0,
+      parent_id: null,
+      permission_overwrites: [],
+      nsfw: false,
+      topic: null,
+      last_message_id: null,
+      rate_limit_per_user: 0
+    }
   }
 
   private _buildReadyDispatch() {

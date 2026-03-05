@@ -34,3 +34,12 @@ export function getPnpmStoreDir(): string {
 
   return path.join(getBuildWorkspaceDir(), 'pnpm-store')
 }
+
+export function isBundleMinifyEnabled(): boolean {
+  return !isTruthy(process.env.BUILD_SERVICE_DISABLE_MINIFY)
+}
+
+function isTruthy(value: string | undefined): boolean {
+  if (!value) return false
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase())
+}
