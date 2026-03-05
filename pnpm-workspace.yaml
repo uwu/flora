@@ -5,7 +5,7 @@ shellEmulator: true
 
 packages:
   - 'sdk'
-  - 'example'
+  - 'examples/*'
   - 'apps/*'
   - 'packages/*'
 

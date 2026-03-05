@@ -93,8 +93,8 @@ pub struct RuntimeConfig {
     /// Timeout in seconds for per-event dispatch (0 disables).
     #[config(env = "RUNTIME_DISPATCH_TIMEOUT_SECS", default = 3)]
     pub dispatch_timeout_secs: u64,
-    /// Max script size in bytes (SDK + deployment). Default: 1MB.
-    #[config(env = "RUNTIME_MAX_SCRIPT_BYTES", default = 1_048_576)]
+    /// Max script size in bytes (SDK + deployment). Default: 8MB.
+    #[config(env = "RUNTIME_MAX_SCRIPT_BYTES", default = 8_388_608)]
     pub max_script_bytes: usize,
     /// Maximum number of deployment files accepted by bundler.
     #[config(env = "RUNTIME_MAX_BUNDLE_FILES", default = 200)]

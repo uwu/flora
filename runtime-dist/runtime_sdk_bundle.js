@@ -8,7 +8,20 @@ var flora = (function(exports) {
   function slash(command) {
     return command
   }
+  function getCreateBotState() {
+    const state = globalThis.__floraCreateBotState
+    if (state) return state
+    const initialState = { initialized: false }
+    globalThis.__floraCreateBotState = initialState
+    return initialState
+  }
   function createBot(options) {
+    const state = getCreateBotState()
+    if (state.initialized) {
+      console.log('[flora/sdk] createBot called multiple times; skipping duplicate registration')
+      return
+    }
+    state.initialized = true
     const prefix = options.prefix ?? '!'
     const commands = options.commands ?? options.prefixCommands ?? []
     const slashCommands = options.slashCommands ?? []

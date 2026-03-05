@@ -41,6 +41,12 @@ pub struct CreateBuildResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct BuildArtifactResponse {
+    pub bundle: String,
+    pub source_map: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct BuildStatusResponse {
     pub build_id: String,
     pub guild_id: String,
@@ -51,6 +57,8 @@ pub struct BuildStatusResponse {
     pub started_at: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub finished_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artifact: Option<BuildArtifactResponse>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
@@ -153,7 +161,7 @@ pub async fn get_build_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<ApiJson<BuildStatusResponse>, ApiError> {
-    require_identity(&state, &headers).await?;
+    let identity = require_identity(&state, &headers).await?;
 
     let build = state
         .build_service
@@ -165,6 +173,8 @@ pub async fn get_build_handler(
         })?;
     let build = build.ok_or_else(|| ApiError::not_found(format!("build {build_id} not found")))?;
 
+    ensure_guild_admin(&state, &identity, &build.guild_id).await?;
+
     Ok(ApiJson(Json(BuildStatusResponse {
         build_id: build.build_id,
         guild_id: build.guild_id,
@@ -173,6 +183,10 @@ pub async fn get_build_handler(
         logs: build.logs,
         started_at: build.started_at,
         finished_at: build.finished_at,
+        artifact: build.artifact.map(|artifact| BuildArtifactResponse {
+            bundle: artifact.bundle,
+            source_map: artifact.source_map,
+        }),
         error: build.error,
     })))
 }

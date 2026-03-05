@@ -1,0 +1,16 @@
+{
+  "name": "@uwu/flora-example-discordjs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "discord.js": "^14.24.2"
+  },
+  "devDependencies": {
+    "@uwu/flora-sdk": "workspace:*",
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.3"
+  }
+}

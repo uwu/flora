@@ -70,10 +70,39 @@ export async function deploy(
     guild_id: string
     entry: string
     error?: string
+    artifact?: {
+      bundle: string
+      source_map: string
+    }
   }
 
   if (build.status === 'failed') {
     throw new Error(`Build failed: ${build.error ?? 'unknown error'}`)
+  }
+
+  if (build.status !== 'done') {
+    throw new Error(`Build not finished: ${build.status}`)
+  }
+
+  if (!build.artifact?.bundle) {
+    throw new Error('Build produced no artifact bundle')
+  }
+
+  const deployRes = await fetch(`${baseUrl}/deployments/${build.guild_id}`, {
+    method: 'POST',
+    headers: {
+      ...headers,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      entry: build.entry,
+      bundle: build.artifact.bundle
+    })
+  })
+
+  if (!deployRes.ok) {
+    const body = await deployRes.text().catch(() => '')
+    throw new Error(`Deployment apply failed (${deployRes.status}): ${body}`)
   }
 
   logger.success(`Deployed guild ${build.guild_id}`)

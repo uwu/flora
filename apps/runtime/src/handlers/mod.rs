@@ -1,4 +1,4 @@
-use axum::{Json, Router, routing::get};
+use axum::{Json, Router, extract::DefaultBodyLimit, routing::get};
 use tower_http::compression::CompressionLayer;
 use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable as ScalarServable};
@@ -71,4 +71,5 @@ pub fn create_router() -> Router<AppState> {
         .nest("/api-docs", oapi_router)
         // Expose API only under `/api/*`
         .nest("/api", api_router)
+        .layer(DefaultBodyLimit::max(8 * 1024 * 1024))
 }
