@@ -1,5 +1,5 @@
-import { H3, HTTPError, serve } from 'h3'
 import { colors } from 'consola/utils'
+import { H3, HTTPError, serve } from 'h3'
 
 import { bearerAuth } from './auth'
 import { getPort, requireEnv } from './env'
@@ -22,8 +22,7 @@ app.use(async (event, next) => {
 
   try {
     const response = await next()
-    const status =
-      event.res.status ?? (response instanceof Response ? response.status : 200)
+    const status = event.res.status ?? (response instanceof Response ? response.status : 200)
     const elapsedMs = Date.now() - startedAt
     requestLogger.info(formatRequestLog(method, path, status, elapsedMs))
     return response
@@ -52,7 +51,9 @@ function formatRequestLog(
   status: number,
   elapsedMs: number
 ): string {
-  return `${colorMethod(method)} ${colors.white(path)} -> ${colorStatus(status)} ${colors.gray(`(${elapsedMs}ms)`)}`
+  return `${colorMethod(method)} ${colors.white(path)} -> ${colorStatus(status)} ${
+    colors.gray(`(${elapsedMs}ms)`)
+  }`
 }
 
 function colorMethod(method: string): string {

@@ -1,0 +1,11 @@
+[submodule "submodules/deno_core"]
+	path = submodules/deno_core
+	url = https://github.com/taskyliz/deno_core.git
+
+[submodule "submodules/rusty_v8"]
+	path = submodules/rusty_v8
+	url = https://github.com/taskyliz/rusty_v8.git
+
+[submodule "submodules/t0x"]
+	path = submodules/t0x
+	url = https://github.com/taskylizard/t0x.git
