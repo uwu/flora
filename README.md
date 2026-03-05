@@ -8,22 +8,8 @@ You deploy scripts on a per-guild basis through a single bot, handled through th
 
 This is still taking shape, and will have a proper release soon. To stay up to date on flora's progress, watch this repository, or check out the documentation: https://flora.uwu.network/sdk
 
-## Buck2
+## Security
 
-Buck2 setup for Rust/runtime/cli builds is documented in `docs/buck2.md`.
+If you believe you have found a security vulnerability in flora, we encourage you to responsibly disclose this and NOT open a public issue. We will investigate all legitimate reports.
 
-## Quick Commands
-
-```bash
-# build runtime (dev)
-./x build-dev
-
-# build runtime release with buck2
-./x build-release
-
-# run runtime (dev)
-./x run-dev
-
-# build + run runtime release
-./x run-release
-```
+Our preference is that you make use of GitHub's private vulnerability reporting feature to disclose potential security vulnerabilities in our Open Source Software. To do this, please visit https://github.com/uwu/flora/security and click the "Report a vulnerability" button.
