@@ -52,20 +52,10 @@ export interface Secrets {
 declare global {
   var __floraHandlers: Record<string, Function[]>
   var __floraGuildId: string | undefined
-  function on<E extends keyof FloraEventMap>(
-    event: E,
-    handler: FloraEventHandler<E>
-  ): void
+  function on<E extends keyof FloraEventMap>(event: E, handler: FloraEventHandler<E>): void
   function __floraDispatch(event: string, payload: unknown): Promise<void>
-  function registerSlashCommands(
-    commands: FlattenedSlashCommand[]
-  ): Promise<void> | undefined
-  function cron(
-    name: string,
-    cronExpr: string,
-    handler: CronHandler,
-    options?: CronOptions
-  ): void
+  function registerSlashCommands(commands: FlattenedSlashCommand[]): Promise<void> | undefined
+  function cron(name: string, cronExpr: string, handler: CronHandler, options?: CronOptions): void
   var secrets: Secrets
 }
 
@@ -76,15 +66,10 @@ declare const Deno: {
       op_send_interaction_response(options: unknown): Promise<void>
       op_edit_message(options: unknown): Promise<void>
       op_log(args: unknown[]): void
-      op_upsert_guild_commands(options: {
-        guildId: string
-        commands: FlattenedSlashCommand[]
-      }): Promise<void>
-      op_register_cron(options: {
-        name: string
-        expr: string
-        skipIfRunning?: boolean
-      }): void
+      op_upsert_guild_commands(
+        options: { guildId: string; commands: FlattenedSlashCommand[] }
+      ): Promise<void>
+      op_register_cron(options: { name: string; expr: string; skipIfRunning?: boolean }): void
       op_secret_placeholder(name: string): string | undefined
     }
   }
@@ -101,107 +86,6 @@ type AnyPayload = {
 }
 
 const core = Deno.core
-
-type BlobPart = string | ArrayBuffer | ArrayBufferView
-
-const maybeBuffer = (
-  globalThis as {
-    Buffer?: {
-      from(
-        input: string,
-        encoding: string
-      ): { toString(encoding: string): string }
-    }
-  }
-).Buffer
-
-if (typeof globalThis.btoa === 'undefined') {
-  ;(globalThis as Record<string, unknown>).btoa = (input: string) =>
-    maybeBuffer
-      ? maybeBuffer.from(input, 'binary').toString('base64')
-      : String(input)
-}
-
-if (typeof globalThis.atob === 'undefined') {
-  ;(globalThis as Record<string, unknown>).atob = (input: string) =>
-    maybeBuffer
-      ? maybeBuffer.from(input, 'base64').toString('binary')
-      : String(input)
-}
-
-if (typeof globalThis.TextEncoder === 'undefined') {
-  class TextEncoderPolyfill {
-    encode(input: string): Uint8Array {
-      if (maybeBuffer) {
-        return Uint8Array.from(
-          maybeBuffer.from(input, 'utf8').toString('binary'),
-          (char) => char.charCodeAt(0)
-        )
-      }
-
-      const bytes = []
-      for (let i = 0; i < input.length; i++) {
-        bytes.push(input.charCodeAt(i) & 0xff)
-      }
-      return Uint8Array.from(bytes)
-    }
-  }
-
-  ;(globalThis as Record<string, unknown>).TextEncoder = TextEncoderPolyfill
-}
-
-if (typeof globalThis.TextDecoder === 'undefined') {
-  class TextDecoderPolyfill {
-    decode(input?: ArrayBufferView | ArrayBuffer): string {
-      if (!input) return ''
-
-      const bytes = input instanceof ArrayBuffer
-        ? new Uint8Array(input)
-        : new Uint8Array(input.buffer, input.byteOffset, input.byteLength)
-
-      if (maybeBuffer) {
-        let binary = ''
-        for (const byte of bytes) {
-          binary += String.fromCharCode(byte)
-        }
-        return maybeBuffer.from(binary, 'binary').toString('utf8')
-      }
-
-      let text = ''
-      for (const byte of bytes) {
-        text += String.fromCharCode(byte)
-      }
-      return text
-    }
-  }
-
-  ;(globalThis as Record<string, unknown>).TextDecoder = TextDecoderPolyfill
-}
-
-if (typeof globalThis.Blob === 'undefined') {
-  class BlobPolyfill {
-    private readonly chunks: Uint8Array[]
-    readonly size: number
-    readonly type: string
-
-    constructor(parts: BlobPart[] = [], options: { type?: string } = {}) {
-      this.chunks = parts.map(toUint8)
-      this.size = this.chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0)
-      this.type = options.type ?? ''
-    }
-
-    async arrayBuffer(): Promise<ArrayBuffer> {
-      return concatChunks(this.chunks).buffer
-    }
-
-    async text(): Promise<string> {
-      return new TextDecoder().decode(concatChunks(this.chunks))
-    }
-  }
-
-  ;(globalThis as Record<string, unknown>).Blob = BlobPolyfill
-}
-
 globalThis.__floraHandlers = {}
 globalThis.secrets = {
   get(name: string) {
@@ -243,10 +127,9 @@ globalThis.__floraDispatch = async function __floraDispatch(
   }
 }
 
-// @ts-expect-error
+// @ts-expect-error - Override console with minimal implementation
 globalThis.console = {
-  log: (...args: unknown[]) => core.ops.op_log(args),
-  warn: (...args: unknown[]) => core.ops.op_log(args)
+  log: (...args: unknown[]) => core.ops.op_log(args)
 }
 
 globalThis.registerSlashCommands = function registerSlashCommands(
@@ -370,27 +253,4 @@ function normalizeInteractionReply(
   }
 
   return { ...base, content: String(message) }
-}
-
-function toUint8(part: BlobPart): Uint8Array {
-  if (typeof part === 'string') {
-    return new TextEncoder().encode(part)
-  }
-
-  if (part instanceof ArrayBuffer) {
-    return new Uint8Array(part)
-  }
-
-  return new Uint8Array(part.buffer, part.byteOffset, part.byteLength)
-}
-
-function concatChunks(chunks: Uint8Array[]): Uint8Array {
-  const total = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0)
-  const out = new Uint8Array(total)
-  let offset = 0
-  for (const chunk of chunks) {
-    out.set(chunk, offset)
-    offset += chunk.byteLength
-  }
-  return out
 }

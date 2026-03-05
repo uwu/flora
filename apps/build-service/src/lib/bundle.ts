@@ -1,34 +1,9 @@
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { build } from 'rolldown'
 import type { OutputAsset, OutputChunk } from 'rolldown'
-import { defineEnv } from 'unenv'
 
 import { isBundleMinifyEnabled } from '../env'
-import { packageShimPlugin } from './third-party/shim-package'
-
-const { env } = defineEnv({
-  nodeCompat: true,
-  npmShims: true,
-  resolve: true,
-  overrides: {}
-})
-
-const thisDir = path.dirname(fileURLToPath(import.meta.url))
-const polyfillsDir = path.resolve(thisDir, 'third-party/polyfills')
-
-const BROWSER_ALIASES: Record<string, string> = {
-  ...env.alias,
-  // CJS modules required due to ESM import heuristics
-  events: path.join(polyfillsDir, 'eventemitter-polyfill.cjs'),
-  'node:events': path.join(polyfillsDir, 'eventemitter-polyfill.cjs'),
-  timers: path.join(polyfillsDir, 'timer-polyfill.ts'),
-  'node:timers': path.join(polyfillsDir, 'timer-polyfill.ts'),
-  'timers/promises': path.join(polyfillsDir, 'timer-promises-polyfill.ts'),
-  'node:timers/promises': path.join(polyfillsDir, 'timer-promises-polyfill.ts'),
-  'zlib-sync': path.join(polyfillsDir, 'zlib-sync-polyfill.ts')
-}
 
 export type BundleResult = {
   bundle: string
@@ -54,30 +29,10 @@ export async function bundleProject(
     cwd: workspaceDir,
     input: entryAbs,
     write: false,
-    platform: 'browser',
-    plugins: [
-      packageShimPlugin({
-        package: 'ws',
-        path: path.join(polyfillsDir, 'ws-polyfill.ts')
-      }),
-      packageShimPlugin({
-        package: '@discordjs/rest',
-        path: path.join(polyfillsDir, 'rest-polyfill.ts')
-      })
-    ],
-    resolve: {
-      alias: BROWSER_ALIASES
-    },
-    transform: {
-      inject: {
-        ...(env.inject as Record<string, string | [string, string]>)
-      }
-    },
-    external: [],
     output: {
-      format: 'iife',
+      format: 'esm',
       sourcemap: true,
-      codeSplitting: false,
+      exports: 'named',
       minify: minifyEnabled
     },
     checks: {
