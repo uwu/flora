@@ -98,11 +98,11 @@ import PurposeSection from './IndexPage/PurposeSection.vue'
       rgb(0 0 0 / 52%) 100%
     ),
     linear-gradient(
-      to bottom,
-      rgb(29 32 33 / 24%) 0%,
-      rgb(29 32 33 / 70%) 74%,
-      var(--gb-bg) 100%
-    );
+    to bottom,
+    rgb(29 32 33 / 24%) 0%,
+    rgb(29 32 33 / 70%) 74%,
+    var(--gb-bg) 100%
+  );
 }
 
 @keyframes hero-bg-in {

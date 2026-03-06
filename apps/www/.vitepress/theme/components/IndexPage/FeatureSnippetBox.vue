@@ -1,17 +1,14 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import type { IndexFeature } from './types'
 
 const props = defineProps<{
   feature: IndexFeature
 }>()
-</script>
 
-<template>
-  <div class="feature-codebox">
-    <div class="terminal-body">
-      <template v-if="props.feature.id === 'cli'">
-        <pre>
-<code><span class="t-prompt">λ</span> <span class="t-cmd">pnpm flora deploy --guild 847291053618249801</span>
+const cliSnippetHtml =
+  `<span class="t-prompt">λ</span> <span class="t-cmd">pnpm flora deploy --guild 847291053618249801</span>
 <span class="t-info">ℹ</span> <span class="t-text">Uploading project...</span>
 <span class="t-ok">✔</span> <span class="t-text">Upload complete (3 files, 1kb)</span>
 <span class="t-info">ℹ</span> <span class="t-text">Building... (a3f1c82d-91e7-4b3a-b052-7e8d4a19f603)</span>
@@ -19,11 +16,17 @@ const props = defineProps<{
   <span class="t-dim">↳ Extracted 3 files (2.0kb)</span>
   <span class="t-dim">↳ Validating package.json...</span>
   <span class="t-dim">↳ Bundling src/main.ts</span>
-<span class="t-ok">✔</span> <span class="t-text">Deployed guild 847291053618249801</span></code></pre>
-      </template>
-      <template v-else>
-        <pre><code v-html="props.feature.snippetHtml"></code></pre>
-      </template>
+<span class="t-ok">✔</span> <span class="t-text">Deployed guild 847291053618249801</span>`
+
+const snippetHtml = computed(() =>
+  props.feature.id === 'cli' ? cliSnippetHtml : props.feature.snippetHtml ?? ''
+)
+</script>
+
+<template>
+  <div class="feature-codebox">
+    <div class="terminal-body">
+      <pre><code v-html="snippetHtml"></code></pre>
     </div>
   </div>
 </template>
