@@ -48,11 +48,21 @@ impl BotRuntime {
         config: RuntimeConfig,
     ) -> Self {
         let num_workers = config.max_workers.clamp(1, MAX_WORKERS_LIMIT);
-        info!(target: "flora:runtime", num_workers, "spawning worker pool");
+        let queue_capacity = config.worker_queue_capacity.max(1);
+        info!(target: "flora:runtime", num_workers, queue_capacity, "spawning worker pool");
         let limits = RuntimeLimits::from_config(&config);
 
         let workers: Vec<Worker> = (0..num_workers)
-            .map(|id| spawn_worker(id, http.clone(), kv.clone(), secrets.clone(), limits))
+            .map(|id| {
+                spawn_worker(
+                    id,
+                    http.clone(),
+                    kv.clone(),
+                    secrets.clone(),
+                    limits,
+                    queue_capacity,
+                )
+            })
             .collect();
 
         Self {

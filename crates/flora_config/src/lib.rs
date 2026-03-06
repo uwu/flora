@@ -84,6 +84,10 @@ pub struct RuntimeConfig {
     /// Max: 64
     #[config(env = "RUNTIME_MAX_WORKERS", default = 4)]
     pub max_workers: usize,
+    /// Command queue capacity per worker.
+    /// Default: 1024
+    #[config(env = "RUNTIME_WORKER_QUEUE_CAPACITY", default = 1024)]
+    pub worker_queue_capacity: usize,
     /// Timeout in seconds for runtime bootstrap (0 disables).
     #[config(env = "RUNTIME_BOOT_TIMEOUT_SECS", default = 5)]
     pub boot_timeout_secs: u64,

@@ -47,8 +47,9 @@ pub(super) fn spawn_worker(
     kv: KvService,
     secrets: SecretService,
     limits: RuntimeLimits,
+    queue_capacity: usize,
 ) -> Worker {
-    let (tx, rx) = mpsc::unbounded_channel();
+    let (tx, rx) = mpsc::channel(queue_capacity);
     let backlog = Arc::new(AtomicUsize::new(0));
     let backlog_handle = Arc::clone(&backlog);
 
@@ -83,7 +84,7 @@ pub(super) fn spawn_worker(
 
 fn worker_thread(
     worker_id: usize,
-    mut receiver: mpsc::UnboundedReceiver<WorkerCommand>,
+    mut receiver: mpsc::Receiver<WorkerCommand>,
     http: Arc<Http>,
     kv: KvService,
     secrets: SecretService,

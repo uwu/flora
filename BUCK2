@@ -17,7 +17,7 @@ filegroup(
 filegroup(
     name = "rust_runtime_embed_inputs",
     srcs = [
-        "example/src",
+        "examples/basic/src",
         "runtime-dist",
     ],
     visibility = ["PUBLIC"],

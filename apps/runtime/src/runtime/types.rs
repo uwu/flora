@@ -72,7 +72,7 @@ pub(super) enum WorkerCommand {
 /// A worker thread that owns multiple guild isolates.
 pub(super) struct Worker {
     pub(super) id: usize,
-    pub(super) sender: mpsc::UnboundedSender<WorkerCommand>,
+    pub(super) sender: mpsc::Sender<WorkerCommand>,
     pub(super) handle: Option<thread::JoinHandle<()>>,
     pub(super) backlog: Arc<AtomicUsize>,
 }
@@ -80,16 +80,22 @@ pub(super) struct Worker {
 impl Worker {
     fn send_cmd(&self, cmd: WorkerCommand) -> Result<(), AnyError> {
         self.backlog.fetch_add(1, Ordering::Relaxed);
-        if self.sender.send(cmd).is_err() {
-            self.backlog.fetch_sub(1, Ordering::Relaxed);
-            return Err(AnyError::msg("worker unavailable"));
+        match self.sender.try_send(cmd) {
+            Ok(()) => Ok(()),
+            Err(mpsc::error::TrySendError::Closed(_)) => {
+                self.backlog.fetch_sub(1, Ordering::Relaxed);
+                Err(AnyError::msg("worker unavailable"))
+            }
+            Err(mpsc::error::TrySendError::Full(_)) => {
+                self.backlog.fetch_sub(1, Ordering::Relaxed);
+                Err(AnyError::msg("worker queue full"))
+            }
         }
-        Ok(())
     }
 
     pub(super) fn send_shutdown(&self) {
         self.backlog.fetch_add(1, Ordering::Relaxed);
-        if self.sender.send(WorkerCommand::Shutdown).is_err() {
+        if self.sender.try_send(WorkerCommand::Shutdown).is_err() {
             self.backlog.fetch_sub(1, Ordering::Relaxed);
         }
     }
@@ -182,9 +188,13 @@ impl Worker {
             runtime,
             respond_to: tx,
         };
-        if let Err(err) = self.sender.send(cmd) {
+        if let Err(err) = self.sender.try_send(cmd) {
             self.backlog.fetch_sub(1, Ordering::Relaxed);
-            let WorkerCommand::MigrateIn { runtime, .. } = err.0 else {
+            let cmd = match err {
+                mpsc::error::TrySendError::Closed(cmd) => cmd,
+                mpsc::error::TrySendError::Full(cmd) => cmd,
+            };
+            let WorkerCommand::MigrateIn { runtime, .. } = cmd else {
                 return Err(MigrationInFailure::new(
                     AnyError::msg("worker unavailable"),
                     None,
