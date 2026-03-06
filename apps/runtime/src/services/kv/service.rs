@@ -78,10 +78,10 @@ impl KvService {
         }
 
         let db_path = self.db_path(guild_id, store_name);
-        if db_path.exists() {
-            if let Err(err) = std::fs::remove_dir_all(&db_path) {
-                warn!(target: "flora:kv", guild_id, store_name, ?err, "failed to remove sled files");
-            }
+        if db_path.exists()
+            && let Err(err) = std::fs::remove_dir_all(&db_path)
+        {
+            warn!(target: "flora:kv", guild_id, store_name, ?err, "failed to remove sled files");
         }
 
         info!(target: "flora:kv", guild_id, store_name, "deleted kv store");
@@ -184,7 +184,7 @@ impl KvService {
         let db = self.get_or_open_db(guild_id, store_name)?;
 
         let existing = self.get_metadata(&db, key)?;
-        let new_expiration = existing.map(|m| m.expiration).flatten();
+        let new_expiration = existing.and_then(|m| m.expiration);
 
         if metadata.is_some() || new_expiration.is_some() {
             let key_metadata = RawKvKeyMetadata {
@@ -231,15 +231,11 @@ impl KvService {
         let limit = limit.unwrap_or(DEFAULT_LIST_LIMIT).min(MAX_LIST_LIMIT);
         let mut keys = Vec::with_capacity(limit as usize);
 
-        let start_key = match cursor {
-            Some(c) => {
-                if prefix.is_some() {
-                    format!("{}{}", prefix.unwrap(), c)
-                } else {
-                    c.to_string()
-                }
-            }
-            None => prefix.unwrap_or("").to_string(),
+        let start_key = match (cursor, prefix) {
+            (Some(c), Some(p)) => format!("{}{}", p, c),
+            (Some(c), None) => c.to_string(),
+            (None, Some(p)) => p.to_string(),
+            (None, None) => String::new(),
         };
 
         let start_bytes = start_key.as_bytes();
@@ -256,10 +252,10 @@ impl KvService {
                 if !key.starts_with(p) {
                     break;
                 }
-                if let Some(c) = cursor {
-                    if key == format!("{}{}", p, c) {
-                        continue;
-                    }
+                if let Some(c) = cursor
+                    && key == format!("{}{}", p, c)
+                {
+                    continue;
                 }
             }
 
@@ -325,10 +321,10 @@ impl KvService {
     fn get_or_open_db(&self, guild_id: &str, store_name: &str) -> Result<Arc<Db>> {
         let key = db_key(guild_id, store_name);
 
-        if let Ok(cache) = self.db_cache.read() {
-            if let Some(db) = cache.get(&key) {
-                return Ok(Arc::clone(db));
-            }
+        if let Ok(cache) = self.db_cache.read()
+            && let Some(db) = cache.get(&key)
+        {
+            return Ok(Arc::clone(db));
         }
 
         let db_path = self.db_path(guild_id, store_name);

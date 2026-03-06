@@ -739,39 +739,39 @@ pub(crate) fn build_embed(input: RawEmbed) -> Result<CreateEmbed<'static>, JsErr
         embed = embed.timestamp(parsed);
     }
 
-    if let Some(footer) = input.footer {
-        if let Some(text) = footer.text {
-            let mut footer_builder = CreateEmbedFooter::new(text);
-            if let Some(icon) = footer.icon_url {
-                footer_builder = footer_builder.icon_url(icon);
-            }
-            embed = embed.footer(footer_builder);
+    if let Some(footer) = input.footer
+        && let Some(text) = footer.text
+    {
+        let mut footer_builder = CreateEmbedFooter::new(text);
+        if let Some(icon) = footer.icon_url {
+            footer_builder = footer_builder.icon_url(icon);
         }
+        embed = embed.footer(footer_builder);
     }
 
-    if let Some(image) = input.image {
-        if let Some(url) = image.url {
-            embed = embed.image(url);
-        }
+    if let Some(image) = input.image
+        && let Some(url) = image.url
+    {
+        embed = embed.image(url);
     }
 
-    if let Some(thumbnail) = input.thumbnail {
-        if let Some(url) = thumbnail.url {
-            embed = embed.thumbnail(url);
-        }
+    if let Some(thumbnail) = input.thumbnail
+        && let Some(url) = thumbnail.url
+    {
+        embed = embed.thumbnail(url);
     }
 
-    if let Some(author) = input.author {
-        if let Some(name) = author.name {
-            let mut author_builder = CreateEmbedAuthor::new(name);
-            if let Some(url) = author.url {
-                author_builder = author_builder.url(url);
-            }
-            if let Some(icon) = author.icon_url {
-                author_builder = author_builder.icon_url(icon);
-            }
-            embed = embed.author(author_builder);
+    if let Some(author) = input.author
+        && let Some(name) = author.name
+    {
+        let mut author_builder = CreateEmbedAuthor::new(name);
+        if let Some(url) = author.url {
+            author_builder = author_builder.url(url);
         }
+        if let Some(icon) = author.icon_url {
+            author_builder = author_builder.icon_url(icon);
+        }
+        embed = embed.author(author_builder);
     }
 
     if let Some(fields) = input.fields {
@@ -797,9 +797,9 @@ pub(crate) async fn build_attachment(
                 Url::parse(&url)
                     .ok()
                     .and_then(|parsed| {
-                        parsed
-                            .path_segments()
-                            .and_then(|segments| segments.last().map(|name| name.to_string()))
+                        parsed.path_segments().and_then(|mut segments| {
+                            segments.next_back().map(|name| name.to_string())
+                        })
                     })
                     .filter(|name| !name.is_empty())
                     .unwrap_or_else(|| "attachment".to_string())

@@ -187,6 +187,7 @@ fn process_field(field: &syn::Field, has_from: bool) -> syn::Result<ProcessedFie
     Ok(ProcessedField { attrs })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn generate_struct_def(
     name: &syn::Ident,
     vis: &syn::Visibility,

@@ -82,6 +82,7 @@ pub(super) fn spawn_worker(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn worker_thread(
     worker_id: usize,
     mut receiver: mpsc::Receiver<WorkerCommand>,
@@ -370,7 +371,6 @@ async fn dispatch_cron_into_runtime(
         let mut v8_guard = js_state.runtime_mut().v8_guard();
         let isolate = v8_guard.isolate();
         v8::scope_with_context!(scope, isolate, &context);
-        let scope = scope;
         let context = v8::Local::new(scope, &context);
         let global = context.global(scope);
 
@@ -402,7 +402,6 @@ async fn dispatch_cron_into_runtime(
             let context = js_state.runtime().main_context();
             let mut v8_guard = js_state.runtime_mut().v8_guard();
             v8::scope_with_context!(scope, v8_guard.isolate(), &context);
-            let scope = scope;
             let promise = v8::Local::new(scope, &promise);
             match promise.state() {
                 v8::PromiseState::Rejected => {
@@ -472,6 +471,7 @@ async fn initialize_worker_default(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn deploy_guild_to_worker(
     guild_runtimes: &mut HashMap<String, JsRuntimeState>,
     http: &Arc<Http>,
@@ -756,12 +756,11 @@ async fn broadcast_to_worker(
     worker_id: usize,
     limits: &RuntimeLimits,
 ) -> Result<(), AnyError> {
-    if let Some(runtime) = default_runtime {
-        if let Err(err) =
+    if let Some(runtime) = default_runtime
+        && let Err(err) =
             dispatch_into_runtime(runtime, event.clone(), payload.clone(), worker_id, limits).await
-        {
-            error!(target: "flora:runtime", worker_id, ?err, "Broadcast to default runtime failed");
-        }
+    {
+        error!(target: "flora:runtime", worker_id, ?err, "Broadcast to default runtime failed");
     }
 
     for (guild_id, runtime) in guild_runtimes.iter_mut() {
@@ -795,7 +794,6 @@ pub(super) async fn dispatch_into_runtime(
         let mut v8_guard = js_state.runtime_mut().v8_guard();
         let isolate = v8_guard.isolate();
         v8::scope_with_context!(scope, isolate, &context);
-        let scope = scope;
         let event_value = serde_v8::to_v8(scope, &event)?;
         let payload_value = serde_v8::to_v8(scope, &payload)?;
         (

@@ -536,10 +536,10 @@ pub(crate) async fn build_interaction_response(
         message = message.allowed_mentions(build_allowed_mentions(mentions));
     }
 
-    if let Some(ephemeral) = args.ephemeral {
-        if ephemeral {
-            message = message.ephemeral(true);
-        }
+    if let Some(ephemeral) = args.ephemeral
+        && ephemeral
+    {
+        message = message.ephemeral(true);
     }
 
     if let Some(flags) = args.flags {

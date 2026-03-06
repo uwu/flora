@@ -26,10 +26,10 @@ impl BoundedCache {
     }
 
     pub(crate) fn insert(&mut self, key: String, db: Arc<Db>) {
-        if self.map.len() >= self.capacity {
-            if let Some(oldest) = self.order.pop_back() {
-                self.map.remove(&oldest);
-            }
+        if self.map.len() >= self.capacity
+            && let Some(oldest) = self.order.pop_back()
+        {
+            self.map.remove(&oldest);
         }
         self.order.push_front(key.clone());
         self.map.insert(key, db);

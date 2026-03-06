@@ -150,5 +150,5 @@ fn get_guild_id(state: &OpState) -> Result<String, JsErrorBox> {
     state
         .try_borrow::<String>()
         .ok_or_else(|| JsErrorBox::generic("guild context not available"))
-        .map(|s| s.clone())
+        .cloned()
 }

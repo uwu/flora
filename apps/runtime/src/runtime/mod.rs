@@ -329,7 +329,7 @@ impl BotRuntime {
 }
 
 fn is_droppable_event(event: &str) -> bool {
-    DROPPABLE_EVENTS.iter().any(|item| *item == event)
+    DROPPABLE_EVENTS.contains(&event)
 }
 
 impl Drop for BotRuntime {

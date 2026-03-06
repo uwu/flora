@@ -131,10 +131,10 @@ pub(super) async fn run_event_loop_with_timeout(
         err
     });
 
-    if let Err(ref err) = result {
-        if err.is::<RuntimeTimeout>() {
-            terminate_runtime(runtime, worker_id, stage).await;
-        }
+    if let Err(ref err) = result
+        && err.is::<RuntimeTimeout>()
+    {
+        terminate_runtime(runtime, worker_id, stage).await;
     }
 
     result
@@ -179,7 +179,6 @@ pub(super) fn extract_dispatch_fn_no_enter_impl(
     isolate: &mut v8::Isolate,
 ) -> Result<Global<v8::Function>, AnyError> {
     v8::scope_with_context!(scope, isolate, context);
-    let scope = scope;
     let context = v8::Local::new(scope, context);
     let global = context.global(scope);
     let key = v8::String::new(scope, "__floraDispatch")

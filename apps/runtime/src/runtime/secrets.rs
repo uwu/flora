@@ -3,7 +3,7 @@ use deno_error::JsErrorBox;
 use std::{cell::RefCell, sync::Arc};
 
 thread_local! {
-    static CURRENT_SECRETS: RefCell<Option<Arc<SecretsRuntimeData>>> = RefCell::new(None);
+    static CURRENT_SECRETS: RefCell<Option<Arc<SecretsRuntimeData>>> = const { RefCell::new(None) };
 }
 
 /// Sets thread-local secrets for the duration of a dispatch.

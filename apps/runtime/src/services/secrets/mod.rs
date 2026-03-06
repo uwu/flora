@@ -88,7 +88,7 @@ impl SecretService {
         .bind(guild_id)
         .bind(name)
         .bind(&ciphertext)
-        .bind(&nonce_bytes.to_vec())
+        .bind(nonce_bytes.to_vec())
         .bind(&allowed_hosts)
         .execute(&self.db_pool)
         .await
@@ -192,7 +192,7 @@ pub fn build_placeholder(id: Uuid, key_bytes: &[u8; 32]) -> String {
     let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(key_bytes).expect("hmac key");
     mac.update(id.as_bytes());
     let tag = mac.finalize().into_bytes();
-    let short = hex::encode(&tag)[0..12].to_string();
+    let short = hex::encode(tag)[0..12].to_string();
     format!("{PLACEHOLDER_PREFIX}:{id}:{short}")
 }
 
