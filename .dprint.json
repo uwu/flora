@@ -24,7 +24,8 @@
     "**/submodules/**",
     "**/dist",
     "**/trash",
-    "**/target"
+    "**/target",
+    "**/refs/**"
   ],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.95.10.wasm",
