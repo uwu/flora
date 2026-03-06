@@ -803,6 +803,7 @@ impl DiscordHandler {
             .upsert_deployment(
                 guild_str.clone(),
                 DEFAULT_GUILD_ENTRY.to_string(),
+                None,
                 DEFAULT_GUILD_BUNDLE.to_string(),
                 Some(default_guild_source_map()),
             )

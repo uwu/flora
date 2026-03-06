@@ -396,7 +396,12 @@ export interface components {
       id: string
       username: string
     }
+    BuildArtifactResponse: {
+      bundle: string
+      source_map: string
+    }
     BuildStatusResponse: {
+      artifact?: null | components['schemas']['BuildArtifactResponse']
       build_id: string
       entry: string
       error?: string | null
@@ -437,12 +442,18 @@ export interface components {
       guild_id: string
       store_name: string
     }
+    DeploymentFile: {
+      contents: string
+      path: string
+    }
     /** @description Body for creating or replacing a deployment. */
     DeploymentRequest: {
-      /** @description Prebuilt JavaScript bundle source. */
-      bundle: string
+      /** @description Prebuilt JavaScript bundle source (legacy mode). */
+      bundle?: string | null
       /** @description Entry point path for the bundle (e.g. src/main.ts). */
       entry: string
+      /** @description Source files for the deployment. Preferred over raw bundle input. */
+      files?: components['schemas']['DeploymentFile'][] | null
       source_map?: null | components['schemas']['DeploymentSourceMapFile']
     }
     /** @description API representation of a deployment. */
@@ -450,6 +461,7 @@ export interface components {
       bundle?: string | null
       created_at: string
       entry: string
+      files?: components['schemas']['DeploymentFile'][] | null
       guild_id: string
       source_map?: null | components['schemas']['DeploymentSourceMapFile']
       updated_at: string
@@ -959,6 +971,7 @@ export interface operations {
         }
         content: {
           'application/json': {
+            artifact?: null | components['schemas']['BuildArtifactResponse']
             build_id: string
             entry: string
             error?: string | null
@@ -1051,6 +1064,7 @@ export interface operations {
             bundle?: string | null
             created_at: string
             entry: string
+            files?: components['schemas']['DeploymentFile'][] | null
             guild_id: string
             source_map?: null | components['schemas']['DeploymentSourceMapFile']
             updated_at: string
@@ -1144,6 +1158,7 @@ export interface operations {
             bundle?: string | null
             created_at: string
             entry: string
+            files?: components['schemas']['DeploymentFile'][] | null
             guild_id: string
             source_map?: null | components['schemas']['DeploymentSourceMapFile']
             updated_at: string
@@ -1238,6 +1253,7 @@ export interface operations {
             bundle?: string | null
             created_at: string
             entry: string
+            files?: components['schemas']['DeploymentFile'][] | null
             guild_id: string
             source_map?: null | components['schemas']['DeploymentSourceMapFile']
             updated_at: string

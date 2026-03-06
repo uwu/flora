@@ -245,14 +245,40 @@ pub async fn ensure_guild_admin(
     identity: &IdentityContext,
     guild_id: &str,
 ) -> Result<(), ApiError> {
-    // Prefer user OAuth token if available; otherwise fall back to bot http.
-    let member = if let Some(access_token) = &identity.access_token {
-        state
+    if let Some(access_token) = &identity.access_token {
+        let guilds = state
             .auth
-            .fetch_guild_member(guild_id, access_token)
+            .fetch_user_guilds_cached(&identity.user_id, access_token)
             .await
-            .map_err(ApiError::internal)?
-    } else {
+            .map_err(ApiError::internal)?;
+        let Some(guild) = guilds.into_iter().find(|g| g.id == guild_id) else {
+            return Err(ApiError::forbidden("user is not in guild"));
+        };
+
+        let perms = guild
+            .permissions_new
+            .as_deref()
+            .or(guild.permissions.as_deref())
+            .and_then(|p| p.parse::<u64>().ok())
+            .unwrap_or_default();
+
+        if !has_admin_permissions(perms) {
+            return Err(ApiError::forbidden("admin permission required"));
+        }
+
+        let guild_id_num: u64 = guild_id
+            .parse()
+            .map_err(|_| ApiError::bad_request("invalid guild id"))?;
+        state
+            .http
+            .get_guild(guild_id_num.into())
+            .await
+            .map_err(|_| ApiError::forbidden("bot not in guild"))?;
+
+        return Ok(());
+    }
+
+    let member = {
         // bot lookup
         let guild_id_num: u64 = guild_id
             .parse()

@@ -7,7 +7,7 @@ import { AppProvider } from '@/contexts/AppContext'
 import { ThemeProvider } from '@/lib/theme'
 import { Route, Switch } from 'wouter'
 
-export function App() {
+export default function App() {
   return (
     <ThemeProvider>
       <AppProvider>
@@ -24,4 +24,3 @@ export function App() {
   )
 }
 
-export default App

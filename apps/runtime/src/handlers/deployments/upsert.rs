@@ -1,4 +1,5 @@
 use crate::{
+    bundler::{BundleLimits, DeploymentFile, bundle_files},
     handlers::{
         auth::{ensure_guild_admin, require_identity},
         error::ApiError,
@@ -21,8 +22,12 @@ use utoipa::ToSchema;
 pub struct DeploymentRequest {
     /// Entry point path for the bundle (e.g. src/main.ts).
     pub entry: String,
-    /// Prebuilt JavaScript bundle source.
-    pub bundle: String,
+    /// Source files for the deployment. Preferred over raw bundle input.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub files: Option<Vec<DeploymentFile>>,
+    /// Prebuilt JavaScript bundle source (legacy mode).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bundle: Option<String>,
     /// Optional source map file for the prebuilt bundle.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_map: Option<DeploymentSourceMapFile>,
@@ -36,6 +41,8 @@ pub struct DeploymentResponse {
     pub updated_at: String,
     pub entry: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub files: Option<Vec<DeploymentFile>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub source_map: Option<DeploymentSourceMapFile>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bundle: Option<String>,
@@ -48,6 +55,7 @@ impl From<Deployment> for DeploymentResponse {
             created_at: value.created_at.to_rfc3339(),
             updated_at: value.updated_at.to_rfc3339(),
             entry: value.entry,
+            files: None,
             source_map: None,
             bundle: None,
         }
@@ -55,6 +63,11 @@ impl From<Deployment> for DeploymentResponse {
 }
 
 impl DeploymentResponse {
+    pub fn with_files(mut self, files: Option<Vec<DeploymentFile>>) -> Self {
+        self.files = files;
+        self
+    }
+
     pub fn with_source_map(mut self, source_map: Option<DeploymentSourceMapFile>) -> Self {
         self.source_map = source_map;
         self
@@ -71,8 +84,27 @@ fn validate_request(request: &DeploymentRequest) -> Result<(), ApiError> {
         return Err(ApiError::bad_request("entry must not be empty"));
     }
 
-    if request.bundle.trim().is_empty() {
-        return Err(ApiError::bad_request("bundle must not be empty"));
+    match (&request.files, &request.bundle) {
+        (Some(files), _) if files.is_empty() => {
+            return Err(ApiError::bad_request("files must not be empty"));
+        }
+        (Some(files), _) => {
+            for file in files {
+                if file.path.trim().is_empty() {
+                    return Err(ApiError::bad_request("files[].path must not be empty"));
+                }
+                if file.contents.trim().is_empty() {
+                    return Err(ApiError::bad_request("files[].contents must not be empty"));
+                }
+            }
+        }
+        (None, Some(bundle)) if bundle.trim().is_empty() => {
+            return Err(ApiError::bad_request("bundle must not be empty"));
+        }
+        (None, None) => {
+            return Err(ApiError::bad_request("either files or bundle is required"));
+        }
+        _ => {}
     }
 
     if let Some(source_map) = &request.source_map {
@@ -119,14 +151,31 @@ pub async fn upsert_deployment_handler(
 
     validate_request(&request)?;
 
+    let files = request.files;
+    let (bundle, source_map) = if let Some(bundle) = request.bundle {
+        (bundle, request.source_map)
+    } else if let Some(files_ref) = files.as_ref() {
+        let bundle_name = format!("guild:{guild_id}.bundle.js");
+        let bundled = bundle_files(
+            &bundle_name,
+            &request.entry,
+            files_ref,
+            BundleLimits::default(),
+        )
+        .map_err(|err| ApiError::bad_request(format!("invalid deployment files: {err}")))?;
+        (bundled.code, None)
+    } else {
+        let Some(bundle) = request.bundle else {
+            return Err(ApiError::bad_request(
+                "bundle is required when files are missing",
+            ));
+        };
+        (bundle, request.source_map)
+    };
+
     let deployment = state
         .deployments
-        .upsert_deployment(
-            guild_id.clone(),
-            request.entry,
-            request.bundle,
-            request.source_map,
-        )
+        .upsert_deployment(guild_id.clone(), request.entry, files, bundle, source_map)
         .await
         .map_err(|err| {
             error!(target: "flora:api", guild_id, ?err, "failed to upsert deployment");
@@ -148,13 +197,17 @@ pub async fn upsert_deployment_handler(
 #[cfg(test)]
 mod tests {
     use super::{DeploymentRequest, validate_request};
-    use crate::{handlers::error::ApiError, services::deployments::DeploymentSourceMapFile};
+    use crate::{
+        bundler::DeploymentFile, handlers::error::ApiError,
+        services::deployments::DeploymentSourceMapFile,
+    };
 
     #[test]
     fn validate_request_rejects_empty_bundle() {
         let request = DeploymentRequest {
             entry: "src/main.ts".to_string(),
-            bundle: "   ".to_string(),
+            files: None,
+            bundle: Some("   ".to_string()),
             source_map: None,
         };
 
@@ -166,7 +219,8 @@ mod tests {
     fn validate_request_rejects_invalid_source_map() {
         let request = DeploymentRequest {
             entry: "src/main.ts".to_string(),
-            bundle: "console.log('ok')".to_string(),
+            files: None,
+            bundle: Some("console.log('ok')".to_string()),
             source_map: Some(DeploymentSourceMapFile {
                 path: "source-map.txt".to_string(),
                 contents: "{}".to_string(),
@@ -181,11 +235,42 @@ mod tests {
     fn validate_request_accepts_bundle_with_source_map() {
         let request = DeploymentRequest {
             entry: "src/main.ts".to_string(),
-            bundle: "console.log('ok')".to_string(),
+            files: None,
+            bundle: Some("console.log('ok')".to_string()),
             source_map: Some(DeploymentSourceMapFile {
                 path: "bundle.js.map".to_string(),
                 contents: "{}".to_string(),
             }),
+        };
+
+        validate_request(&request).expect("request should be valid");
+    }
+
+    #[test]
+    fn validate_request_accepts_files_without_bundle() {
+        let request = DeploymentRequest {
+            entry: "src/main.ts".to_string(),
+            files: Some(vec![DeploymentFile {
+                path: "src/main.ts".to_string(),
+                contents: "export default 1".to_string(),
+            }]),
+            bundle: None,
+            source_map: None,
+        };
+
+        validate_request(&request).expect("request should be valid");
+    }
+
+    #[test]
+    fn validate_request_accepts_files_with_bundle() {
+        let request = DeploymentRequest {
+            entry: "src/main.ts".to_string(),
+            files: Some(vec![DeploymentFile {
+                path: "src/main.ts".to_string(),
+                contents: "export default 1".to_string(),
+            }]),
+            bundle: Some("console.log('ok')".to_string()),
+            source_map: None,
         };
 
         validate_request(&request).expect("request should be valid");

@@ -34,6 +34,7 @@ function EmptyState({
 }
 
 export function TokenManager() {
+  'use no memo'
   const { tokens, refreshTokens } = useApp()
   const [newToken, setNewToken] = useState<string | null>(null)
   const [tokenLabel, setTokenLabel] = useState<string>('')
@@ -42,10 +43,10 @@ export function TokenManager() {
   const handleCreateToken = async () => {
     setError(null)
     try {
-      const res = await api.POST('/tokens', { body: { label: tokenLabel || undefined } })
+      const res = await api.POST('/tokens/', { body: { label: tokenLabel || undefined } })
       setNewToken(res.data?.token || null)
       setTokenLabel('')
-      refreshTokens()
+      await refreshTokens()
     } catch (err: any) {
       setNewToken(null)
       setError(err.message || 'Failed to create token')
@@ -55,7 +56,7 @@ export function TokenManager() {
   const handleDeleteToken = async (tokenId: string) => {
     try {
       await api.DELETE('/tokens/{token_id}', { params: { path: { token_id: tokenId } } })
-      refreshTokens()
+      await refreshTokens()
     } catch (err: any) {
       setError(err.message || 'Failed to delete token')
     }

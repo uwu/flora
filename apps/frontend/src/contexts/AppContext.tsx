@@ -1,6 +1,6 @@
 import { api } from '@/lib/openapi-client'
 import type { components } from '@/lib/openapi-schema'
-import { createContext, type ReactNode, useContext, useEffect, useState } from 'react'
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react'
 
 type AuthUser = components['schemas']['AuthUser']
 type Deployment = components['schemas']['DeploymentResponse']
@@ -15,7 +15,7 @@ type LoadState<T> = {
 
 const initialState = { data: null, loading: true, error: null }
 
-export type AppView = 'guild' | 'user-settings'
+type AppView = 'guild' | 'overview' | 'editor' | 'deployments' | 'user-settings'
 
 interface AppContextType {
   session: AuthUser | null
@@ -53,69 +53,86 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [view, setView] = useState<AppView>('guild')
 
-  const refreshSession = async () => {
-    try {
-      const res = await api.GET('/auth/me')
-      setSession(res.data?.user ?? null)
-      setSessionError(null)
-    } catch (err: any) {
-      if (err.status === 401) {
-        setSession(null)
-      } else {
-        setSessionError(err.message || 'Failed to load session')
-      }
-    }
-  }
+  const refreshSession = useCallback((): Promise<void> => {
+    return api
+      .GET('/auth/me', {})
+      .then((res) => {
+        setSession(res.data?.user ?? null)
+        setSessionError(null)
+      })
+      .catch((err: any) => {
+        if (err.status === 401) {
+          setSession(null)
+        } else {
+          setSessionError(err.message || 'Failed to load session')
+        }
+      })
+  }, [])
 
-  const refreshGuilds = async () => {
+  const refreshGuilds = useCallback((): Promise<void> => {
     setGuilds((prev) => ({ ...prev, loading: true }))
-    try {
-      const res = await api.GET('/guilds')
-      setGuilds({ data: res.data ?? null, loading: false, error: null })
-    } catch (err: any) {
-      setGuilds({ data: null, loading: false, error: err.message })
-    }
-  }
+    return api
+      .GET('/guilds/', {})
+      .then((res) => {
+        setGuilds({ data: res.data ?? null, loading: false, error: null })
+      })
+      .catch((err: any) => {
+        setGuilds({ data: null, loading: false, error: err.message })
+      })
+  }, [])
 
-  const refreshDeployments = async () => {
+  const refreshDeployments = useCallback((): Promise<void> => {
     setDeployments((prev) => ({ ...prev, loading: true }))
-    try {
-      const res = await api.GET('/deployments')
-      setDeployments({ data: res.data ?? null, loading: false, error: null })
+    return api
+      .GET('/deployments/', {})
+      .then((res) => {
+        setDeployments({ data: res.data ?? null, loading: false, error: null })
 
-      if (!selectedGuild && (res.data?.length ?? 0) > 0) {
-        setSelectedGuild(res.data![0].guild_id)
-      }
-    } catch (err: any) {
-      setDeployments({ data: null, loading: false, error: err.message })
-    }
-  }
+        if ((res.data?.length ?? 0) > 0) {
+          const firstGuildId = res.data![0].guild_id
+          setSelectedGuild((prev) => prev || firstGuildId)
+        }
+      })
+      .catch((err: any) => {
+        setDeployments({ data: null, loading: false, error: err.message })
+      })
+  }, [])
 
-  const refreshTokens = async () => {
+  const refreshTokens = useCallback((): Promise<void> => {
     setTokens((prev) => ({ ...prev, loading: true }))
-    try {
-      const res = await api.GET('/tokens')
-      setTokens({ data: res.data ?? null, loading: false, error: null })
-    } catch (err: any) {
-      setTokens({ data: null, loading: false, error: err.message })
-    }
-  }
+    return api
+      .GET('/tokens/', {})
+      .then((res) => {
+        setTokens({ data: res.data ?? null, loading: false, error: null })
+      })
+      .catch((err: any) => {
+        setTokens({ data: null, loading: false, error: err.message })
+      })
+  }, [])
 
   useEffect(() => {
-    refreshSession()
-  }, [])
+    const timer = window.setTimeout(() => {
+      void refreshSession()
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [refreshSession])
 
   useEffect(() => {
     if (!session) return
 
-    setGuilds({ ...initialState })
-    setDeployments({ ...initialState })
-    setTokens({ ...initialState })
+    const timer = window.setTimeout(() => {
+      void refreshGuilds()
+      void refreshDeployments()
+      void refreshTokens()
+    }, 0)
 
-    refreshGuilds()
-    refreshDeployments()
-    refreshTokens()
-  }, [session])
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [refreshDeployments, refreshGuilds, refreshTokens, session])
 
   return (
     <AppContext.Provider
@@ -131,7 +148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSession,
         setSelectedGuild,
         setSidebarOpen,
-        toggleSidebar: () => setSidebarOpen(!sidebarOpen),
+        toggleSidebar: () => setSidebarOpen((prev) => !prev),
         setView,
         refreshSession,
         refreshGuilds,

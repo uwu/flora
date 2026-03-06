@@ -8,7 +8,14 @@ export default defineConfig(({ mode }) => {
   const API_HOST = 'http://localhost:3000'
   console.log(`API: ${API_HOST}`)
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react({
+        babel: {
+          plugins: ['babel-plugin-react-compiler']
+        }
+      }),
+      tailwindcss()
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),

@@ -7,6 +7,8 @@ use std::sync::Arc;
 use tracing::{info, warn};
 use utoipa::ToSchema;
 
+use crate::bundler::DeploymentFile;
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct DeploymentSourceMapFile {
     pub path: String,
@@ -18,6 +20,8 @@ pub struct DeploymentSourceMapFile {
 pub struct Deployment {
     pub guild_id: String,
     pub entry: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub files: Option<Vec<DeploymentFile>>,
     pub source_map: Option<DeploymentSourceMapFile>,
     pub bundle: String,
     pub created_at: DateTime<Utc>,
@@ -35,6 +39,7 @@ pub struct DeploymentService {
 struct DeploymentRow {
     guild_id: String,
     entry: String,
+    files: Option<sqlx::types::Json<Vec<DeploymentFile>>>,
     source_map: Option<sqlx::types::Json<DeploymentSourceMapFile>>,
     bundle: String,
     created_at: DateTime<Utc>,
@@ -58,23 +63,26 @@ impl DeploymentService {
         &self,
         guild_id: String,
         entry: String,
+        files: Option<Vec<DeploymentFile>>,
         bundle: String,
         source_map: Option<DeploymentSourceMapFile>,
     ) -> Result<Deployment> {
         let record = sqlx::query_as::<_, DeploymentRow>(
             r#"
-            INSERT INTO deployments (guild_id, entry, bundle, source_map)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO deployments (guild_id, entry, files, bundle, source_map)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (guild_id) DO UPDATE
             SET entry = EXCLUDED.entry,
+                files = EXCLUDED.files,
                 bundle = EXCLUDED.bundle,
                 source_map = EXCLUDED.source_map,
                 updated_at = NOW()
-            RETURNING guild_id, entry, source_map, bundle, created_at, updated_at
+            RETURNING guild_id, entry, files, source_map, bundle, created_at, updated_at
             "#,
         )
         .bind(&guild_id)
         .bind(&entry)
+        .bind(files.map(sqlx::types::Json))
         .bind(&bundle)
         .bind(source_map.map(sqlx::types::Json))
         .fetch_one(&self.db_pool)
@@ -93,7 +101,7 @@ impl DeploymentService {
 
         let row = sqlx::query_as::<_, DeploymentRow>(
             r#"
-            SELECT guild_id, entry, source_map, bundle, created_at, updated_at
+            SELECT guild_id, entry, files, source_map, bundle, created_at, updated_at
             FROM deployments
             WHERE guild_id = $1
             "#,
@@ -114,7 +122,7 @@ impl DeploymentService {
     pub async fn list_deployments(&self) -> Result<Vec<Deployment>> {
         let rows = sqlx::query_as::<_, DeploymentRow>(
             r#"
-            SELECT guild_id, entry, source_map, bundle, created_at, updated_at
+            SELECT guild_id, entry, files, source_map, bundle, created_at, updated_at
             FROM deployments
             "#,
         )
@@ -161,6 +169,7 @@ fn to_deployment(row: DeploymentRow) -> Result<Deployment> {
     Ok(Deployment {
         guild_id: row.guild_id,
         entry: row.entry,
+        files: row.files.map(|files| files.0),
         source_map: row.source_map.map(|source_map| source_map.0),
         bundle: row.bundle,
         created_at: row.created_at,
@@ -187,6 +196,10 @@ mod tests {
         let deployment = Deployment {
             guild_id: "123".to_string(),
             entry: "src/main.ts".to_string(),
+            files: Some(vec![DeploymentFile {
+                path: "src/main.ts".to_string(),
+                contents: "console.log('source')".to_string(),
+            }]),
             source_map: Some(DeploymentSourceMapFile {
                 path: "bundle.js.map".to_string(),
                 contents: "{\"version\":3}".to_string(),
@@ -219,5 +232,6 @@ mod tests {
             serde_json::from_value(value).expect("deserialize deployment without source map");
 
         assert!(deployment.source_map.is_none());
+        assert!(deployment.files.is_none());
     }
 }

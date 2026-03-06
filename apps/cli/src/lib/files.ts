@@ -10,6 +10,14 @@ export type DeploymentFile = {
 }
 
 const ALLOWED_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cts'])
+const EXTRA_FILE_NAMES = new Set([
+  'package.json',
+  'pnpm-lock.yaml',
+  'package-lock.json',
+  'yarn.lock',
+  'bun.lockb',
+  'tsconfig.json'
+])
 const SKIP_DIRS = new Set([
   'node_modules',
   'target',
@@ -31,7 +39,10 @@ const SKIP_DIRS = new Set([
 export async function collectFiles(root: string): Promise<DeploymentFile[]> {
   const rootAbs = path.resolve(root)
   const ignorePatterns = [...SKIP_DIRS].map((dir) => `**/${dir}/**`)
-  const includePatterns = [...ALLOWED_EXTENSIONS].map((ext) => `**/*${ext}`)
+  const includePatterns = [
+    ...[...ALLOWED_EXTENSIONS].map((ext) => `**/*${ext}`),
+    ...[...EXTRA_FILE_NAMES].map((fileName) => `**/${fileName}`)
+  ]
   const relPaths = await glob(includePatterns, {
     cwd: rootAbs,
     dot: true,

@@ -69,7 +69,7 @@ where
 }
 
 /// Guild entry returned by /users/@me/guilds.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct UserGuild {
     pub id: String,
     pub name: String,

@@ -6,7 +6,7 @@ import { glob } from 'tinyglobby'
 
 const MAX_FILE_COUNT = 1000
 const INCLUDE_PATTERNS = ['src/**']
-const INCLUDE_FILES = ['package.json', 'pnpm-lock.yaml', 'flora.config.ts']
+const INCLUDE_FILES = ['package.json', 'flora.config.ts']
 
 export async function zipProject(root: string): Promise<{ zip: Uint8Array; fileCount: number }> {
   const rootAbs = path.resolve(root)

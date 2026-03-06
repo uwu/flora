@@ -55,6 +55,38 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/builds/': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['create_build_handler']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/builds/{build_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['get_build_handler']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/deployments/': {
     parameters: {
       query?: never
@@ -124,6 +156,196 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/kv/export/{guild_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Export all KV stores for a guild
+     * @description Creates a backup of all stores using the sled database export format.
+     *     Returns a backup ID for later retrieval.
+     */
+    post: operations['export_guild_handler']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/kv/stores': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** List all KV stores for a guild */
+    get: operations['list_stores_handler']
+    put?: never
+    /** Create a new KV store for a guild */
+    post: operations['create_store_handler']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/kv/stores/{guild_id}/{store_name}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /** Delete a KV store and all its data */
+    delete: operations['delete_store_handler']
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/kv/{guild_id}/{store_name}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['list_keys_handler']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/kv/{guild_id}/{store_name}/{key}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get a value from a KV store */
+    get: operations['get_value_handler']
+    put: operations['set_value_handler']
+    post?: never
+    /** Delete a key from a KV store */
+    delete: operations['delete_key_handler']
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/logs': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get recent logs. */
+    get: operations['get_logs']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/logs/{guild_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get recent logs for a specific guild. */
+    get: operations['get_guild_logs']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/metrics': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get metrics in Prometheus exposition format. */
+    get: operations['get_metrics']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/metrics/json': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get metrics as JSON. */
+    get: operations['get_metrics_json']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/secrets/{guild_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['list_secrets_handler']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/secrets/{guild_id}/{name}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put: operations['upsert_secret_handler']
+    post?: never
+    delete: operations['delete_secret_handler']
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/tokens/': {
     parameters: {
       query?: never
@@ -174,6 +396,32 @@ export interface components {
       id: string
       username: string
     }
+    BuildArtifactResponse: {
+      bundle: string
+      source_map: string
+    }
+    BuildStatusResponse: {
+      artifact?: null | components['schemas']['BuildArtifactResponse']
+      build_id: string
+      entry: string
+      error?: string | null
+      finished_at?: string | null
+      guild_id: string
+      logs: string[]
+      started_at?: string | null
+      status: string
+    }
+    CreateBuildResponse: {
+      build_id: string
+      status: string
+    }
+    CreateStoreRequest: {
+      guild_id: string
+      store_name: string
+    }
+    CreateStoreResponse: {
+      store: components['schemas']['KvStore']
+    }
     /** @description Create-token payload. */
     CreateTokenRequest: {
       label?: string | null
@@ -182,22 +430,64 @@ export interface components {
     CreateTokenResponse: {
       token: string
     }
+    DeleteKeyParams: {
+      guild_id: string
+      key: string
+      store_name: string
+    }
+    DeleteSecretResponse: {
+      deleted: boolean
+    }
+    DeleteStoreParams: {
+      guild_id: string
+      store_name: string
+    }
+    DeploymentFile: {
+      contents: string
+      path: string
+    }
     /** @description Body for creating or replacing a deployment. */
     DeploymentRequest: {
-      /** @description Raw source code for the guild bot. */
-      code: string
+      /** @description Prebuilt JavaScript bundle source (legacy mode). */
+      bundle?: string | null
+      /** @description Entry point path for the bundle (e.g. src/main.ts). */
+      entry: string
+      /** @description Source files for the deployment. Preferred over raw bundle input. */
+      files?: components['schemas']['DeploymentFile'][] | null
+      source_map?: null | components['schemas']['DeploymentSourceMapFile']
     }
     /** @description API representation of a deployment. */
     DeploymentResponse: {
+      bundle?: string | null
       created_at: string
+      entry: string
+      files?: components['schemas']['DeploymentFile'][] | null
       guild_id: string
-      source?: string | null
+      source_map?: null | components['schemas']['DeploymentSourceMapFile']
       updated_at: string
+    }
+    DeploymentSourceMapFile: {
+      contents: string
+      path: string
     }
     /** @description Canonical error envelope returned by the HTTP API. */
     ErrorResponse: {
       /** @description Human readable error message. */
       message: string
+    }
+    ExportGuildParams: {
+      guild_id: string
+    }
+    ExportGuildResponse: {
+      backup_id: string
+    }
+    GetValueParams: {
+      guild_id: string
+      key: string
+      store_name: string
+    }
+    GetValueResponse: {
+      value?: string | null
     }
     /** @description Guild info exposed by the API. */
     GuildResponse: {
@@ -207,12 +497,125 @@ export interface components {
       /** Format: int64 */
       permissions: number
     }
+    KvStore: {
+      /** Format: date-time */
+      created_at: string
+      guild_id: string
+      id: string
+      store_name: string
+      /** Format: date-time */
+      updated_at: string
+    }
+    ListKeysParams: {
+      guild_id: string
+      store_name: string
+    }
+    ListKeysQuery: {
+      cursor?: string | null
+      /** Format: int32 */
+      limit?: number | null
+      prefix?: string | null
+    }
+    ListKeysResponse: {
+      cursor?: string | null
+      keys: components['schemas']['RawKvKeyInfo'][]
+      list_complete: boolean
+    }
+    ListStoresQuery: {
+      guild_id: string
+    }
+    /** @description A log entry captured from the runtime. */
+    LogEntry: {
+      /** @description Guild ID if applicable. */
+      guild_id?: string | null
+      /** @description Log level (trace, debug, info, warn, error). */
+      level: string
+      /** @description Log message. */
+      message: string
+      /** @description Target/module that produced the log. */
+      target: string
+      /**
+       * Format: int64
+       * @description Timestamp in milliseconds since Unix epoch.
+       */
+      timestamp: number
+    }
+    LogsQuery: {
+      /** @description Maximum number of log entries to return (default 100, max 1000). */
+      limit?: number
+    }
+    /** @description Snapshot of metrics at a point in time. */
+    MetricsSnapshot: {
+      /** Format: int64 */
+      avg_latency_us: number
+      /** Format: int64 */
+      dispatch_errors: number
+      /** Format: int64 */
+      dispatch_total: number
+      /** Format: int64 */
+      isolate_count: number
+      /** Format: int64 */
+      isolate_restarts: number
+      /** Format: int64 */
+      migration_quiesce_duration_us: number
+      /** Format: int64 */
+      migration_success: number
+      /** Format: int64 */
+      migration_timeout: number
+      /** Format: int64 */
+      oom_errors: number
+      /** Format: int64 */
+      p50_latency_us: number
+      /** Format: int64 */
+      p95_latency_us: number
+      /** Format: int64 */
+      p99_latency_us: number
+      /** Format: int64 */
+      runtime_restarts: number
+      /** Format: int64 */
+      timeout_errors: number
+    }
+    /** @description Information about a single KV key. */
+    RawKvKeyInfo: {
+      /**
+       * Format: int64
+       * @description Unix timestamp (seconds) when this key expires.
+       */
+      expiration?: number | null
+      /** @description Arbitrary JSON metadata attached to the key. */
+      metadata?: unknown
+      /** @description The key's name. */
+      name: string
+    }
+    /** @description Metadata response; values are never returned. */
+    SecretMetadataResponse: {
+      allowed_hosts: string[]
+      name: string
+    }
+    SetValueParams: {
+      guild_id: string
+      key: string
+      store_name: string
+    }
+    SetValueRequest: {
+      /** Format: int64 */
+      expiration?: number | null
+      metadata?: unknown
+      value: string
+    }
+    SetValueResponse: {
+      success: boolean
+    }
     /** @description Token list item. */
     TokenResponse: {
       created_at: string
       label?: string | null
       last_used_at?: string | null
       token_id: string
+    }
+    UpsertSecretRequest: {
+      allowed_hosts?: string[]
+      value: string
     }
   }
   responses: never
@@ -466,6 +869,182 @@ export interface operations {
       }
     }
   }
+  create_build_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            build_id: string
+            status: string
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  get_build_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description Build ID */
+        build_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            artifact?: null | components['schemas']['BuildArtifactResponse']
+            build_id: string
+            entry: string
+            error?: string | null
+            finished_at?: string | null
+            guild_id: string
+            logs: string[]
+            started_at?: string | null
+            status: string
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
   list_deployments_handler: {
     parameters: {
       query?: never
@@ -482,9 +1061,12 @@ export interface operations {
         }
         content: {
           'application/json': {
+            bundle?: string | null
             created_at: string
+            entry: string
+            files?: components['schemas']['DeploymentFile'][] | null
             guild_id: string
-            source?: string | null
+            source_map?: null | components['schemas']['DeploymentSourceMapFile']
             updated_at: string
           }[]
         }
@@ -553,7 +1135,10 @@ export interface operations {
   }
   get_deployment_handler: {
     parameters: {
-      query?: never
+      query?: {
+        /** @description Include bundled output in response */
+        include_bundle?: boolean
+      }
       header?: never
       path: {
         /** @description Discord guild id */
@@ -570,9 +1155,12 @@ export interface operations {
         }
         content: {
           'application/json': {
+            bundle?: string | null
             created_at: string
+            entry: string
+            files?: components['schemas']['DeploymentFile'][] | null
             guild_id: string
-            source?: string | null
+            source_map?: null | components['schemas']['DeploymentSourceMapFile']
             updated_at: string
           }
         }
@@ -662,9 +1250,12 @@ export interface operations {
         }
         content: {
           'application/json': {
+            bundle?: string | null
             created_at: string
+            entry: string
+            files?: components['schemas']['DeploymentFile'][] | null
             guild_id: string
-            source?: string | null
+            source_map?: null | components['schemas']['DeploymentSourceMapFile']
             updated_at: string
           }
         }
@@ -833,6 +1424,1364 @@ export interface operations {
         }
         content: {
           'text/plain': string
+        }
+      }
+    }
+  }
+  export_guild_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description Guild ID */
+        guild_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            backup_id: string
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  list_stores_handler: {
+    parameters: {
+      query: {
+        guild_id: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** Format: date-time */
+            created_at: string
+            guild_id: string
+            id: string
+            store_name: string
+            /** Format: date-time */
+            updated_at: string
+          }[]
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  create_store_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateStoreRequest']
+      }
+    }
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            store: components['schemas']['KvStore']
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  delete_store_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description Guild ID */
+        guild_id: string
+        /** @description Store name */
+        store_name: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Store deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  list_keys_handler: {
+    parameters: {
+      query?: {
+        prefix?: string | null
+        limit?: number | null
+        cursor?: string | null
+      }
+      header?: never
+      path: {
+        /** @description Guild ID */
+        guild_id: string
+        /** @description Store name */
+        store_name: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Cursor for fetching the next page of results. */
+            cursor?: string | null
+            /** @description The keys returned by this list operation. */
+            keys: components['schemas']['RawKvKeyInfo'][]
+            /** @description Whether all matching keys have been returned. */
+            listComplete: boolean
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  get_value_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description Guild ID */
+        guild_id: string
+        /** @description Store name */
+        store_name: string
+        /** @description Key to retrieve */
+        key: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            value?: string | null
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  set_value_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description Guild ID */
+        guild_id: string
+        /** @description Store name */
+        store_name: string
+        /** @description Key to set */
+        key: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SetValueRequest']
+      }
+    }
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            success: boolean
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  delete_key_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description Guild ID */
+        guild_id: string
+        /** @description Store name */
+        store_name: string
+        /** @description Key to delete */
+        key: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Key deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  get_logs: {
+    parameters: {
+      query?: {
+        /** @description Maximum number of log entries to return (default 100, max 1000). */
+        limit?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Guild ID if applicable. */
+            guild_id?: string | null
+            /** @description Log level (trace, debug, info, warn, error). */
+            level: string
+            /** @description Log message. */
+            message: string
+            /** @description Target/module that produced the log. */
+            target: string
+            /**
+             * Format: int64
+             * @description Timestamp in milliseconds since Unix epoch.
+             */
+            timestamp: number
+          }[]
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  get_guild_logs: {
+    parameters: {
+      query?: {
+        /** @description Maximum number of log entries to return (default 100, max 1000). */
+        limit?: number
+      }
+      header?: never
+      path: {
+        /** @description Discord guild ID */
+        guild_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Guild ID if applicable. */
+            guild_id?: string | null
+            /** @description Log level (trace, debug, info, warn, error). */
+            level: string
+            /** @description Log message. */
+            message: string
+            /** @description Target/module that produced the log. */
+            target: string
+            /**
+             * Format: int64
+             * @description Timestamp in milliseconds since Unix epoch.
+             */
+            timestamp: number
+          }[]
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  get_metrics: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'text/plain': unknown
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  get_metrics_json: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** Format: int64 */
+            avg_latency_us: number
+            /** Format: int64 */
+            dispatch_errors: number
+            /** Format: int64 */
+            dispatch_total: number
+            /** Format: int64 */
+            isolate_count: number
+            /** Format: int64 */
+            isolate_restarts: number
+            /** Format: int64 */
+            migration_quiesce_duration_us: number
+            /** Format: int64 */
+            migration_success: number
+            /** Format: int64 */
+            migration_timeout: number
+            /** Format: int64 */
+            oom_errors: number
+            /** Format: int64 */
+            p50_latency_us: number
+            /** Format: int64 */
+            p95_latency_us: number
+            /** Format: int64 */
+            p99_latency_us: number
+            /** Format: int64 */
+            runtime_restarts: number
+            /** Format: int64 */
+            timeout_errors: number
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  list_secrets_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description Discord guild id */
+        guild_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            allowed_hosts: string[]
+            name: string
+          }[]
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  upsert_secret_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description Discord guild id */
+        guild_id: string
+        /** @description Secret name */
+        name: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpsertSecretRequest']
+      }
+    }
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            allowed_hosts: string[]
+            name: string
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  delete_secret_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description Discord guild id */
+        guild_id: string
+        /** @description Secret name */
+        name: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            deleted: boolean
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
         }
       }
     }

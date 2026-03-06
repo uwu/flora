@@ -1,6 +1,8 @@
 import { colors } from 'consola/utils'
 
+import path from 'node:path'
 import { loadProjectConfig } from '../lib/config'
+import { collectFiles, toRelative } from '../lib/files'
 import { authHeaders, createApiClient, expectOk } from '../lib/http'
 import { logger } from '../lib/logger'
 import { promptIfMissing } from '../lib/prompts'
@@ -19,6 +21,8 @@ export async function deploy(
   const projectConfig = await loadProjectConfig()
   const entry = entryArg ?? projectConfig.entry ?? 'src/main.ts'
   const projectRoot = root ?? projectConfig.root ?? '.'
+  const projectRootAbs = path.resolve(projectRoot)
+  const entryRel = toRelative(path.resolve(projectRootAbs, entry), projectRootAbs)
 
   logger.info('Uploading project...')
   const { zip, fileCount } = await zipProject(projectRoot)
@@ -27,7 +31,7 @@ export async function deploy(
 
   const formData = new FormData()
   formData.append('guild_id', guild)
-  formData.append('entry', entry)
+  formData.append('entry', entryRel)
   formData.append('project_zip', new Blob([zip as BlobPart]), 'project.zip')
 
   const baseUrl = config.apiUrl
@@ -88,6 +92,8 @@ export async function deploy(
     throw new Error('Build produced no artifact bundle')
   }
 
+  const files = await collectFiles(projectRootAbs)
+
   const deployRes = await fetch(`${baseUrl}/deployments/${build.guild_id}`, {
     method: 'POST',
     headers: {
@@ -96,6 +102,7 @@ export async function deploy(
     },
     body: JSON.stringify({
       entry: build.entry,
+      files,
       bundle: build.artifact.bundle
     })
   })

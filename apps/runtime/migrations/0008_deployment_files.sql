@@ -1,0 +1,2 @@
+ALTER TABLE deployments
+    ADD COLUMN IF NOT EXISTS files JSONB;

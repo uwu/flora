@@ -34,11 +34,13 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
   const { state } = useSidebar()
   const isCollapsed = state === 'collapsed'
   const [openCollapsible, setOpenCollapsible] = useState<string | null>(null)
+  const activeRouteId = routes.find((route) => route.subs?.some((subRoute) => subRoute.isActive))?.id ?? null
 
   return (
     <SidebarMenu>
       {routes.map((route) => {
-        const isOpen = !isCollapsed && openCollapsible === route.id
+        const effectiveOpenRoute = openCollapsible ?? activeRouteId
+        const isOpen = !isCollapsed && effectiveOpenRoute === route.id
         const hasSubRoutes = !!route.subs?.length
 
         return (
@@ -77,7 +79,10 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                         <SidebarMenuSubItem key={`${route.id}-${subRoute.title}`}>
                           <SidebarMenuSubButton
                             isActive={subRoute.isActive}
-                            onClick={subRoute.onClick}
+                            onClick={() => {
+                              setOpenCollapsible(route.id)
+                              subRoute.onClick?.()
+                            }}
                             render={
                               <button className='flex w-full cursor-pointer items-center gap-2'>
                                 {subRoute.icon}

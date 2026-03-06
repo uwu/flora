@@ -1,0 +1,43 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+overrides:
+  vite: npm:@voidzero-dev/vite-plus-core@0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab
+  vitest: npm:@voidzero-dev/vite-plus-test@0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab
+
+importers:
+
+  .:
+    dependencies:
+      dayjs:
+        specifier: ^1.11.18
+        version: 1.11.19
+    devDependencies:
+      '@uwu/flora-cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@uwu/flora-sdk':
+        specifier: workspace:*
+        version: link:../../sdk
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
+packages:
+
+  dayjs@1.11.19:
+    resolution: {integrity: sha512-t5EcLVS6QPBNqM2z8fakk/NKel+Xzshgt8FFKAn+qwlD1pzZWxh0nVCrvFK7ZDb6XucZeF9z8C7CBWTRIVApAw==}
+
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+snapshots:
+
+  dayjs@1.11.19: {}
+
+  typescript@5.9.3: {}

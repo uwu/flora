@@ -1,6 +1,6 @@
 'use client'
 
-import { Avatar } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,8 +17,8 @@ import {
   useSidebar
 } from '@/components/ui/sidebar'
 import type { components } from '@/lib/openapi-schema'
-import { redirectToLogin } from '@/lib/utils'
-import { ChevronsUpDown, LogOut, Settings } from 'lucide-react'
+import { useTheme } from '@/lib/theme'
+import { ChevronsUpDown, LogOut, Moon, Settings, Sun } from 'lucide-react'
 
 type AuthUser = components['schemas']['AuthUser']
 
@@ -28,9 +28,24 @@ interface NavUserProps {
   onLogoutClick: () => void
 }
 
+function getUserInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('')
+}
+
+function getUserAvatarUrl(user: AuthUser) {
+  return user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128` : undefined
+}
+
 export function NavUser({ user, onSettingsClick, onLogoutClick }: NavUserProps) {
   const { isMobile, state } = useSidebar()
   const isCollapsed = state === 'collapsed'
+  const { theme, toggleTheme } = useTheme()
+  const displayName = user.global_name || user.username
 
   return (
     <SidebarMenu>
@@ -42,18 +57,14 @@ export function NavUser({ user, onSettingsClick, onLogoutClick }: NavUserProps) 
                 size='lg'
                 className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
               >
-                <Avatar
-                  name={user.global_name || user.username}
-                  userId={user.id}
-                  avatarHash={user.avatar}
-                  className='h-8 w-8 rounded-lg'
-                />
+                <Avatar className='h-8 w-8 rounded-lg'>
+                  <AvatarImage src={getUserAvatarUrl(user)} />
+                  <AvatarFallback>{getUserInitials(displayName)}</AvatarFallback>
+                </Avatar>
                 {!isCollapsed && (
                   <>
                     <div className='grid flex-1 text-left text-sm leading-tight'>
-                      <span className='truncate font-semibold'>
-                        {user.global_name || user.username}
-                      </span>
+                      <span className='truncate font-semibold'>{displayName}</span>
                       <span className='truncate text-xs text-muted-foreground'>Manage Account</span>
                     </div>
                     <ChevronsUpDown className='ml-auto size-4' />
@@ -71,17 +82,13 @@ export function NavUser({ user, onSettingsClick, onLogoutClick }: NavUserProps) 
             <DropdownMenuGroup>
               <DropdownMenuLabel className='p-0 font-normal'>
                 <div className='flex items-center gap-2 px-1 py-1.5 text-left text-sm'>
-                  <Avatar
-                    name={user.global_name || user.username}
-                    userId={user.id}
-                    avatarHash={user.avatar}
-                    className='h-8 w-8 rounded-lg'
-                  />
+                  <Avatar className='h-8 w-8 rounded-lg'>
+                    <AvatarImage src={getUserAvatarUrl(user)} />
+                    <AvatarFallback>{getUserInitials(displayName)}</AvatarFallback>
+                  </Avatar>
                   <div className='grid flex-1 text-left text-sm leading-tight'>
-                    <span className='truncate font-semibold'>
-                      {user.global_name || user.username}
-                    </span>
-                    <span className='truncate text-xs text-muted-foreground'>{user.username}</span>
+                    <span className='truncate font-semibold'>{displayName}</span>
+                    <span className='truncate text-xs text-muted-foreground'>@{user.username}</span>
                   </div>
                 </div>
               </DropdownMenuLabel>
@@ -90,6 +97,13 @@ export function NavUser({ user, onSettingsClick, onLogoutClick }: NavUserProps) 
             <DropdownMenuItem onClick={onSettingsClick} className='cursor-pointer'>
               <Settings className='mr-2 h-4 w-4' />
               Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={toggleTheme} className='cursor-pointer'>
+              {theme === 'dark'
+                ? <Sun className='mr-2 h-4 w-4' />
+                : <Moon className='mr-2 h-4 w-4' />}
+              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

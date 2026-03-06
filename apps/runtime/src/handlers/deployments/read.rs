@@ -60,9 +60,12 @@ pub async fn get_deployment_handler(
 
     ensure_guild_admin(&state, &identity, &guild_id).await?;
 
+    let files = deployment.files.clone();
     let source_map = deployment.source_map.clone();
     let bundle = deployment.bundle.clone();
-    let mut response = DeploymentResponse::from(deployment).with_source_map(source_map);
+    let mut response = DeploymentResponse::from(deployment)
+        .with_files(files)
+        .with_source_map(source_map);
     if query.include_bundle {
         response = response.with_bundle(bundle);
     }

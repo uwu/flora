@@ -33,6 +33,8 @@ pub struct AuthService {
 }
 
 impl AuthService {
+    const USER_GUILDS_CACHE_TTL_SECS: i64 = 30;
+
     pub fn new(
         config: AuthConfig,
         cache_pool: fred::prelude::Pool,
@@ -187,6 +189,52 @@ impl AuthService {
             };
             format!("failed to decode user guilds. First 500 chars: {}", preview)
         })
+    }
+
+    pub async fn fetch_user_guilds_cached(
+        &self,
+        user_id: &str,
+        access_token: &str,
+    ) -> Result<Vec<UserGuild>> {
+        let key = format!("oauth:user_guilds:{user_id}");
+        let cached: Option<String> = self
+            .cache_pool
+            .get(key.clone())
+            .await
+            .wrap_err("failed to load cached user guilds")?;
+
+        if let Some(raw) = cached {
+            match serde_json::from_str::<Vec<UserGuild>>(&raw) {
+                Ok(guilds) => return Ok(guilds),
+                Err(err) => {
+                    warn!(target: "flora:auth", ?err, user_id, "failed to decode cached user guilds");
+                }
+            }
+        }
+
+        let guilds = self.fetch_user_guilds(access_token).await?;
+        match serde_json::to_string(&guilds) {
+            Ok(raw) => {
+                if let Err(err) = self
+                    .cache_pool
+                    .set::<(), _, _>(
+                        key,
+                        raw,
+                        Some(Expiration::EX(Self::USER_GUILDS_CACHE_TTL_SECS)),
+                        None,
+                        false,
+                    )
+                    .await
+                {
+                    warn!(target: "flora:auth", ?err, user_id, "failed to cache user guilds");
+                }
+            }
+            Err(err) => {
+                warn!(target: "flora:auth", ?err, user_id, "failed to encode user guilds for cache");
+            }
+        }
+
+        Ok(guilds)
     }
 
     pub async fn fetch_guild_member(
