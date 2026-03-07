@@ -189,7 +189,7 @@ mod tests {
     use chrono::Utc;
     use serde_json::json;
 
-    use super::{Deployment, DeploymentSourceMapFile};
+    use super::{Deployment, DeploymentFile, DeploymentSourceMapFile};
 
     #[test]
     fn deployment_json_roundtrip_preserves_source_map() {

@@ -90,6 +90,14 @@
 # Default value: 4
 # max_workers = 4
 
+# Command queue capacity per worker.
+# Default: 1024
+#
+# Can also be specified via environment variable `RUNTIME_WORKER_QUEUE_CAPACITY`.
+#
+# Default value: 1024
+# worker_queue_capacity = 1024
+
 # Timeout in seconds for runtime bootstrap (0 disables).
 #
 # Can also be specified via environment variable `RUNTIME_BOOT_TIMEOUT_SECS`.
@@ -111,12 +119,12 @@
 # Default value: 3
 # dispatch_timeout_secs = 3
 
-# Max script size in bytes (SDK + deployment). Default: 1MB.
+# Max script size in bytes (SDK + deployment). Default: 8MB.
 #
 # Can also be specified via environment variable `RUNTIME_MAX_SCRIPT_BYTES`.
 #
-# Default value: 1048576
-# max_script_bytes = 1048576
+# Default value: 8388608
+# max_script_bytes = 8388608
 
 # Maximum number of deployment files accepted by bundler.
 #
