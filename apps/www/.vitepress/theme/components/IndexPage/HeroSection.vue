@@ -7,11 +7,35 @@
 
     <div class="hero-actions">
       <a
-        href="/sdk"
+        href="https://app.flora.uwu.network"
+        target="_blank"
+        rel="noopener noreferrer"
         class="btn-common btn-primary ring-offset-background focus-visible:ring-ring inline-flex items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 select-none border border-transparent rounded-md px-3 py-1.5 text-lg [&_svg]:size-5 [&_svg]:stroke-[1.5px] font-sans w-fit rail-tick-start"
       >
-        Get Started
-        <span class="i-lucide-arrow-right size-5" aria-hidden="true" />
+        Dashboard
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M7 17L17 7M17 7H7M17 7v10" />
+        </svg>
+      </a>
+      <a
+        href="/sdk"
+        class="btn-common btn-secondary ring-offset-background focus-visible:ring-ring inline-flex items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 select-none border rounded-md px-3 py-1.5 text-lg [&_svg]:size-5 [&_svg]:stroke-[1.5px] font-sans w-fit rail-tick-start"
+      >
+        Documentation
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+        >
+          <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+        </svg>
       </a>
       <a
         href="https://github.com/uwu/flora"
