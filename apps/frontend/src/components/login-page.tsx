@@ -100,6 +100,11 @@ export function LoginForm({
         </CardContent>
       </Card>
       <FieldDescription className='px-6 text-center text-white/90 [&_a]:underline [&_a]:underline-offset-2'>
+        flora is currently in{' '}
+        <strong>alpha</strong>. Things are subject to change. Please report any bugs, issues, or
+        security vulnerabilities to <a href='https://uwu.network/~tasky'>tasky</a>.
+      </FieldDescription>
+      <FieldDescription className='px-6 text-center text-white/90 [&_a]:underline [&_a]:underline-offset-2'>
         By clicking continue, you agree to our <a href='/terms-of-service'>Terms of Service</a> and
         {' '}
         <a href='/privacy-policy'>Privacy Policy</a>.
