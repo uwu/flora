@@ -1,39 +1,43 @@
 use crate::{
     bundler::{BundleLimits, DeploymentFile, bundle_files},
     handlers::{
-        auth::{ensure_guild_admin, require_identity},
+        auth::{IdentityContext, ensure_guild_admin, require_identity},
         error::ApiError,
         response::ApiJson,
     },
-    services::deployments::{Deployment, DeploymentSourceMapFile},
+    services::deployments::{
+        CreateDeploymentRevisionInput, Deployment, DeploymentActorType, DeploymentChangeSummary,
+        DeploymentRevision, DeploymentRevisionStatus, DeploymentService, DeploymentSource,
+        DeploymentSourceMapFile,
+    },
     state::AppState,
 };
 use axum::{
     Json,
     extract::{Path, State},
-    http::HeaderMap,
+    http::{HeaderMap, header::HeaderName},
 };
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use tracing::error;
 use utoipa::ToSchema;
 
-/// Body for creating or replacing a deployment.
+pub const DEPLOY_SOURCE_HEADER: HeaderName = HeaderName::from_static("x-flora-deploy-source");
+
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct DeploymentRequest {
-    /// Entry point path for the bundle (e.g. src/main.ts).
     pub entry: String,
-    /// Source files for the deployment. Preferred over raw bundle input.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub files: Option<Vec<DeploymentFile>>,
-    /// Prebuilt JavaScript bundle source (legacy mode).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bundle: Option<String>,
-    /// Optional source map file for the prebuilt bundle.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_map: Option<DeploymentSourceMapFile>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub build_id: Option<String>,
 }
 
-/// API representation of a deployment.
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct DeploymentResponse {
     pub guild_id: String,
@@ -46,6 +50,71 @@ pub struct DeploymentResponse {
     pub source_map: Option<DeploymentSourceMapFile>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bundle: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct DeploymentActorResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    pub actor_type: DeploymentActorType,
+}
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct DeploymentRevisionResponse {
+    pub id: String,
+    pub guild_id: String,
+    pub entry: String,
+    pub status: DeploymentRevisionStatus,
+    pub deployed_at: String,
+    pub deploy_source: DeploymentSource,
+    pub actor: DeploymentActorResponse,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub build_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_revision_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub change_summary: Option<DeploymentChangeSummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub files: Option<Vec<DeploymentFile>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_map: Option<DeploymentSourceMapFile>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bundle: Option<String>,
+}
+
+impl DeploymentRevisionResponse {
+    pub fn from_revision(revision: DeploymentRevision, include_bundle: bool) -> Self {
+        let bundle = if include_bundle {
+            Some(revision.bundle)
+        } else {
+            None
+        };
+
+        Self {
+            id: revision.id.to_string(),
+            guild_id: revision.guild_id,
+            entry: revision.entry,
+            status: revision.status,
+            deployed_at: revision.deployed_at.to_rfc3339(),
+            deploy_source: revision.deploy_source,
+            actor: DeploymentActorResponse {
+                user_id: revision.actor_user_id,
+                username: revision.actor_username,
+                actor_type: revision.actor_type,
+            },
+            error_message: revision.error_message,
+            build_id: revision.build_id,
+            base_revision_id: revision.base_revision_id.map(|value| value.to_string()),
+            change_summary: revision.change_summary,
+            files: revision.files,
+            source_map: revision.source_map,
+            bundle,
+        }
+    }
 }
 
 impl From<Deployment> for DeploymentResponse {
@@ -76,6 +145,50 @@ impl DeploymentResponse {
     pub fn with_bundle(mut self, bundle: String) -> Self {
         self.bundle = Some(bundle);
         self
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DeploymentActor {
+    pub user_id: Option<String>,
+    pub username: Option<String>,
+    pub actor_type: DeploymentActorType,
+}
+
+pub fn list_deploy_source_values() -> &'static str {
+    "cli|webui|bootstrap|api|unknown"
+}
+
+pub fn parse_deploy_source(headers: &HeaderMap) -> Result<DeploymentSource, ApiError> {
+    let source = headers.get(&DEPLOY_SOURCE_HEADER);
+    let Some(source) = source else {
+        return Ok(DeploymentSource::Unknown);
+    };
+
+    let source = source
+        .to_str()
+        .map_err(|_| ApiError::bad_request("x-flora-deploy-source must be ascii"))?;
+    DeploymentSource::from_str(source).map_err(|_| {
+        ApiError::bad_request(format!(
+            "x-flora-deploy-source must be one of {}",
+            list_deploy_source_values()
+        ))
+    })
+}
+
+pub fn actor_from_identity(identity: &IdentityContext) -> DeploymentActor {
+    let Some(session) = identity.session.as_ref() else {
+        return DeploymentActor {
+            user_id: Some(identity.user_id.clone()),
+            username: None,
+            actor_type: DeploymentActorType::Token,
+        };
+    };
+
+    DeploymentActor {
+        user_id: Some(identity.user_id.clone()),
+        username: Some(session.user.username.clone()),
+        actor_type: DeploymentActorType::Session,
     }
 }
 
@@ -126,7 +239,6 @@ fn validate_request(request: &DeploymentRequest) -> Result<(), ApiError> {
     Ok(())
 }
 
-/// Create or update a deployment for a guild.
 #[utoipa::path(
     post,
     path = "/{guild_id}",
@@ -151,6 +263,9 @@ pub async fn upsert_deployment_handler(
 
     validate_request(&request)?;
 
+    let deploy_source = parse_deploy_source(&headers)?;
+    let actor = actor_from_identity(&identity);
+
     let files = request.files;
     let (bundle, source_map) = if let Some(bundle) = request.bundle {
         (bundle, request.source_map)
@@ -173,21 +288,78 @@ pub async fn upsert_deployment_handler(
         (bundle, request.source_map)
     };
 
-    let deployment = state
+    let previous_success = state
         .deployments
-        .upsert_deployment(guild_id.clone(), request.entry, files, bundle, source_map)
+        .get_previous_successful_revision(&guild_id)
         .await
         .map_err(|err| {
-            error!(target: "flora:api", guild_id, ?err, "failed to upsert deployment");
+            error!(target: "flora:api", guild_id, ?err, "failed to fetch previous successful revision");
             ApiError::internal(err)
         })?;
 
+    let base_revision_id = previous_success.as_ref().map(|row| row.revision_id);
+    let base_files = previous_success.as_ref().and_then(|row| row.files.as_ref());
+    let change_summary = DeploymentService::summarize_changes(files.as_ref(), base_files);
+
+    let now = Utc::now();
+    let deployment = Deployment {
+        guild_id: guild_id.clone(),
+        entry: request.entry,
+        files: files.clone(),
+        source_map: source_map.clone(),
+        bundle: bundle.clone(),
+        created_at: now,
+        updated_at: now,
+    };
+
+    let deploy_result = state.runtime.deploy_guild_script(deployment.clone()).await;
+    let status = match &deploy_result {
+        Ok(_) => DeploymentRevisionStatus::Success,
+        Err(_) => DeploymentRevisionStatus::Failed,
+    };
+    let error_message = deploy_result.as_ref().err().map(|err| err.to_string());
+
     state
-        .runtime
-        .deploy_guild_script(deployment.clone())
+        .deployments
+        .create_revision(CreateDeploymentRevisionInput {
+            guild_id: guild_id.clone(),
+            entry: deployment.entry.clone(),
+            files: deployment.files.clone(),
+            bundle: deployment.bundle.clone(),
+            source_map: deployment.source_map.clone(),
+            status,
+            deploy_source,
+            actor_user_id: actor.user_id,
+            actor_username: actor.username,
+            actor_type: actor.actor_type,
+            error_message,
+            build_id: request.build_id,
+            base_revision_id,
+            change_summary,
+        })
         .await
         .map_err(|err| {
-            error!(target: "flora:api", guild_id, ?err, "failed to deploy guild script");
+            error!(target: "flora:api", guild_id, ?err, "failed to create deployment revision");
+            ApiError::internal(err)
+        })?;
+
+    deploy_result.map_err(|err| {
+        error!(target: "flora:api", guild_id, ?err, "failed to deploy guild script");
+        ApiError::internal(err)
+    })?;
+
+    let deployment = state
+        .deployments
+        .upsert_deployment(
+            deployment.guild_id,
+            deployment.entry,
+            deployment.files,
+            deployment.bundle,
+            deployment.source_map,
+        )
+        .await
+        .map_err(|err| {
+            error!(target: "flora:api", guild_id, ?err, "failed to update deployment snapshot");
             ApiError::internal(err)
         })?;
 
@@ -196,11 +368,13 @@ pub async fn upsert_deployment_handler(
 
 #[cfg(test)]
 mod tests {
-    use super::{DeploymentRequest, validate_request};
+    use super::{DeploymentRequest, parse_deploy_source, validate_request};
     use crate::{
-        bundler::DeploymentFile, handlers::error::ApiError,
-        services::deployments::DeploymentSourceMapFile,
+        bundler::DeploymentFile,
+        handlers::error::ApiError,
+        services::deployments::{DeploymentSource, DeploymentSourceMapFile},
     };
+    use axum::http::{HeaderMap, HeaderValue};
 
     #[test]
     fn validate_request_rejects_empty_bundle() {
@@ -209,6 +383,7 @@ mod tests {
             files: None,
             bundle: Some("   ".to_string()),
             source_map: None,
+            build_id: None,
         };
 
         let result = validate_request(&request);
@@ -225,6 +400,7 @@ mod tests {
                 path: "source-map.txt".to_string(),
                 contents: "{}".to_string(),
             }),
+            build_id: None,
         };
 
         let result = validate_request(&request);
@@ -241,6 +417,7 @@ mod tests {
                 path: "bundle.js.map".to_string(),
                 contents: "{}".to_string(),
             }),
+            build_id: None,
         };
 
         validate_request(&request).expect("request should be valid");
@@ -256,23 +433,24 @@ mod tests {
             }]),
             bundle: None,
             source_map: None,
+            build_id: None,
         };
 
         validate_request(&request).expect("request should be valid");
     }
 
     #[test]
-    fn validate_request_accepts_files_with_bundle() {
-        let request = DeploymentRequest {
-            entry: "src/main.ts".to_string(),
-            files: Some(vec![DeploymentFile {
-                path: "src/main.ts".to_string(),
-                contents: "export default 1".to_string(),
-            }]),
-            bundle: Some("console.log('ok')".to_string()),
-            source_map: None,
-        };
+    fn parse_deploy_source_defaults_to_unknown() {
+        let headers = HeaderMap::new();
+        let source = parse_deploy_source(&headers).expect("source");
+        assert!(matches!(source, DeploymentSource::Unknown));
+    }
 
-        validate_request(&request).expect("request should be valid");
+    #[test]
+    fn parse_deploy_source_reads_header() {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-flora-deploy-source", HeaderValue::from_static("cli"));
+        let source = parse_deploy_source(&headers).expect("source");
+        assert!(matches!(source, DeploymentSource::Cli));
     }
 }

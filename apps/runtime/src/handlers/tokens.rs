@@ -8,11 +8,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::{OpenApi, ToSchema};
 
 use crate::{
-    handlers::{
-        auth::{IdentityContext, require_identity},
-        error::ApiError,
-        response::ApiJson,
-    },
+    handlers::{auth::require_session, error::ApiError, response::ApiJson},
     services::tokens::UserToken,
     state::AppState,
 };
@@ -81,10 +77,10 @@ pub async fn create_token_handler(
     headers: HeaderMap,
     Json(body): Json<CreateTokenRequest>,
 ) -> Result<ApiJson<CreateTokenResponse>, ApiError> {
-    let IdentityContext { user_id, .. } = require_identity(&state, &headers).await?;
+    let session = require_session(&state.auth, &headers).await?;
     let token = state
         .tokens
-        .create_token(&user_id, body.label)
+        .create_token(&session.user.id, body.label)
         .await
         .map_err(ApiError::internal)?;
 
@@ -105,10 +101,10 @@ pub async fn list_tokens_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<ApiJson<Vec<TokenResponse>>, ApiError> {
-    let IdentityContext { user_id, .. } = require_identity(&state, &headers).await?;
+    let session = require_session(&state.auth, &headers).await?;
     let tokens = state
         .tokens
-        .list_tokens(&user_id)
+        .list_tokens(&session.user.id)
         .await
         .map_err(ApiError::internal)?;
     Ok(ApiJson(Json(
@@ -135,10 +131,10 @@ pub async fn delete_token_handler(
     headers: HeaderMap,
     Path(token_id): Path<String>,
 ) -> Result<ApiJson<()>, ApiError> {
-    let IdentityContext { user_id, .. } = require_identity(&state, &headers).await?;
+    let session = require_session(&state.auth, &headers).await?;
     let deleted = state
         .tokens
-        .delete_token(&user_id, &token_id)
+        .delete_token(&session.user.id, &token_id)
         .await
         .map_err(ApiError::internal)?;
     if deleted {

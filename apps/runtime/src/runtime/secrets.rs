@@ -1,6 +1,7 @@
 use crate::services::secrets::SecretsRuntimeData;
 use deno_error::JsErrorBox;
 use std::{cell::RefCell, sync::Arc};
+use url::{Host, Url};
 
 thread_local! {
     static CURRENT_SECRETS: RefCell<Option<Arc<SecretsRuntimeData>>> = const { RefCell::new(None) };
@@ -92,14 +93,114 @@ pub(super) fn host_allowed(host: Option<&str>, allowlist: &[String]) -> bool {
     if allowlist.is_empty() {
         return true;
     }
-    let Some(host) = host else {
+
+    let Some(host) = host.and_then(normalize_host) else {
         return false;
     };
+
     allowlist.iter().any(|pattern| {
-        if let Some(suffix) = pattern.strip_prefix("*.") {
-            host.ends_with(suffix)
-        } else {
-            host == pattern
+        let Some(pattern) = parse_allowed_pattern(pattern) else {
+            return false;
+        };
+
+        match pattern {
+            AllowedHostPattern::Exact(allowed) => host == allowed,
+            AllowedHostPattern::WildcardSuffix(suffix) => {
+                host == suffix || host.ends_with(&format!(".{suffix}"))
+            }
         }
     })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AllowedHostPattern {
+    Exact(String),
+    WildcardSuffix(String),
+}
+
+fn parse_allowed_pattern(pattern: &str) -> Option<AllowedHostPattern> {
+    let pattern = pattern.trim();
+    if pattern.is_empty() {
+        return None;
+    }
+
+    if let Some(suffix) = pattern.strip_prefix("*.") {
+        let suffix = parse_host_from_pattern(suffix)?;
+        return Some(AllowedHostPattern::WildcardSuffix(suffix));
+    }
+
+    let exact = parse_host_from_pattern(pattern)?;
+    Some(AllowedHostPattern::Exact(exact))
+}
+
+fn parse_host_from_pattern(pattern: &str) -> Option<String> {
+    if let Some(host) = Url::parse(pattern)
+        .ok()
+        .and_then(|url| url.host_str().map(str::to_owned))
+    {
+        return normalize_host(&host);
+    }
+
+    if let Some(host) = normalize_host(pattern) {
+        return Some(host);
+    }
+
+    let candidate = format!("https://{pattern}");
+    Url::parse(&candidate)
+        .ok()
+        .and_then(|url| url.host_str().map(str::to_owned))
+        .and_then(|host| normalize_host(&host))
+}
+
+fn normalize_host(host: &str) -> Option<String> {
+    Host::parse(host.trim()).ok().map(|host| host.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::host_allowed;
+
+    #[test]
+    fn allows_exact_hosts() {
+        assert!(host_allowed(
+            Some("api.example.com"),
+            &["api.example.com".to_string()]
+        ));
+        assert!(!host_allowed(
+            Some("api.example.com"),
+            &["other.example.com".to_string()]
+        ));
+    }
+
+    #[test]
+    fn wildcard_matches_subdomain_or_root_only() {
+        assert!(host_allowed(
+            Some("api.example.com"),
+            &["*.example.com".to_string()]
+        ));
+        assert!(host_allowed(
+            Some("example.com"),
+            &["*.example.com".to_string()]
+        ));
+        assert!(!host_allowed(
+            Some("evil-example.com"),
+            &["*.example.com".to_string()]
+        ));
+        assert!(!host_allowed(
+            Some("notexample.com"),
+            &["*.example.com".to_string()]
+        ));
+    }
+
+    #[test]
+    fn parses_urls_in_allowlist() {
+        assert!(host_allowed(
+            Some("api.example.com"),
+            &["https://api.example.com/path".to_string()]
+        ));
+        assert!(!host_allowed(
+            Some("other.com"),
+            &["https://api.example.com/path".to_string()]
+        ));
+    }
 }

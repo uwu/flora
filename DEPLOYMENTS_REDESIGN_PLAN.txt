@@ -1,0 +1,77 @@
+flora deployments redesign plan (guild-scoped)
+
+goals
+- redesign deployments page as guild-scoped revision history
+- capture metadata per deployment: id, actor, source, status, guild id, deployed_at, change summary
+- support rollback
+- show source-file diffs in frontend with @pierre/diffs (never bundle diff)
+
+decisions
+- no global cross-guild deployments listing
+- current deployment = latest successful revision for guild
+- failed revisions are visible in guild history but never current
+- diff base = previous successful revision in same guild
+- rollback creates a new revision cloned from a selected successful revision
+- files are required for deployments; bundle may exist for runtime execution
+
+phase 1: backend data + api
+1) add migration for immutable deployment_revisions table
+   - id uuid pk
+   - guild_id text indexed
+   - entry text not null
+   - files jsonb
+   - bundle text not null
+   - source_map jsonb
+   - status text (success|failed) not null
+   - deployed_at timestamptz default now
+   - deploy_source text (cli|webui|bootstrap|api|unknown) not null
+   - actor_user_id text null
+   - actor_username text null
+   - actor_type text (session|token|system) not null
+   - error_message text null
+   - build_id text null
+   - base_revision_id uuid null
+   - change_summary jsonb null
+2) backfill one success revision per existing deployments row
+3) extend deployment service with:
+   - create_revision(...)
+   - list_guild_revisions(guild_id, limit, cursor)
+   - get_revision(guild_id, revision_id)
+   - get_current_successful(guild_id)
+   - get_previous_successful_revision(guild_id)
+4) update deployments handlers:
+   - keep GET /deployments/{guild_id} => current successful deployment
+   - POST /deployments/{guild_id} => create revision (success/failed), include source + actor + summary
+   - add GET /deployments/{guild_id}/history
+   - add GET /deployments/{guild_id}/revisions/{id}
+   - add POST /deployments/{guild_id}/rollback/{id}
+   - remove global GET /deployments/
+5) actor/source capture
+   - parse x-flora-deploy-source header (validated enum)
+   - session auth => actor id + username + actor_type=session
+   - token auth => actor id + actor_type=token
+   - bootstrap path => actor_type=system, source=bootstrap
+6) runtime startup loads current successful deployments only
+
+phase 2: clients
+7) cli deploy command sends x-flora-deploy-source: cli
+8) web editor deploy flow sends x-flora-deploy-source: webui
+
+phase 3: frontend deployments page
+9) replace card list with guild-scoped history table
+   columns: id, actor, changes, guild id, deployed_at, source, status, entry/build id
+10) row click opens details panel
+   - metadata + errors + rollback action
+   - diff section rendered with @pierre/diffs/react against base successful revision
+   - only source files + package/lockfiles are diffed
+11) remove reliance on legacy global deployments context for this page
+
+validation
+- runtime: cargo check -p flora
+- frontend: pnpm --filter frontend run typecheck
+- frontend lint: pnpm --filter frontend run lint
+- manual smoke:
+  - deploy via webui, history row appears as webui + success
+  - deploy via cli, history row appears as cli + success
+  - force failed deploy, history row appears as failed with error
+  - rollback creates new revision and updates current

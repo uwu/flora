@@ -98,7 +98,8 @@ export async function deploy(
     method: 'POST',
     headers: {
       ...headers,
-      'content-type': 'application/json'
+      'content-type': 'application/json',
+      'x-flora-deploy-source': 'cli'
     },
     body: JSON.stringify({
       entry: build.entry,
@@ -193,24 +194,10 @@ export async function get(config: CliConfig, guildArg: string | undefined): Prom
   )
 }
 
-export async function list(config: CliConfig): Promise<void> {
-  const client = createApiClient(config)
-  const deployments = await expectOk(
-    client.GET('/deployments/', {
-      headers: authHeaders(config)
-    })
+export async function list(_config: CliConfig): Promise<void> {
+  logger.warn(
+    '`flora deployments list` was removed; use `flora deployments get --guild <guild_id>`'
   )
-
-  if (deployments.length === 0) {
-    logger.log('No deployments found')
-    return
-  }
-
-  for (const deployment of deployments) {
-    logger.log(
-      `${deployment.guild_id} entry=${deployment.entry} created=${deployment.created_at} updated=${deployment.updated_at}`
-    )
-  }
 }
 
 export async function health(config: CliConfig): Promise<void> {

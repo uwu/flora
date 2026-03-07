@@ -1,3 +1,6 @@
+use super::authz::{
+    ensure_channel_scope, ensure_guild_scope, ensure_thread_scope, runtime_guild_id_from_state,
+};
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
@@ -30,6 +33,10 @@ pub async fn op_create_channel(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let channel = http
         .create_channel(guild_id, &args.payload, args.reason.as_deref())
         .await
@@ -59,6 +66,11 @@ pub async fn op_edit_channel(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let channel = http
         .edit_channel(channel_id.widen(), &args.payload, args.reason.as_deref())
         .await
@@ -86,6 +98,11 @@ pub async fn op_delete_channel(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let channel = http
         .delete_channel(channel_id.widen(), args.reason.as_deref())
         .await
@@ -115,6 +132,11 @@ pub async fn op_create_thread(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let thread = http
         .create_thread(channel_id, &args.payload, args.reason.as_deref())
         .await
@@ -146,6 +168,11 @@ pub async fn op_create_thread_from_message(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let message_id = parse_message_id(&args.message_id)?;
     let thread = http
         .create_thread_from_message(
@@ -176,6 +203,11 @@ pub async fn op_join_thread(
         state.borrow::<Arc<Http>>().clone()
     };
     let thread_id = parse_thread_id(&args.thread_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_thread_scope(runtime_guild_id, &http, thread_id).await?;
     http.join_thread_channel(thread_id)
         .await
         .map_err(|err| JsErrorBox::generic(err.to_string()))?;
@@ -192,6 +224,11 @@ pub async fn op_leave_thread(
         state.borrow::<Arc<Http>>().clone()
     };
     let thread_id = parse_thread_id(&args.thread_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_thread_scope(runtime_guild_id, &http, thread_id).await?;
     http.leave_thread_channel(thread_id)
         .await
         .map_err(|err| JsErrorBox::generic(err.to_string()))?;
@@ -217,6 +254,11 @@ pub async fn op_add_thread_member(
         state.borrow::<Arc<Http>>().clone()
     };
     let thread_id = parse_thread_id(&args.thread_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_thread_scope(runtime_guild_id, &http, thread_id).await?;
     let user_id = parse_user_id(&args.user_id)?;
     http.add_thread_channel_member(thread_id, user_id)
         .await
@@ -234,6 +276,11 @@ pub async fn op_remove_thread_member(
         state.borrow::<Arc<Http>>().clone()
     };
     let thread_id = parse_thread_id(&args.thread_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_thread_scope(runtime_guild_id, &http, thread_id).await?;
     let user_id = parse_user_id(&args.user_id)?;
     http.remove_thread_channel_member(thread_id, user_id)
         .await

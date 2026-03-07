@@ -87,15 +87,30 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/deployments/': {
+  '/deployments/{guild_id}': {
     parameters: {
       query?: never
       header?: never
       path?: never
       cookie?: never
     }
-    /** List every stored deployment. */
-    get: operations['list_deployments_handler']
+    get: operations['get_deployment_handler']
+    put?: never
+    post: operations['upsert_deployment_handler']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/deployments/{guild_id}/history': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['list_deployment_history_handler']
     put?: never
     post?: never
     delete?: never
@@ -104,18 +119,32 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/deployments/{guild_id}': {
+  '/deployments/{guild_id}/revisions/{revision_id}': {
     parameters: {
       query?: never
       header?: never
       path?: never
       cookie?: never
     }
-    /** Fetch a single deployment by guild id. */
-    get: operations['get_deployment_handler']
+    get: operations['get_deployment_revision_handler']
     put?: never
-    /** Create or update a deployment for a guild. */
-    post: operations['upsert_deployment_handler']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/deployments/{guild_id}/rollback/{revision_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['rollback_deployment_handler']
     delete?: never
     options?: never
     head?: never
@@ -442,21 +471,29 @@ export interface components {
       guild_id: string
       store_name: string
     }
+    DeploymentActorResponse: {
+      actor_type: components['schemas']['DeploymentActorType']
+      user_id?: string | null
+      username?: string | null
+    }
+    /** @enum {string} */
+    DeploymentActorType: 'session' | 'token' | 'system'
+    DeploymentChangeSummary: {
+      added_files: number
+      modified_files: number
+      removed_files: number
+    }
     DeploymentFile: {
       contents: string
       path: string
     }
-    /** @description Body for creating or replacing a deployment. */
     DeploymentRequest: {
-      /** @description Prebuilt JavaScript bundle source (legacy mode). */
+      build_id?: string | null
       bundle?: string | null
-      /** @description Entry point path for the bundle (e.g. src/main.ts). */
       entry: string
-      /** @description Source files for the deployment. Preferred over raw bundle input. */
       files?: components['schemas']['DeploymentFile'][] | null
       source_map?: null | components['schemas']['DeploymentSourceMapFile']
     }
-    /** @description API representation of a deployment. */
     DeploymentResponse: {
       bundle?: string | null
       created_at: string
@@ -466,6 +503,26 @@ export interface components {
       source_map?: null | components['schemas']['DeploymentSourceMapFile']
       updated_at: string
     }
+    DeploymentRevisionResponse: {
+      actor: components['schemas']['DeploymentActorResponse']
+      base_revision_id?: string | null
+      build_id?: string | null
+      bundle?: string | null
+      change_summary?: null | components['schemas']['DeploymentChangeSummary']
+      deploy_source: components['schemas']['DeploymentSource']
+      deployed_at: string
+      entry: string
+      error_message?: string | null
+      files?: components['schemas']['DeploymentFile'][] | null
+      guild_id: string
+      id: string
+      source_map?: null | components['schemas']['DeploymentSourceMapFile']
+      status: components['schemas']['DeploymentRevisionStatus']
+    }
+    /** @enum {string} */
+    DeploymentRevisionStatus: 'success' | 'failed'
+    /** @enum {string} */
+    DeploymentSource: 'cli' | 'webui' | 'bootstrap' | 'api' | 'unknown'
     DeploymentSourceMapFile: {
       contents: string
       path: string
@@ -1045,94 +1102,6 @@ export interface operations {
       }
     }
   }
-  list_deployments_handler: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Successful response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': {
-            bundle?: string | null
-            created_at: string
-            entry: string
-            files?: components['schemas']['DeploymentFile'][] | null
-            guild_id: string
-            source_map?: null | components['schemas']['DeploymentSourceMapFile']
-            updated_at: string
-          }[]
-        }
-      }
-      /** @description Bad request */
-      400: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': {
-            /** @description Human readable error message. */
-            message: string
-          }
-        }
-      }
-      /** @description Authentication required */
-      401: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': {
-            /** @description Human readable error message. */
-            message: string
-          }
-        }
-      }
-      /** @description Forbidden */
-      403: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': {
-            /** @description Human readable error message. */
-            message: string
-          }
-        }
-      }
-      /** @description Resource not found */
-      404: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': {
-            /** @description Human readable error message. */
-            message: string
-          }
-        }
-      }
-      /** @description Internal server error */
-      500: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': {
-            /** @description Human readable error message. */
-            message: string
-          }
-        }
-      }
-    }
-  }
   get_deployment_handler: {
     parameters: {
       query?: {
@@ -1257,6 +1226,316 @@ export interface operations {
             guild_id: string
             source_map?: null | components['schemas']['DeploymentSourceMapFile']
             updated_at: string
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  list_deployment_history_handler: {
+    parameters: {
+      query?: {
+        /** @description Page size, max 100 */
+        limit?: number
+        /** @description RFC3339 deployed_at cursor */
+        cursor_deployed_at?: string
+        /** @description Revision id cursor */
+        cursor_id?: string
+        /** @description Include bundled output in response */
+        include_bundle?: boolean
+      }
+      header?: never
+      path: {
+        /** @description Discord guild id */
+        guild_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            actor: components['schemas']['DeploymentActorResponse']
+            base_revision_id?: string | null
+            build_id?: string | null
+            bundle?: string | null
+            change_summary?: null | components['schemas']['DeploymentChangeSummary']
+            deploy_source: components['schemas']['DeploymentSource']
+            deployed_at: string
+            entry: string
+            error_message?: string | null
+            files?: components['schemas']['DeploymentFile'][] | null
+            guild_id: string
+            id: string
+            source_map?: null | components['schemas']['DeploymentSourceMapFile']
+            status: components['schemas']['DeploymentRevisionStatus']
+          }[]
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  get_deployment_revision_handler: {
+    parameters: {
+      query?: {
+        /** @description Include bundled output in response */
+        include_bundle?: boolean
+      }
+      header?: never
+      path: {
+        /** @description Discord guild id */
+        guild_id: string
+        /** @description Revision id */
+        revision_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            actor: components['schemas']['DeploymentActorResponse']
+            base_revision_id?: string | null
+            build_id?: string | null
+            bundle?: string | null
+            change_summary?: null | components['schemas']['DeploymentChangeSummary']
+            deploy_source: components['schemas']['DeploymentSource']
+            deployed_at: string
+            entry: string
+            error_message?: string | null
+            files?: components['schemas']['DeploymentFile'][] | null
+            guild_id: string
+            id: string
+            source_map?: null | components['schemas']['DeploymentSourceMapFile']
+            status: components['schemas']['DeploymentRevisionStatus']
+          }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  rollback_deployment_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description Discord guild id */
+        guild_id: string
+        /** @description Successful revision id to rollback to */
+        revision_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            actor: components['schemas']['DeploymentActorResponse']
+            base_revision_id?: string | null
+            build_id?: string | null
+            bundle?: string | null
+            change_summary?: null | components['schemas']['DeploymentChangeSummary']
+            deploy_source: components['schemas']['DeploymentSource']
+            deployed_at: string
+            entry: string
+            error_message?: string | null
+            files?: components['schemas']['DeploymentFile'][] | null
+            guild_id: string
+            id: string
+            source_map?: null | components['schemas']['DeploymentSourceMapFile']
+            status: components['schemas']['DeploymentRevisionStatus']
           }
         }
       }

@@ -2,6 +2,7 @@ use crate::services::kv::KvService;
 use serenity::http::Http;
 use std::sync::Arc;
 
+mod authz;
 pub mod channels;
 pub mod commands;
 pub mod components;

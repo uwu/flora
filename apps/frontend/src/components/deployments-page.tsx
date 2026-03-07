@@ -2,9 +2,7 @@ import { DeploymentHistory } from '@/components/features/DeploymentHistory'
 import { DashboardSidebar } from '@/components/sidebar/app-sidebar'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { useApp } from '@/contexts/AppContext'
-import { api } from '@/lib/openapi-client'
 import { Seo } from '@/lib/seo'
-import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useParams } from 'wouter'
 
@@ -16,15 +14,6 @@ export function DeploymentsPage() {
     if (guildId) setSelectedGuild(guildId)
     setView('deployments')
   }, [guildId, setSelectedGuild, setView])
-
-  const deploymentsQuery = useQuery({
-    queryKey: ['deployments', guildId],
-    enabled: !!guildId,
-    queryFn: () =>
-      api.GET('/deployments/{guild_id}', { params: { path: { guild_id: guildId! } } }).then((r) =>
-        r.data ? [r.data] : []
-      )
-  })
 
   return (
     <>
@@ -44,11 +33,9 @@ export function DeploymentsPage() {
               <div className='ml-auto' />
             </header>
             <div className='flex-1 overflow-y-auto p-4 md:p-6 lg:p-8'>
-              {deploymentsQuery.isLoading
-                ? <div className='text-sm text-muted-foreground'>Loading deployments…</div>
-                : deploymentsQuery.isError
-                ? <div className='text-sm text-destructive'>Failed to load deployments</div>
-                : <DeploymentHistory deploymentsOverride={deploymentsQuery.data} />}
+              {!guildId
+                ? <div className='text-sm text-destructive'>Missing guild id</div>
+                : <DeploymentHistory guildId={guildId} />}
             </div>
           </SidebarInset>
         </div>

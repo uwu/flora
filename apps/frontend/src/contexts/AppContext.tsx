@@ -1,4 +1,4 @@
-import { api } from '@/lib/openapi-client'
+import { $api, queryClient } from '@/lib/openapi-client'
 import type { components } from '@/lib/openapi-schema'
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react'
 
@@ -58,10 +58,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const refreshSession = useCallback((): Promise<void> => {
     setSessionLoading(true)
 
-    return api
-      .GET('/auth/me', {})
-      .then((res) => {
-        const user = res.data ? res.data.user : null
+    return queryClient
+      .fetchQuery($api.queryOptions('get', '/auth/me', {}))
+      .then((data) => {
+        const user = data ? data.user : null
         setSession(user)
         setSessionError(null)
       })
@@ -79,10 +79,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshGuilds = useCallback((): Promise<void> => {
-    return api
-      .GET('/guilds/', {})
-      .then((res) => {
-        setGuilds({ data: res.data ?? null, loading: false, error: null })
+    return queryClient
+      .fetchQuery($api.queryOptions('get', '/guilds/', {}))
+      .then((data) => {
+        setGuilds({ data: data ?? null, loading: false, error: null })
       })
       .catch((err: any) => {
         setGuilds({ data: null, loading: false, error: err.message })
@@ -90,26 +90,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshDeployments = useCallback((): Promise<void> => {
-    return api
-      .GET('/deployments/', {})
-      .then((res) => {
-        setDeployments({ data: res.data ?? null, loading: false, error: null })
-
-        if ((res.data?.length ?? 0) > 0) {
-          const firstGuildId = res.data![0].guild_id
-          setSelectedGuild((prev) => prev || firstGuildId)
-        }
-      })
-      .catch((err: any) => {
-        setDeployments({ data: null, loading: false, error: err.message })
-      })
+    setDeployments((prev) => ({
+      data: prev.data,
+      loading: false,
+      error: null
+    }))
+    return Promise.resolve()
   }, [])
 
   const refreshTokens = useCallback((): Promise<void> => {
-    return api
-      .GET('/tokens/', {})
-      .then((res) => {
-        setTokens({ data: res.data ?? null, loading: false, error: null })
+    return queryClient
+      .fetchQuery($api.queryOptions('get', '/tokens/', {}))
+      .then((data) => {
+        setTokens({ data: data ?? null, loading: false, error: null })
       })
       .catch((err: any) => {
         setTokens({ data: null, loading: false, error: err.message })

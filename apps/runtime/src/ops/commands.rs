@@ -1,4 +1,7 @@
-use super::interaction::{RawSlashCommand, RawSlashCommandOption};
+use super::{
+    authz::ensure_guild_scope,
+    interaction::{RawSlashCommand, RawSlashCommandOption},
+};
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
@@ -30,6 +33,10 @@ pub async fn op_create_guild_command(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let command = build_command(args.command)?;
     let created = http
         .create_guild_command(guild_id, &command)
@@ -60,6 +67,10 @@ pub async fn op_edit_guild_command(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let command_id = parse_command_id(&args.command_id)?;
     let command = build_command(args.command)?;
     let updated = http
@@ -88,6 +99,10 @@ pub async fn op_delete_guild_command(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let command_id = parse_command_id(&args.command_id)?;
     http.delete_guild_command(guild_id, command_id)
         .await
@@ -115,6 +130,10 @@ pub async fn op_get_guild_commands(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let commands = http
         .get_guild_commands(guild_id)
         .await
@@ -136,6 +155,10 @@ pub async fn op_get_guild_command(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let command_id = parse_command_id(&args.command_id)?;
     let command = http
         .get_guild_command(guild_id, command_id)
@@ -166,6 +189,10 @@ pub async fn op_edit_guild_command_permissions(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let command_id = parse_command_id(&args.command_id)?;
     let permissions = http
         .edit_guild_command_permissions(guild_id, command_id, &args.permissions)
@@ -192,6 +219,10 @@ pub async fn op_get_guild_command_permissions(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let command_id = parse_command_id(&args.command_id)?;
     let permissions = http
         .get_guild_command_permissions(guild_id, command_id)
@@ -211,6 +242,10 @@ pub async fn op_get_guild_commands_permissions(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let permissions = http
         .get_guild_commands_permissions(guild_id)
         .await

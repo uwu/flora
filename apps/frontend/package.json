@@ -18,6 +18,7 @@
     "@fontsource-variable/figtree": "^5.2.10",
     "@fontsource-variable/geist": "5.2.8",
     "@monaco-editor/react": "4.7.0",
+    "@pierre/diffs": "1.0.11",
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@radix-ui/react-tabs": "^1.1.13",
     "@tailwindcss/vite": "^4.1.18",

@@ -212,11 +212,22 @@ pub struct IdentityContext {
     pub session: Option<Session>,
 }
 
-/// Resolve caller identity from either a bearer token or a session cookie.
+/// Resolve caller identity from session cookie first, then bearer token fallback.
+///
+/// Session-first avoids accidental privilege confusion when a proxy injects
+/// Authorization headers for browser traffic.
 pub async fn require_identity(
     state: &AppState,
     headers: &HeaderMap,
 ) -> Result<IdentityContext, ApiError> {
+    if let Ok(session) = require_session(&state.auth, headers).await {
+        return Ok(IdentityContext {
+            user_id: session.user.id.clone(),
+            access_token: Some(session.access_token.clone()),
+            session: Some(session),
+        });
+    }
+
     if let Some(bearer) = bearer_token(headers)
         && let Some(token) = state
             .tokens
@@ -231,12 +242,7 @@ pub async fn require_identity(
         });
     }
 
-    let session = require_session(&state.auth, headers).await?;
-    Ok(IdentityContext {
-        user_id: session.user.id.clone(),
-        access_token: Some(session.access_token.clone()),
-        session: Some(session),
-    })
+    Err(ApiError::unauthorized("login required"))
 }
 
 /// Ensure the user is an admin or has manage-guild permissions in the target guild.

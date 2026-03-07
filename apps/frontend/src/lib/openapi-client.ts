@@ -1,3 +1,4 @@
+import { QueryClient } from '@tanstack/react-query'
 import createClient from 'openapi-fetch'
 import createRQClient from 'openapi-react-query'
 import type { $defs, paths, webhooks } from './openapi-schema'
@@ -32,6 +33,8 @@ type _OpenApiRootTypes = webhooks | $defs
 const _openApiTypeMarker: _OpenApiRootTypes | null = null
 void _openApiTypeMarker
 
-export const api = createClient<paths>({ baseUrl, fetch: fetchWithCreds })
+export const queryClient = new QueryClient()
 
-export const $api = createRQClient(api)
+const fetchClient = createClient<paths>({ baseUrl, fetch: fetchWithCreds })
+
+export const $api = createRQClient(fetchClient)

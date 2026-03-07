@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useApp } from '@/contexts/AppContext'
-import { api } from '@/lib/openapi-client'
+import { $api } from '@/lib/openapi-client'
 import { formatDistanceToNow } from 'date-fns'
 import { Copy, Plus, Shield, Trash2 } from 'lucide-react'
 import { useState } from 'react'
@@ -40,30 +40,37 @@ export function TokenManager() {
   const [tokenLabel, setTokenLabel] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
 
+  const createTokenMutation = $api.useMutation('post', '/tokens/', {
+    onSuccess: (data) => {
+      setNewToken(data?.token || null)
+      setTokenLabel('')
+      void refreshTokens()
+    },
+    onError: (err: any) => {
+      setNewToken(null)
+      setError(err.message || 'Failed to create token')
+    }
+  })
+
+  const deleteTokenMutation = $api.useMutation('delete', '/tokens/{token_id}', {
+    onSuccess: () => {
+      void refreshTokens()
+    },
+    onError: (err: any) => {
+      setError(err.message || 'Failed to delete token')
+    }
+  })
+
   const handleCreateToken = () => {
     setError(null)
     const label = tokenLabel.trim()
 
-    return api
-      .POST('/tokens/', { body: label ? { label } : {} })
-      .then((res) => {
-        setNewToken(res.data?.token || null)
-        setTokenLabel('')
-        return refreshTokens()
-      })
-      .catch((err: any) => {
-        setNewToken(null)
-        setError(err.message || 'Failed to create token')
-      })
+    return createTokenMutation.mutateAsync({ body: label ? { label } : {} })
   }
 
   const handleDeleteToken = (tokenId: string) => {
-    return api
-      .DELETE('/tokens/{token_id}', { params: { path: { token_id: tokenId } } })
-      .then(() => refreshTokens())
-      .catch((err: any) => {
-        setError(err.message || 'Failed to delete token')
-      })
+    setError(null)
+    return deleteTokenMutation.mutateAsync({ params: { path: { token_id: tokenId } } })
   }
 
   return (

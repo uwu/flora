@@ -1,7 +1,7 @@
 import { DashboardSidebar } from '@/components/sidebar/app-sidebar'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { useApp } from '@/contexts/AppContext'
-import { $api, api } from '@/lib/openapi-client'
+import { $api } from '@/lib/openapi-client'
 import { Seo } from '@/lib/seo'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
@@ -80,7 +80,7 @@ export function EditorPage() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [textActionModal, setTextActionModal] = useState<TextActionModalState | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<TreeSelection | null>(null)
-  const [tailLogs, setTailLogs] = useState(true)
+  const [tailLogs, setTailLogs] = useState(false)
   const [workspaceReady, setWorkspaceReady] = useState(false)
   const workspaceRef = useRef<Workspace | null>(null)
   const selectedFileRef = useRef(selectedFile)
@@ -122,6 +122,8 @@ export function EditorPage() {
       refetchInterval: 3000
     }
   )
+
+  const deployMutation = $api.useMutation('post', '/deployments/{guild_id}')
 
   const filesFromDeployment = useMemo(
     () => extractFilesFromDeployment(deploymentQuery.data),
@@ -695,24 +697,15 @@ export function EditorPage() {
           .map(([path, contents]) => ({ path, contents }))
           .sort((a, b) => a.path.localeCompare(b.path))
 
-        const deployResponse = await api.POST('/deployments/{guild_id}', {
+        await deployMutation.mutateAsync({
           params: { path: { guild_id: buildResult.build.guild_id } },
+          headers: { 'x-flora-deploy-source': 'webui' },
           body: {
             entry: buildResult.build.entry,
             files: deployFiles,
             bundle: buildResult.build.artifact.bundle
           }
         })
-
-        const deploymentError: unknown = deployResponse.error
-        if (deploymentError) {
-          const errorMessage = typeof deploymentError === 'string'
-            ? deploymentError
-            : JSON.stringify(deploymentError)
-          setDeployError(errorMessage)
-          setDeployState('error')
-          return
-        }
 
         setDeployBuildLogs([])
         setDeployState('success')

@@ -20,7 +20,10 @@ use t0x::T0x;
 use tracing::info;
 use url::Url;
 
-use super::components::parse_components;
+use super::{
+    authz::{ensure_channel_scope, runtime_guild_id_from_state},
+    components::parse_components,
+};
 
 /// Attachment to include in a message (either URL or base64-encoded data).
 #[derive(Debug, Deserialize, T0x)]
@@ -214,6 +217,11 @@ pub async fn op_send_message(
         .parse::<u64>()
         .map_err(|_| JsErrorBox::generic("Invalid channel id"))?;
     let channel_id = ChannelId::new(channel_id_num);
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let reply_to = args.reply_to.or(args.message_id);
     tracing::info!(
         target: "flora:ops",
@@ -312,6 +320,11 @@ pub async fn op_edit_message(
         .parse::<u64>()
         .map_err(|_| JsErrorBox::generic("Invalid message id"))?;
     let channel_id = ChannelId::new(channel_id_num);
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let message_id = MessageId::new(message_id_num);
 
     let mut message = serenity::builder::EditMessage::new();
@@ -380,6 +393,11 @@ pub async fn op_delete_message(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let message_id = parse_message_id(&args.message_id)?;
     channel_id
         .widen()
@@ -408,6 +426,11 @@ pub async fn op_bulk_delete_messages(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let message_ids = args
         .message_ids
         .into_iter()
@@ -440,6 +463,11 @@ pub async fn op_pin_message(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let message_id = parse_message_id(&args.message_id)?;
     channel_id
         .widen()
@@ -459,6 +487,11 @@ pub async fn op_unpin_message(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let message_id = parse_message_id(&args.message_id)?;
     channel_id
         .widen()
@@ -488,6 +521,11 @@ pub async fn op_crosspost_message(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let message_id = parse_message_id(&args.message_id)?;
     let message = channel_id
         .crosspost(&http, message_id)
@@ -516,6 +554,11 @@ pub async fn op_fetch_message(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let message_id = parse_message_id(&args.message_id)?;
     let message = http
         .get_message(channel_id.widen(), message_id)
@@ -550,6 +593,11 @@ pub async fn op_fetch_messages(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let mut builder = GetMessages::new();
     if let Some(limit) = args.limit {
         builder = builder.limit(limit);
@@ -597,6 +645,11 @@ pub async fn op_add_reaction(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let message_id = parse_message_id(&args.message_id)?;
     let reaction = parse_reaction(&args.emoji)?;
     channel_id
@@ -617,6 +670,11 @@ pub async fn op_remove_reaction(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let message_id = parse_message_id(&args.message_id)?;
     let reaction = parse_reaction(&args.emoji)?;
     let user_id = if let Some(id) = args.user_id {
@@ -656,6 +714,11 @@ pub async fn op_clear_reactions(
         state.borrow::<Arc<Http>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
     let message_id = parse_message_id(&args.message_id)?;
     if let Some(emoji) = args.emoji {
         let reaction = parse_reaction(&emoji)?;

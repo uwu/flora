@@ -22,7 +22,6 @@ pub struct DeploymentQuery {
     include_bundle: bool,
 }
 
-/// Fetch a single deployment by guild id.
 #[utoipa::path(
     get,
     path = "/{guild_id}",
@@ -44,10 +43,11 @@ pub async fn get_deployment_handler(
     Query(query): Query<DeploymentQuery>,
 ) -> Result<ApiJson<DeploymentResponse>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
+    ensure_guild_admin(&state, &identity, &guild_id).await?;
 
     let deployment = state
         .deployments
-        .get_deployment(&guild_id)
+        .get_current_successful(&guild_id)
         .await
         .map_err(|err| {
             error!(target: "flora:api", guild_id, ?err, "failed to fetch deployment");
@@ -58,8 +58,6 @@ pub async fn get_deployment_handler(
         return Err(ApiError::not_found("deployment not found"));
     };
 
-    ensure_guild_admin(&state, &identity, &guild_id).await?;
-
     let files = deployment.files.clone();
     let source_map = deployment.source_map.clone();
     let bundle = deployment.bundle.clone();
@@ -69,5 +67,6 @@ pub async fn get_deployment_handler(
     if query.include_bundle {
         response = response.with_bundle(bundle);
     }
+
     Ok(ApiJson(Json(response)))
 }

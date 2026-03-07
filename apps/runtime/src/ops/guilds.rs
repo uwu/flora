@@ -1,3 +1,4 @@
+use super::authz::ensure_guild_scope;
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
@@ -29,6 +30,10 @@ pub async fn op_kick_member(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let user_id = parse_user_id(&args.user_id)?;
     http.kick_member(guild_id, user_id, args.reason.as_deref())
         .await
@@ -59,6 +64,10 @@ pub async fn op_ban_member(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let user_id = parse_user_id(&args.user_id)?;
     let delete_seconds = args.delete_message_seconds.unwrap_or(0);
     http.ban_user(guild_id, user_id, delete_seconds, args.reason.as_deref())
@@ -77,6 +86,10 @@ pub async fn op_unban_member(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let user_id = parse_user_id(&args.user_id)?;
     http.remove_ban(guild_id, user_id, args.reason.as_deref())
         .await
@@ -107,6 +120,10 @@ pub async fn op_add_member_role(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let user_id = parse_user_id(&args.user_id)?;
     let role_id = parse_role_id(&args.role_id)?;
     http.add_member_role(guild_id, user_id, role_id, args.reason.as_deref())
@@ -125,6 +142,10 @@ pub async fn op_remove_member_role(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let user_id = parse_user_id(&args.user_id)?;
     let role_id = parse_role_id(&args.role_id)?;
     http.remove_member_role(guild_id, user_id, role_id, args.reason.as_deref())
@@ -157,6 +178,10 @@ pub async fn op_edit_member(
         state.borrow::<Arc<Http>>().clone()
     };
     let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
     let user_id = parse_user_id(&args.user_id)?;
     let member = http
         .edit_member(guild_id, user_id, &args.payload, args.reason.as_deref())

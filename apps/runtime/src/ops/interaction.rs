@@ -21,11 +21,11 @@ use std::{
 use t0x::T0x;
 use tracing::info;
 
-use super::components::parse_components;
 use super::message::{
     RawAllowedMentions, RawAttachment, RawEmbed, build_allowed_mentions, build_attachment,
     build_embed,
 };
+use super::{authz::ensure_guild_scope, components::parse_components};
 
 /// Arguments for sending an initial interaction response.
 #[expose_input]
@@ -417,6 +417,10 @@ pub async fn op_upsert_guild_commands(
         .guild_id
         .parse::<u64>()
         .map_err(|_| JsErrorBox::generic("Invalid guild id"))?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, serenity::model::id::GuildId::new(guild_id))?;
+    }
 
     let names: Vec<String> = command_defs.iter().map(|c| c.name.clone()).collect();
     let commands: Vec<CreateCommand<'static>> = command_defs

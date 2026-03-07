@@ -1,7 +1,10 @@
-use super::components::parse_components;
 use super::message::{
     RawAllowedMentions, RawAttachment, RawEmbed, build_allowed_mentions, build_attachment,
     build_embed,
+};
+use super::{
+    authz::{ensure_thread_scope, ensure_webhook_scope, runtime_guild_id_from_state},
+    components::parse_components,
 };
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
@@ -60,10 +63,18 @@ pub async fn op_execute_webhook(
         state.borrow::<Arc<Http>>().clone()
     };
     let webhook_id = parse_webhook_id(&args.webhook_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_webhook_scope(runtime_guild_id, &http, webhook_id).await?;
     let thread_id = match &args.thread_id {
         Some(id) => Some(parse_thread_id(id)?),
         None => None,
     };
+    if let Some(thread_id) = thread_id {
+        ensure_thread_scope(runtime_guild_id, &http, thread_id).await?;
+    }
     let wait = args.wait.unwrap_or(false);
     let with_components = args.with_components.unwrap_or(false);
 
@@ -174,6 +185,11 @@ pub async fn op_edit_webhook(
         state.borrow::<Arc<Http>>().clone()
     };
     let webhook_id = parse_webhook_id(&args.webhook_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_webhook_scope(runtime_guild_id, &http, webhook_id).await?;
     let webhook = if let Some(token) = args.token {
         http.edit_webhook_with_token(webhook_id, &token, &args.payload, args.reason.as_deref())
             .await
@@ -206,6 +222,11 @@ pub async fn op_delete_webhook(
         state.borrow::<Arc<Http>>().clone()
     };
     let webhook_id = parse_webhook_id(&args.webhook_id)?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    ensure_webhook_scope(runtime_guild_id, &http, webhook_id).await?;
     if let Some(token) = args.token {
         http.delete_webhook_with_token(webhook_id, &token, args.reason.as_deref())
             .await

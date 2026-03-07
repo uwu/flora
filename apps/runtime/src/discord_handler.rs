@@ -1,6 +1,9 @@
 use crate::{
     runtime::BotRuntime,
-    services::deployments::{DeploymentService, DeploymentSourceMapFile},
+    services::deployments::{
+        CreateDeploymentRevisionInput, Deployment, DeploymentActorType, DeploymentRevisionStatus,
+        DeploymentService, DeploymentSource, DeploymentSourceMapFile,
+    },
 };
 use color_eyre::{Report, eyre::eyre};
 use flora_macros::expose_payload;
@@ -794,24 +797,72 @@ pub struct EventReactionRemoveAll {
 impl DiscordHandler {
     async fn bootstrap_default_script(&self, guild_id: GuildId) -> Result<(), Report> {
         let guild_str = guild_id.get().to_string();
-        if self.deployments.get_deployment(&guild_str).await?.is_some() {
+        if self
+            .deployments
+            .get_current_successful(&guild_str)
+            .await?
+            .is_some()
+        {
             return Ok(());
         }
 
-        let deployment = self
+        let deployment = Deployment {
+            guild_id: guild_str.clone(),
+            entry: DEFAULT_GUILD_ENTRY.to_string(),
+            files: None,
+            source_map: Some(default_guild_source_map()),
+            bundle: DEFAULT_GUILD_BUNDLE.to_string(),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+
+        let previous_success = self
             .deployments
+            .get_previous_successful_revision(&guild_str)
+            .await?;
+        let base_revision_id = previous_success.as_ref().map(|row| row.revision_id);
+        let base_files = previous_success.as_ref().and_then(|row| row.files.as_ref());
+        let change_summary =
+            DeploymentService::summarize_changes(deployment.files.as_ref(), base_files);
+
+        let deploy_result = self.runtime.deploy_guild_script(deployment.clone()).await;
+        let status = match &deploy_result {
+            Ok(_) => DeploymentRevisionStatus::Success,
+            Err(_) => DeploymentRevisionStatus::Failed,
+        };
+        let error_message = deploy_result.as_ref().err().map(|err| err.to_string());
+
+        self.deployments
+            .create_revision(CreateDeploymentRevisionInput {
+                guild_id: guild_str.clone(),
+                entry: deployment.entry.clone(),
+                files: deployment.files.clone(),
+                bundle: deployment.bundle.clone(),
+                source_map: deployment.source_map.clone(),
+                status,
+                deploy_source: DeploymentSource::Bootstrap,
+                actor_user_id: None,
+                actor_username: Some("system".to_string()),
+                actor_type: DeploymentActorType::System,
+                error_message,
+                build_id: None,
+                base_revision_id,
+                change_summary,
+            })
+            .await?;
+
+        deploy_result.map_err(|err| eyre!(err.to_string()))?;
+
+        self.deployments
             .upsert_deployment(
-                guild_str.clone(),
-                DEFAULT_GUILD_ENTRY.to_string(),
-                None,
-                DEFAULT_GUILD_BUNDLE.to_string(),
-                Some(default_guild_source_map()),
+                deployment.guild_id,
+                deployment.entry,
+                deployment.files,
+                deployment.bundle,
+                deployment.source_map,
             )
             .await?;
-        self.runtime
-            .deploy_guild_script(deployment)
-            .await
-            .map_err(|err| eyre!(err.to_string()))?;
+
         info!(target: "flora:deployments", guild_id = guild_str, "bootstrapped default script");
         Ok(())
     }
@@ -826,11 +877,8 @@ impl From<&Ready> for EventReady {
                 discriminator: ready.user.discriminator.map(|d| d.get()),
                 bot: ready.user.bot(),
             },
-            guild_ids: ready
-                .guilds
-                .iter()
-                .map(|g| g.id.get().to_string())
-                .collect(),
+            // Do not expose full bot guild membership to tenant scripts.
+            guild_ids: Vec::new(),
         }
     }
 }
