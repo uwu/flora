@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /*/editor
+Disallow: /*/deployments
+Disallow: /*/settings
+Disallow: /404
+
+Sitemap: https://app.flora.uwu.network/sitemap.xml

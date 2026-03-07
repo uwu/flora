@@ -39,6 +39,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-grab": "0.1.25",
+    "react-helmet-async": "3.0.0",
     "shadcn": "^3.6.0",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",

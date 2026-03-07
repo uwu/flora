@@ -2,6 +2,7 @@ import { DashboardSidebar } from '@/components/sidebar/app-sidebar'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { useApp } from '@/contexts/AppContext'
 import { $api, api } from '@/lib/openapi-client'
+import { Seo } from '@/lib/seo'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import { lazy as lazyMonaco, Workspace } from 'modern-monaco'
@@ -779,85 +780,93 @@ export function EditorPage() {
   )
 
   return (
-    <SidebarProvider>
-      <div className='relative flex h-dvh w-full'>
-        <DashboardSidebar />
-        <SidebarInset className='flex min-w-0 flex-1'>
-          <div className='flex h-full min-h-0 w-full overflow-hidden'>
-            <WorkspaceSidebar
-              filesSectionOpen={filesSectionOpen}
-              onFilesSectionOpenChange={setFilesSectionOpen}
-              logsSectionOpen={logsSectionOpen}
-              onLogsSectionOpenChange={setLogsSectionOpen}
-              fileTree={fileTree}
-              openFolders={openFolders}
-              selectedTreeNode={selectedTreeNode}
-              selectedFile={selectedFile}
-              onFolderClick={handleFolderClick}
-              onFileClick={handleFileClick}
-              onOpenContextMenu={openContextMenu}
-              deployError={deployError}
-              deployButtonClass={deployButtonClass}
-              deployLabel={deployLabel}
-              deployUploadedFiles={deployUploadedFiles}
-              deployBuildLogs={deployBuildLogs}
-              copyState={copyState}
-              guildId={guildId}
-              fileCount={files.length}
-              isDeploying={isDeploying}
-              onDeploy={handleDeploy}
-              onCopyDeployDetails={handleCopyDeployDetails}
-              tailLogs={tailLogs}
-              onTailLogsChange={setTailLogs}
-              logsAreaRef={logsAreaRef}
-              logsState={{
-                isLoading: logsQuery.isLoading,
-                isError: logsQuery.isError,
-                data: logsQuery.data
-              }}
-            />
-            <EditorMainPane
-              theme={theme}
-              deploymentState={{
-                isLoading: deploymentQuery.isLoading,
-                isError: deploymentQuery.isError
-              }}
-            />
-          </div>
-          {contextMenu && (
-            <TreeContextMenu
-              contextMenu={contextMenu}
-              contextMenuRef={contextMenuRef}
-              contextTarget={contextTarget}
-              onClose={() => setContextMenu(null)}
-              onCreateFile={handleCreateFile}
-              onCreateFolder={handleCreateFolder}
-              onRename={handleRenameSelected}
-              onDelete={handleDeleteSelected}
-            />
-          )}
-          {textActionModal && (
-            <TextActionModal
-              state={textActionModal}
-              onChangeValue={(value) => {
-                setTextActionModal((prev) => (prev ? { ...prev, value } : prev))
-              }}
-              onClose={() => setTextActionModal(null)}
-              onSubmit={submitTextAction}
-            />
-          )}
-          {deleteTarget && (
-            <DeleteConfirmModal
-              target={deleteTarget}
-              onClose={() => setDeleteTarget(null)}
-              onConfirm={() => {
-                applyDelete(deleteTarget)
-                setDeleteTarget(null)
-              }}
-            />
-          )}
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    <>
+      <Seo
+        title='Guild editor'
+        description='Edit and deploy bot code for this flora guild.'
+        path={guildId ? `/${guildId}/editor` : '/editor'}
+        noindex
+      />
+      <SidebarProvider>
+        <div className='relative flex h-dvh w-full'>
+          <DashboardSidebar />
+          <SidebarInset className='flex min-w-0 flex-1'>
+            <div className='flex h-full min-h-0 w-full overflow-hidden'>
+              <WorkspaceSidebar
+                filesSectionOpen={filesSectionOpen}
+                onFilesSectionOpenChange={setFilesSectionOpen}
+                logsSectionOpen={logsSectionOpen}
+                onLogsSectionOpenChange={setLogsSectionOpen}
+                fileTree={fileTree}
+                openFolders={openFolders}
+                selectedTreeNode={selectedTreeNode}
+                selectedFile={selectedFile}
+                onFolderClick={handleFolderClick}
+                onFileClick={handleFileClick}
+                onOpenContextMenu={openContextMenu}
+                deployError={deployError}
+                deployButtonClass={deployButtonClass}
+                deployLabel={deployLabel}
+                deployUploadedFiles={deployUploadedFiles}
+                deployBuildLogs={deployBuildLogs}
+                copyState={copyState}
+                guildId={guildId}
+                fileCount={files.length}
+                isDeploying={isDeploying}
+                onDeploy={handleDeploy}
+                onCopyDeployDetails={handleCopyDeployDetails}
+                tailLogs={tailLogs}
+                onTailLogsChange={setTailLogs}
+                logsAreaRef={logsAreaRef}
+                logsState={{
+                  isLoading: logsQuery.isLoading,
+                  isError: logsQuery.isError,
+                  data: logsQuery.data
+                }}
+              />
+              <EditorMainPane
+                theme={theme}
+                deploymentState={{
+                  isLoading: deploymentQuery.isLoading,
+                  isError: deploymentQuery.isError
+                }}
+              />
+            </div>
+            {contextMenu && (
+              <TreeContextMenu
+                contextMenu={contextMenu}
+                contextMenuRef={contextMenuRef}
+                contextTarget={contextTarget}
+                onClose={() => setContextMenu(null)}
+                onCreateFile={handleCreateFile}
+                onCreateFolder={handleCreateFolder}
+                onRename={handleRenameSelected}
+                onDelete={handleDeleteSelected}
+              />
+            )}
+            {textActionModal && (
+              <TextActionModal
+                state={textActionModal}
+                onChangeValue={(value) => {
+                  setTextActionModal((prev) => (prev ? { ...prev, value } : prev))
+                }}
+                onClose={() => setTextActionModal(null)}
+                onSubmit={submitTextAction}
+              />
+            )}
+            {deleteTarget && (
+              <DeleteConfirmModal
+                target={deleteTarget}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={() => {
+                  applyDelete(deleteTarget)
+                  setDeleteTarget(null)
+                }}
+              />
+            )}
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    </>
   )
 }
