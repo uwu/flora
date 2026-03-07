@@ -3,7 +3,7 @@ function buildPong(args) {
   return `pong${suffix}`
 }
 
-const ping = defineCommand({
+const ping = prefix({
   name: 'ping',
   description: 'Respond with pong',
   run: async ctx => {
@@ -11,7 +11,7 @@ const ping = defineCommand({
   }
 })
 
-const hello = defineSlashCommand({
+const hello = slash({
   name: 'hello',
   description: 'Say hello',
   options: [
@@ -31,7 +31,7 @@ const hello = defineSlashCommand({
   }
 })
 
-const counter = defineSlashCommand({
+const counter = slash({
   name: 'counter',
   description: 'A simple counter using KV storage',
   subcommands: [
