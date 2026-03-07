@@ -1,8 +1,55 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { FieldDescription, FieldGroup } from '@/components/ui/field'
+import { useApp } from '@/contexts/AppContext'
 import { useLoginRedirect } from '@/hooks/use-login-redirect'
+import { Seo } from '@/lib/seo'
 import { cn } from '@/lib/utils'
+import { useEffect } from 'react'
+import { useLocation, useSearch } from 'wouter'
+
+function toSafeNext(next: string | null) {
+  if (!next) return '/'
+  if (!next.startsWith('/')) return '/'
+  if (next.startsWith('//')) return '/'
+  return next
+}
+
+export function LoginPage() {
+  const { session, sessionLoading } = useApp()
+  const [, setLocation] = useLocation()
+  const search = useSearch()
+  const next = toSafeNext(new URLSearchParams(search).get('next'))
+
+  useEffect(() => {
+    if (sessionLoading || !session) return
+    setLocation(next, { replace: true })
+  }, [next, session, sessionLoading, setLocation])
+
+  if (sessionLoading || session) {
+    return (
+      <div className='flex min-h-svh items-center justify-center p-6 text-sm text-muted-foreground'>
+        Loading…
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <Seo
+        title='Login'
+        description='Sign in with Discord to access the flora guild dashboard.'
+        path='/login'
+        noindex
+      />
+      <div className='flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10'>
+        <div className='w-full max-w-sm md:max-w-4xl'>
+          <LoginForm />
+        </div>
+      </div>
+    </>
+  )
+}
 
 export function LoginForm({
   className,

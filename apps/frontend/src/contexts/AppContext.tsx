@@ -19,6 +19,7 @@ type AppView = 'guild' | 'overview' | 'editor' | 'deployments' | 'user-settings'
 
 interface AppContextType {
   session: AuthUser | null
+  sessionLoading: boolean
   sessionError: string | null
   guilds: LoadState<Guild[]>
   deployments: LoadState<Deployment[]>
@@ -43,6 +44,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined)
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthUser | null>(null)
+  const [sessionLoading, setSessionLoading] = useState(true)
   const [sessionError, setSessionError] = useState<string | null>(null)
 
   const [guilds, setGuilds] = useState<LoadState<Guild[]>>({ ...initialState })
@@ -54,6 +56,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<AppView>('guild')
 
   const refreshSession = useCallback((): Promise<void> => {
+    setSessionLoading(true)
+
     return api
       .GET('/auth/me', {})
       .then((res) => {
@@ -64,9 +68,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .catch((err: any) => {
         if (err.status === 401) {
           setSession(null)
+          setSessionError(null)
         } else {
           setSessionError(err.message || 'Failed to load session')
         }
+      })
+      .finally(() => {
+        setSessionLoading(false)
       })
   }, [])
 
@@ -136,6 +144,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider
       value={{
         session,
+        sessionLoading,
         sessionError,
         guilds,
         deployments,

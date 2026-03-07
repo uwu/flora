@@ -5,18 +5,8 @@ import { useApp } from '@/contexts/AppContext'
 import { Seo } from '@/lib/seo'
 import { Server } from 'lucide-react'
 
-import { LoginForm } from './login-page'
-
 export function Dashboard() {
-  const { session, sessionError, view } = useApp()
-
-  if (sessionError) {
-    return <FullScreenMessage />
-  }
-
-  if (!session) {
-    return <FullScreenMessage />
-  }
+  const { view } = useApp()
 
   return (
     <>
@@ -62,23 +52,6 @@ export function Dashboard() {
           </SidebarInset>
         </div>
       </SidebarProvider>
-    </>
-  )
-}
-
-function FullScreenMessage() {
-  return (
-    <>
-      <Seo
-        title='Guild dashboard'
-        description='Sign in with Discord to access the flora guild dashboard.'
-        path='/'
-      />
-      <div className='flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10'>
-        <div className='w-full max-w-sm md:max-w-4xl'>
-          <LoginForm />
-        </div>
-      </div>
     </>
   )
 }
