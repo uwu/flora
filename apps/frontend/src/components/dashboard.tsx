@@ -1,6 +1,6 @@
 import { TokenManager } from '@/components/features/TokenManager'
 import { DashboardSidebar } from '@/components/sidebar/app-sidebar'
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { useApp } from '@/contexts/AppContext'
 import { Seo } from '@/lib/seo'
 import { Server } from 'lucide-react'
@@ -30,6 +30,9 @@ export function Dashboard() {
           <DashboardSidebar />
 
           <SidebarInset className='flex min-w-0 flex-1 flex-col'>
+            <div className='absolute top-3 left-3 z-40 lg:hidden'>
+              <SidebarTrigger />
+            </div>
             {view === 'user-settings'
               ? (
                 <div className='flex-1 overflow-y-auto p-4 md:p-6 lg:p-8'>

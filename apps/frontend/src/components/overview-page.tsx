@@ -1,5 +1,5 @@
 import { DashboardSidebar } from '@/components/sidebar/app-sidebar'
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { useApp } from '@/contexts/AppContext'
 import { Seo } from '@/lib/seo'
 import { useEffect } from 'react'
@@ -26,6 +26,9 @@ export function OverviewPage() {
         <div className='relative flex h-dvh w-full'>
           <DashboardSidebar />
           <SidebarInset className='flex min-w-0 flex-1 flex-col'>
+            <div className='absolute top-3 left-3 z-40 lg:hidden'>
+              <SidebarTrigger />
+            </div>
             <div className='flex flex-1 items-center justify-center text-muted-foreground'>
               <div className='space-y-2 text-center'>
                 <div className='text-lg font-semibold'>Guild Overview</div>

@@ -1,5 +1,5 @@
 import { DashboardSidebar } from '@/components/sidebar/app-sidebar'
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { useApp } from '@/contexts/AppContext'
 import { $api, api } from '@/lib/openapi-client'
 import { Seo } from '@/lib/seo'
@@ -791,6 +791,9 @@ export function EditorPage() {
         <div className='relative flex h-dvh w-full'>
           <DashboardSidebar />
           <SidebarInset className='flex min-w-0 flex-1'>
+            <div className='absolute top-3 left-3 z-40 lg:hidden'>
+              <SidebarTrigger />
+            </div>
             <div className='flex h-full min-h-0 w-full overflow-hidden'>
               <WorkspaceSidebar
                 filesSectionOpen={filesSectionOpen}
