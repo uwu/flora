@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useApp } from '@/contexts/AppContext'
-import { useLoginRedirect } from '@/hooks/use-login-redirect'
 import { cn } from '@/lib/utils'
 import { domAnimation, LazyMotion, m, useReducedMotion } from 'framer-motion'
 import { BookText, FileCode2, ListChecks, Shield } from 'lucide-react'
@@ -31,14 +30,19 @@ function getGuildInitials(name: string) {
 export function DashboardSidebar() {
   const { state, isMobile, setOpenMobile } = useSidebar()
   const isCollapsed = state === 'collapsed'
-  const { session, guilds, selectedGuild, setSelectedGuild, view, setView } = useApp()
+  const { session, guilds, selectedGuild, setSelectedGuild, setSession, view, setView } = useApp()
   const [, setLocation] = useLocation()
-  const redirectToLogin = useLoginRedirect()
   const prefersReducedMotion = useReducedMotion()
 
   const handleGuildClick = (guildId: string) => {
     setSelectedGuild(guildId)
     setView('guild')
+    if (isMobile) setOpenMobile(false)
+  }
+
+  const handleLogoutClick = () => {
+    setSession(null)
+    setLocation('/login')
     if (isMobile) setOpenMobile(false)
   }
 
@@ -150,7 +154,7 @@ export function DashboardSidebar() {
           <NavUser
             user={session}
             onSettingsClick={() => setView('user-settings')}
-            onLogoutClick={redirectToLogin}
+            onLogoutClick={handleLogoutClick}
           />
         )}
       </SidebarFooter>
