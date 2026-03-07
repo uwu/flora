@@ -1,5 +1,7 @@
 use axum::{Json, Router, extract::DefaultBodyLimit, routing::get};
 use tower_http::compression::CompressionLayer;
+#[cfg(not(debug_assertions))]
+use tower_http::services::{ServeDir, ServeFile};
 use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable as ScalarServable};
 
@@ -67,9 +69,22 @@ pub fn create_router() -> Router<AppState> {
         .merge(Scalar::with_url("/scalar", ApiDoc::openapi()))
         .route("/openapi.json", get(|| async { Json(ApiDoc::openapi()) }));
 
-    Router::new()
+    let router = Router::new()
         .nest("/api-docs", oapi_router)
         // Expose API only under `/api/*`
         .nest("/api", api_router)
-        .layer(DefaultBodyLimit::max(8 * 1024 * 1024))
+        .layer(DefaultBodyLimit::max(8 * 1024 * 1024));
+
+    #[cfg(not(debug_assertions))]
+    {
+        return router.fallback_service(
+            ServeDir::new("apps/frontend/dist")
+                .fallback(ServeFile::new("apps/frontend/dist/index.html")),
+        );
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        router
+    }
 }
