@@ -42,9 +42,17 @@ export function LoginPage() {
         path='/login'
         noindex
       />
-      <div className='flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10'>
-        <div className='w-full max-w-sm md:max-w-4xl'>
-          <LoginForm />
+      <div className='relative min-h-svh overflow-hidden'>
+        <img
+          src='/login.png'
+          alt='Login background artwork'
+          className='absolute inset-0 h-full w-full object-cover'
+        />
+        <div className='absolute inset-0 bg-black/40' />
+        <div className='relative flex min-h-svh items-center justify-center p-6 md:p-10'>
+          <div className='w-full max-w-sm'>
+            <LoginForm />
+          </div>
         </div>
       </div>
     </>
@@ -59,9 +67,9 @@ export function LoginForm({
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <Card className='overflow-hidden p-0'>
-        <CardContent className='grid p-0 md:grid-cols-2'>
-          <form className='p-6 md:p-8'>
+      <Card className='border-white/20 bg-background/90 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-background/80'>
+        <CardContent className='p-6 md:p-8'>
+          <form>
             <FieldGroup>
               <div className='flex flex-col items-center gap-2 text-center'>
                 <h1 className='text-2xl font-bold'>Welcome back</h1>
@@ -73,7 +81,7 @@ export function LoginForm({
                 <Button
                   type='button'
                   variant='outline'
-                  className='w-full max-w-xs'
+                  className='w-full'
                   onClick={redirectToLogin}
                 >
                   <svg
@@ -89,16 +97,9 @@ export function LoginForm({
               </div>
             </FieldGroup>
           </form>
-          <div className='hidden bg-muted md:block'>
-            <img
-              src='/login.jpg'
-              alt='Login artwork'
-              className='block h-auto w-full'
-            />
-          </div>
         </CardContent>
       </Card>
-      <FieldDescription className='px-6 text-center'>
+      <FieldDescription className='px-6 text-center text-white/90 [&_a]:underline [&_a]:underline-offset-2'>
         By clicking continue, you agree to our <a href='/terms-of-service'>Terms of Service</a> and
         {' '}
         <a href='/privacy-policy'>Privacy Policy</a>.
