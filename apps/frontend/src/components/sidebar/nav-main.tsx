@@ -34,7 +34,8 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
   const { state } = useSidebar()
   const isCollapsed = state === 'collapsed'
   const [openCollapsible, setOpenCollapsible] = useState<string | null>(null)
-  const activeRouteId = routes.find((route) => route.subs?.some((subRoute) => subRoute.isActive))?.id ?? null
+  const activeRouteId =
+    routes.find((route) => route.subs?.some((subRoute) => subRoute.isActive))?.id ?? null
 
   return (
     <SidebarMenu>

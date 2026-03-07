@@ -57,7 +57,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return api
       .GET('/auth/me', {})
       .then((res) => {
-        setSession(res.data?.user ?? null)
+        const user = res.data ? res.data.user : null
+        setSession(user)
         setSessionError(null)
       })
       .catch((err: any) => {
@@ -70,7 +71,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshGuilds = useCallback((): Promise<void> => {
-    setGuilds((prev) => ({ ...prev, loading: true }))
     return api
       .GET('/guilds/', {})
       .then((res) => {
@@ -82,7 +82,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshDeployments = useCallback((): Promise<void> => {
-    setDeployments((prev) => ({ ...prev, loading: true }))
     return api
       .GET('/deployments/', {})
       .then((res) => {
@@ -99,7 +98,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshTokens = useCallback((): Promise<void> => {
-    setTokens((prev) => ({ ...prev, loading: true }))
     return api
       .GET('/tokens/', {})
       .then((res) => {

@@ -194,9 +194,7 @@ export function WorkspaceSidebar({
                       </div>
                       <div className='mt-1 max-h-40 overflow-auto rounded border bg-muted/40 p-2 font-mono text-xs'>
                         {deployBuildLogs.length > 0
-                          ? deployBuildLogs.map((line) => (
-                            <div key={line}>{line}</div>
-                          ))
+                          ? deployBuildLogs.map((line) => <div key={line}>{line}</div>)
                           : <div>(none)</div>}
                       </div>
                     </div>

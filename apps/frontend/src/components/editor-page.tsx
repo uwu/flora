@@ -10,8 +10,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useParams, useSearch } from 'wouter'
 import floraSdkGlobalTypes from '../../../../sdk/global-types.d.ts?raw'
 import { runEditorBuildFlow } from './editor/deploy-flow'
-import { DeleteConfirmModal, TextActionModal } from './editor/editor-modals'
 import { EditorMainPane } from './editor/editor-main-pane'
+import { DeleteConfirmModal, TextActionModal } from './editor/editor-modals'
 import {
   buildFileTree,
   collectParentFolders,
@@ -20,8 +20,8 @@ import {
   getParentFolder,
   normalizePath
 } from './editor/editor-utils'
-import type { ContextMenuState, TextActionModalState, TreeSelection } from './editor/types'
 import { TreeContextMenu } from './editor/tree-context-menu'
+import type { ContextMenuState, TextActionModalState, TreeSelection } from './editor/types'
 import { WorkspaceSidebar } from './editor/workspace-sidebar'
 
 const WORKSPACE_SUPPORT_FILES: Record<string, string> = {
@@ -129,15 +129,22 @@ export function EditorPage() {
 
   useEffect(() => {
     if (Object.keys(filesFromDeployment).length === 0) return
-    setFileContents(filesFromDeployment)
-    const folders = Array.from(
-      new Set(
-        Object.keys(filesFromDeployment)
-          .flatMap((path) => collectParentFolders(path))
-          .filter(Boolean)
+
+    const timer = window.setTimeout(() => {
+      setFileContents(filesFromDeployment)
+      const folders = Array.from(
+        new Set(
+          Object.keys(filesFromDeployment)
+            .flatMap((path) => collectParentFolders(path))
+            .filter(Boolean)
+        )
       )
-    )
-    setExplicitFolders(folders)
+      setExplicitFolders(folders)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
   }, [filesFromDeployment])
 
   const files = useMemo(() => Object.keys(fileContents), [fileContents])
@@ -150,7 +157,12 @@ export function EditorPage() {
 
   useEffect(() => {
     if (!requestedFileFromUrl) return
-    setSelectedFile((prev) => (prev === requestedFileFromUrl ? prev : requestedFileFromUrl))
+    const timer = window.setTimeout(() => {
+      setSelectedFile((prev) => (prev === requestedFileFromUrl ? prev : requestedFileFromUrl))
+    }, 0)
+    return () => {
+      window.clearTimeout(timer)
+    }
   }, [requestedFileFromUrl])
 
   useEffect(() => {
@@ -173,13 +185,26 @@ export function EditorPage() {
     ].filter((value): value is string => !!value)
 
     const preferred = preferredMatches.find((entry) => files.includes(entry))
-    setSelectedFile(preferred ?? files[0])
+    const timer = window.setTimeout(() => {
+      setSelectedFile(preferred ?? files[0])
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
   }, [files, preferredEntryFile, selectedFile])
 
   useEffect(() => {
     selectedFileRef.current = selectedFile
     if (!selectedFile) return
-    setSelectedTreeNode({ kind: 'file', path: selectedFile })
+
+    const timer = window.setTimeout(() => {
+      setSelectedTreeNode({ kind: 'file', path: selectedFile })
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
   }, [selectedFile])
 
   useEffect(() => {
@@ -196,7 +221,15 @@ export function EditorPage() {
         changed = true
       }
     }
-    if (changed) setOpenFolders(next)
+    if (!changed) return
+
+    const timer = window.setTimeout(() => {
+      setOpenFolders(next)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
   }, [openFolders, selectedFile])
 
   useEffect(() => {
@@ -234,7 +267,13 @@ export function EditorPage() {
       }
     })
 
-    setWorkspaceReady(true)
+    const timer = window.setTimeout(() => {
+      setWorkspaceReady(true)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
   }, [guildId])
 
   useEffect(() => {
@@ -468,7 +507,10 @@ export function EditorPage() {
   const applyDelete = (target: TreeSelection) => {
     const workspace = workspaceRef.current
     if (workspace) {
-      void workspace.fs.delete(target.path, target.kind === 'folder' ? { recursive: true } : undefined).catch(() => {})
+      void workspace.fs.delete(
+        target.path,
+        target.kind === 'folder' ? { recursive: true } : undefined
+      ).catch(() => {})
     }
 
     if (target.kind === 'file') {
@@ -663,10 +705,9 @@ export function EditorPage() {
 
         const deploymentError: unknown = deployResponse.error
         if (deploymentError) {
-          const errorMessage =
-            typeof deploymentError === 'string'
-              ? deploymentError
-              : JSON.stringify(deploymentError)
+          const errorMessage = typeof deploymentError === 'string'
+            ? deploymentError
+            : JSON.stringify(deploymentError)
           setDeployError(errorMessage)
           setDeployState('error')
           return

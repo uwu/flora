@@ -40,26 +40,30 @@ export function TokenManager() {
   const [tokenLabel, setTokenLabel] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
 
-  const handleCreateToken = async () => {
+  const handleCreateToken = () => {
     setError(null)
-    try {
-      const res = await api.POST('/tokens/', { body: { label: tokenLabel || undefined } })
-      setNewToken(res.data?.token || null)
-      setTokenLabel('')
-      await refreshTokens()
-    } catch (err: any) {
-      setNewToken(null)
-      setError(err.message || 'Failed to create token')
-    }
+    const label = tokenLabel.trim()
+
+    return api
+      .POST('/tokens/', { body: label ? { label } : {} })
+      .then((res) => {
+        setNewToken(res.data?.token || null)
+        setTokenLabel('')
+        return refreshTokens()
+      })
+      .catch((err: any) => {
+        setNewToken(null)
+        setError(err.message || 'Failed to create token')
+      })
   }
 
-  const handleDeleteToken = async (tokenId: string) => {
-    try {
-      await api.DELETE('/tokens/{token_id}', { params: { path: { token_id: tokenId } } })
-      await refreshTokens()
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete token')
-    }
+  const handleDeleteToken = (tokenId: string) => {
+    return api
+      .DELETE('/tokens/{token_id}', { params: { path: { token_id: tokenId } } })
+      .then(() => refreshTokens())
+      .catch((err: any) => {
+        setError(err.message || 'Failed to delete token')
+      })
   }
 
   return (

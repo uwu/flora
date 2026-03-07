@@ -43,7 +43,8 @@ export function Dashboard() {
                   </div>
                   <h2 className='text-2xl font-bold tracking-tight'>No Guild Selected</h2>
                   <p className='text-muted-foreground mt-2 max-w-sm'>
-                    Select a guild from the sidebar to manage its bot deployment, view logs, or configure settings.
+                    Select a guild from the sidebar to manage its bot deployment, view logs, or
+                    configure settings.
                   </p>
                 </div>
               </div>

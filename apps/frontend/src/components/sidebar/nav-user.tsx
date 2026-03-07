@@ -38,7 +38,9 @@ function getUserInitials(name: string) {
 }
 
 function getUserAvatarUrl(user: AuthUser) {
-  return user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128` : undefined
+  return user.avatar
+    ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128`
+    : undefined
 }
 
 export function NavUser({ user, onSettingsClick, onLogoutClick }: NavUserProps) {
