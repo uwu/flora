@@ -6,6 +6,7 @@ import { PrivacyPolicyPage } from '@/components/privacy-policy-page'
 import { RequireAuth } from '@/components/require-auth'
 import { Settings } from '@/components/settings'
 import { TermsOfServicePage } from '@/components/terms-of-service-page'
+import { UserSettingsPage } from '@/components/user-settings-page'
 import { AppProvider } from '@/contexts/AppContext'
 import { Seo } from '@/lib/seo'
 import { ThemeProvider } from '@/lib/theme'
@@ -64,6 +65,7 @@ export default function App() {
           <Route path='/login' component={LoginPage} />
           <Route path='/terms-of-service' component={TermsOfServicePage} />
           <Route path='/privacy-policy' component={PrivacyPolicyPage} />
+          <ProtectedRoute path='/settings' component={UserSettingsPage} />
           <ProtectedRoute path='/' component={Dashboard} />
           <ProtectedRoute path='/:guildId/editor' component={EditorPageRoute} />
           <ProtectedRoute path='/:guildId/deployments' component={DeploymentsPage} />

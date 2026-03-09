@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useApp } from '@/contexts/AppContext'
+import { useRecentGuilds } from '@/hooks/use-recent-guilds'
 import { cn } from '@/lib/utils'
 import { domAnimation, LazyMotion, m, useReducedMotion } from 'framer-motion'
 import { BookText, FileCode2, ListChecks, Shield } from 'lucide-react'
@@ -31,12 +32,14 @@ export function DashboardSidebar() {
   const { state, isMobile, setOpenMobile } = useSidebar()
   const isCollapsed = state === 'collapsed'
   const { session, guilds, selectedGuild, setSelectedGuild, setSession, view, setView } = useApp()
+  const { pushRecentGuild } = useRecentGuilds()
   const [, setLocation] = useLocation()
   const prefersReducedMotion = useReducedMotion()
 
   const handleGuildClick = (guildId: string) => {
     setSelectedGuild(guildId)
     setView('guild')
+    pushRecentGuild(guildId)
     if (isMobile) setOpenMobile(false)
   }
 
@@ -153,7 +156,10 @@ export function DashboardSidebar() {
         {session && (
           <NavUser
             user={session}
-            onSettingsClick={() => setView('user-settings')}
+            onSettingsClick={() => {
+              setLocation('/settings')
+              if (isMobile) setOpenMobile(false)
+            }}
             onLogoutClick={handleLogoutClick}
           />
         )}

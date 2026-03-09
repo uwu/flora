@@ -1,12 +1,50 @@
-import { TokenManager } from '@/components/features/TokenManager'
+import { DocumentationStack } from '@/components/docs-stack/documentation-stack'
 import { DashboardSidebar } from '@/components/sidebar/app-sidebar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { useApp } from '@/contexts/AppContext'
+import { useRecentGuilds } from '@/hooks/use-recent-guilds'
 import { Seo } from '@/lib/seo'
-import { Server } from 'lucide-react'
+import { ArrowUpRight, Clock4 } from 'lucide-react'
+import { useMemo } from 'react'
+import { useLocation } from 'wouter'
+
+const docCards = [
+  {
+    title: 'Runtime setup',
+    description: 'Install + run flora runtime quickly.',
+    href: 'https://flora.uwu.network/docs/runtime'
+  },
+  {
+    title: 'Frontend guide',
+    description: 'Frontend structure and local workflows.',
+    href: 'https://flora.uwu.network/docs/frontend'
+  },
+  {
+    title: 'CLI reference',
+    description: 'Command usage + examples for the CLI.',
+    href: 'https://flora.uwu.network/docs/cli'
+  }
+]
+
+function getGuildInitials(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('')
+}
 
 export function Dashboard() {
-  const { view } = useApp()
+  const { guilds, setSelectedGuild, setView } = useApp()
+  const { recentGuildIds } = useRecentGuilds()
+  const [, setLocation] = useLocation()
+
+  const recentGuilds = useMemo(() => {
+    const all = guilds.data ?? []
+    const fromRecent = recentGuildIds.map((id) => all.find((guild) => guild.id === id)).filter((
+      guild
+    ): guild is NonNullable<typeof guild> => Boolean(guild))
+    if (fromRecent.length >= 2) return fromRecent.slice(0, 2)
+    const rest = all.filter((guild) => !fromRecent.some((recent) => recent.id === guild.id))
+    return [...fromRecent, ...rest].slice(0, 2)
+  }, [guilds.data, recentGuildIds])
 
   return (
     <>
@@ -18,37 +56,91 @@ export function Dashboard() {
       <SidebarProvider>
         <div className='relative flex h-dvh w-full'>
           <DashboardSidebar />
-
           <SidebarInset className='flex min-w-0 flex-1 flex-col'>
             <div className='absolute top-3 left-3 z-40 lg:hidden'>
               <SidebarTrigger />
             </div>
-            {view === 'user-settings'
-              ? (
-                <div className='flex-1 overflow-y-auto p-4 md:p-6 lg:p-8'>
-                  <div className='mx-auto max-w-4xl space-y-6'>
-                    <div>
-                      <h2 className='text-2xl font-bold tracking-tight'>User Settings</h2>
-                      <p className='text-muted-foreground'>Manage your global account settings.</p>
-                    </div>
-                    <TokenManager />
-                  </div>
-                </div>
-              )
-              : (
-                <div className='flex-1 p-4 md:p-6 lg:p-8'>
-                  <div className='animate-in fade-in zoom-in-95 flex h-full flex-col items-center justify-center text-center duration-500'>
-                    <div className='mb-4 rounded-full bg-primary/10 p-6'>
-                      <Server className='h-10 w-10 text-primary' />
-                    </div>
-                    <h2 className='text-2xl font-bold tracking-tight'>No Guild Selected</h2>
-                    <p className='mt-2 max-w-sm text-muted-foreground'>
-                      Select a guild from the sidebar to manage its bot deployment, view logs, or
-                      configure settings.
+            <div className='flex-1 overflow-y-auto p-4 md:p-6 lg:p-8'>
+              <div className='mx-auto flex w-full max-w-6xl flex-col gap-12 pb-8'>
+                <section className='space-y-4'>
+                  <div className='space-y-1'>
+                    <h2 className='text-2xl font-semibold tracking-tight'>Jump back in</h2>
+                    <p className='text-sm text-muted-foreground'>
+                      Your most recently used servers.
                     </p>
                   </div>
-                </div>
-              )}
+                  {recentGuilds.length === 0
+                    ? (
+                      <div className='rounded-xl border border-dashed p-8 text-sm text-muted-foreground'>
+                        Pick a server from the sidebar to create your recent list.
+                      </div>
+                    )
+                    : (
+                      <div className='grid gap-4 md:grid-cols-2'>
+                        {recentGuilds.map((guild) => (
+                          <button
+                            key={guild.id}
+                            type='button'
+                            className='group cursor-pointer rounded-2xl border bg-card p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md'
+                            onClick={() => {
+                              setSelectedGuild(guild.id)
+                              setView('overview')
+                              setLocation(`/${guild.id}`)
+                            }}
+                          >
+                            <div className='mb-4 flex items-center gap-3'>
+                              <Avatar className='h-10 w-10'>
+                                <AvatarImage
+                                  src={guild.icon
+                                    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`
+                                    : undefined}
+                                />
+                                <AvatarFallback>{getGuildInitials(guild.name)}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className='font-medium'>{guild.name}</div>
+                                <div className='text-xs text-muted-foreground'>
+                                  Guild ID: {guild.id}
+                                </div>
+                              </div>
+                            </div>
+                            <div className='inline-flex items-center gap-2 text-sm text-muted-foreground group-hover:text-foreground'>
+                              <Clock4 className='h-4 w-4' />Continue managing guild
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                </section>
+
+                <section className='space-y-6'>
+                  <div className='space-y-1'>
+                    <h2 className='text-2xl font-semibold tracking-tight'>Documentation</h2>
+                    <p className='text-sm text-muted-foreground'>Quick links into our docs.</p>
+                  </div>
+
+                  <DocumentationStack />
+
+                  <div className='grid gap-4 md:grid-cols-3'>
+                    {docCards.map((card) => (
+                      <a
+                        key={card.href}
+                        href={card.href}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='group rounded-2xl border bg-card p-4 transition hover:-translate-y-0.5 hover:shadow-md'
+                      >
+                        <div className='mb-2 inline-flex items-center gap-2 font-medium'>
+                          {card.title}
+                          <ArrowUpRight className='h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5' />
+                        </div>
+                        <p className='text-sm text-muted-foreground'>{card.description}</p>
+                      </a>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            </div>
           </SidebarInset>
         </div>
       </SidebarProvider>
