@@ -32,6 +32,24 @@ const WORKSPACE_SUPPORT_FILES: Record<string, string> = {
 
 const WORKSPACE_SUPPORT_PATHS = new Set(Object.keys(WORKSPACE_SUPPORT_FILES))
 
+let sharedWorkspace: Workspace | null = null
+let sharedWorkspaceBootstrapped = false
+
+function getSharedWorkspace() {
+  if (sharedWorkspace) return sharedWorkspace
+
+  sharedWorkspace = new Workspace({
+    name: 'flora-editor',
+    initialFiles: {
+      ...WORKSPACE_SUPPORT_FILES,
+      'src/main.ts': '// Loading workspace...'
+    },
+    entryFile: 'src/main.ts'
+  })
+
+  return sharedWorkspace
+}
+
 function toWorkspacePath(input: string) {
   return normalizePath(input.replace(/^file:\/\//, ''))
 }
@@ -236,39 +254,32 @@ export function EditorPage() {
   }, [openFolders, selectedFile])
 
   useEffect(() => {
-    if (workspaceRef.current) return
-
-    const workspace = new Workspace({
-      name: guildId ? `flora-editor-${guildId}` : 'flora-editor',
-      initialFiles: {
-        ...WORKSPACE_SUPPORT_FILES,
-        'src/main.ts': '// Loading workspace...'
-      },
-      entryFile: 'src/main.ts'
-    })
-
+    const workspace = getSharedWorkspace()
     workspaceRef.current = workspace
 
-    lazyMonaco({
-      workspace,
-      defaultTheme: 'vitesse-dark',
-      lsp: {
-        json: {
-          allowComments: true,
-          trailingCommas: 'ignore'
-        },
-        typescript: {
-          compilerOptions: {
-            allowNonTsExtensions: true,
-            allowSyntheticDefaultImports: true,
-            esModuleInterop: true,
-            resolveJsonModule: true,
-            allowJs: true,
-            checkJs: true
+    if (!sharedWorkspaceBootstrapped) {
+      lazyMonaco({
+        workspace,
+        defaultTheme: 'vitesse-dark',
+        lsp: {
+          json: {
+            allowComments: true,
+            trailingCommas: 'ignore'
+          },
+          typescript: {
+            compilerOptions: {
+              allowNonTsExtensions: true,
+              allowSyntheticDefaultImports: true,
+              esModuleInterop: true,
+              resolveJsonModule: true,
+              allowJs: true,
+              checkJs: true
+            }
           }
         }
-      }
-    })
+      })
+      sharedWorkspaceBootstrapped = true
+    }
 
     const timer = window.setTimeout(() => {
       setWorkspaceReady(true)
@@ -277,7 +288,7 @@ export function EditorPage() {
     return () => {
       window.clearTimeout(timer)
     }
-  }, [guildId])
+  }, [])
 
   useEffect(() => {
     if (!workspaceReady) return
