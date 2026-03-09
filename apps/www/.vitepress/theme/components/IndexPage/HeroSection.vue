@@ -23,7 +23,7 @@
         </svg>
       </a>
       <a
-        href="/sdk"
+        href="/docs/sdk"
         class="btn-common btn-secondary ring-offset-background focus-visible:ring-ring inline-flex items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 select-none border rounded-md px-3 py-1.5 text-lg [&_svg]:size-5 [&_svg]:stroke-[1.5px] font-sans w-fit rail-tick-start"
       >
         Documentation
