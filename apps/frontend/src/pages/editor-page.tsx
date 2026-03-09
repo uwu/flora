@@ -1,3 +1,21 @@
+import { runEditorBuildFlow } from '@/components/editor/deploy-flow'
+import { EditorMainPane } from '@/components/editor/editor-main-pane'
+import { DeleteConfirmModal, TextActionModal } from '@/components/editor/editor-modals'
+import {
+  buildFileTree,
+  collectParentFolders,
+  extractFilesFromDeployment,
+  floraSdkModuleTypes,
+  getParentFolder,
+  normalizePath
+} from '@/components/editor/editor-utils'
+import { TreeContextMenu } from '@/components/editor/tree-context-menu'
+import type {
+  ContextMenuState,
+  TextActionModalState,
+  TreeSelection
+} from '@/components/editor/types'
+import { WorkspaceSidebar } from '@/components/editor/workspace-sidebar'
 import { DashboardSidebar } from '@/components/sidebar/app-sidebar'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { useApp } from '@/contexts/AppContext'
@@ -10,20 +28,6 @@ import type { MouseEvent as ReactMouseEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useParams, useSearch } from 'wouter'
 import floraSdkGlobalTypes from '../../../../sdk/global-types.d.ts?raw'
-import { runEditorBuildFlow } from './editor/deploy-flow'
-import { EditorMainPane } from './editor/editor-main-pane'
-import { DeleteConfirmModal, TextActionModal } from './editor/editor-modals'
-import {
-  buildFileTree,
-  collectParentFolders,
-  extractFilesFromDeployment,
-  floraSdkModuleTypes,
-  getParentFolder,
-  normalizePath
-} from './editor/editor-utils'
-import { TreeContextMenu } from './editor/tree-context-menu'
-import type { ContextMenuState, TextActionModalState, TreeSelection } from './editor/types'
-import { WorkspaceSidebar } from './editor/workspace-sidebar'
 
 const WORKSPACE_SUPPORT_FILES: Record<string, string> = {
   'node_modules/@uwu/flora-sdk/global-types.d.ts': floraSdkGlobalTypes,

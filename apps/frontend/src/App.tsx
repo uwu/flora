@@ -1,15 +1,15 @@
-import { Dashboard } from '@/components/dashboard'
-import { DeploymentsPage } from '@/components/deployments-page'
-import { LoginPage } from '@/components/login-page'
-import { OverviewPage } from '@/components/overview-page'
-import { PrivacyPolicyPage } from '@/components/privacy-policy-page'
 import { RequireAuth } from '@/components/require-auth'
-import { Settings } from '@/components/settings'
-import { TermsOfServicePage } from '@/components/terms-of-service-page'
-import { UserSettingsPage } from '@/components/user-settings-page'
 import { AppProvider } from '@/contexts/AppContext'
 import { Seo } from '@/lib/seo'
 import { ThemeProvider } from '@/lib/theme'
+import { Dashboard } from '@/pages/dashboard'
+import { DeploymentsPage } from '@/pages/deployments-page'
+import { LoginPage } from '@/pages/login-page'
+import { OverviewPage } from '@/pages/overview-page'
+import { PrivacyPolicyPage } from '@/pages/privacy-policy-page'
+import { Settings } from '@/pages/settings'
+import { TermsOfServicePage } from '@/pages/terms-of-service-page'
+import { UserSettingsPage } from '@/pages/user-settings-page'
 import { type ComponentType, lazy, Suspense } from 'react'
 import { Route, Switch } from 'wouter'
 
@@ -23,7 +23,7 @@ function NotFoundPage() {
 }
 
 const LazyEditorPage = lazy(async () => {
-  const module = await import('@/components/editor-page')
+  const module = await import('@/pages/editor-page')
   return { default: module.EditorPage }
 })
 
