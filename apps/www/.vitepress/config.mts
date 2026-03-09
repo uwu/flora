@@ -10,22 +10,22 @@ export default defineConfig({
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'SDK', link: '/sdk' },
-      { text: 'Runtime', link: '/runtime' },
-      { text: 'CLI', link: '/cli' },
-      { text: 'Examples', link: '/examples' },
-      { text: 'Limitations', link: '/limitations' }
+      { text: 'SDK', link: '/docs/sdk' },
+      { text: 'Runtime', link: '/docs/runtime' },
+      { text: 'CLI', link: '/docs/cli' },
+      { text: 'Examples', link: '/docs/examples' },
+      { text: 'Limitations', link: '/docs/limitations' }
     ],
 
     sidebar: [
       {
         text: 'Docs',
         items: [
-          { text: 'SDK', link: '/sdk' },
-          { text: 'Runtime', link: '/runtime' },
-          { text: 'CLI', link: '/cli' },
-          { text: 'Examples', link: '/examples' },
-          { text: 'Limitations', link: '/limitations' }
+          { text: 'SDK', link: '/docs/sdk' },
+          { text: 'Runtime', link: '/docs/runtime' },
+          { text: 'CLI', link: '/docs/cli' },
+          { text: 'Examples', link: '/docs/examples' },
+          { text: 'Limitations', link: '/docs/limitations' }
         ]
       }
     ],
