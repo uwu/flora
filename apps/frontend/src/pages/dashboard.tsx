@@ -5,27 +5,9 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { useApp } from '@/contexts/AppContext'
 import { useRecentGuilds } from '@/hooks/use-recent-guilds'
 import { Seo } from '@/lib/seo'
-import { ArrowUpRight, Clock4 } from 'lucide-react'
+import { Clock4 } from 'lucide-react'
 import { useMemo } from 'react'
 import { useLocation } from 'wouter'
-
-const docCards = [
-  {
-    title: 'Runtime setup',
-    description: 'Install + run flora runtime quickly.',
-    href: 'https://flora.uwu.network/docs/runtime'
-  },
-  {
-    title: 'Frontend guide',
-    description: 'Frontend structure and local workflows.',
-    href: 'https://flora.uwu.network/docs/frontend'
-  },
-  {
-    title: 'CLI reference',
-    description: 'Command usage + examples for the CLI.',
-    href: 'https://flora.uwu.network/docs/cli'
-  }
-]
 
 function getGuildInitials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('')
@@ -120,24 +102,6 @@ export function Dashboard() {
                   </div>
 
                   <DocumentationStack />
-
-                  <div className='grid gap-4 md:grid-cols-3'>
-                    {docCards.map((card) => (
-                      <a
-                        key={card.href}
-                        href={card.href}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        className='group rounded-2xl border bg-card p-4 transition hover:-translate-y-0.5 hover:shadow-md'
-                      >
-                        <div className='mb-2 inline-flex items-center gap-2 font-medium'>
-                          {card.title}
-                          <ArrowUpRight className='h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5' />
-                        </div>
-                        <p className='text-sm text-muted-foreground'>{card.description}</p>
-                      </a>
-                    ))}
-                  </div>
                 </section>
               </div>
             </div>

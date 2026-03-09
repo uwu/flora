@@ -81,6 +81,19 @@ async function listWorkspaceFiles(workspace: Workspace, root = '/'): Promise<str
   return files
 }
 
+function areFileMapsEqual(a: Record<string, string>, b: Record<string, string>) {
+  const aKeys = Object.keys(a)
+  const bKeys = Object.keys(b)
+  if (aKeys.length !== bKeys.length) return false
+
+  for (const key of aKeys) {
+    if (!(key in b)) return false
+    if (a[key] !== b[key]) return false
+  }
+
+  return true
+}
+
 export function EditorPage() {
   'use no memo'
   const { guildId } = useParams<{ guildId: string }>()
@@ -174,6 +187,10 @@ export function EditorPage() {
 
   const files = useMemo(() => Object.keys(fileContents), [fileContents])
   const fileTree = useMemo(() => buildFileTree(files, explicitFolders), [explicitFolders, files])
+  const hasUnsavedChanges = useMemo(
+    () => !areFileMapsEqual(fileContents, filesFromDeployment),
+    [fileContents, filesFromDeployment]
+  )
   const preferredEntryFile = deploymentQuery.data?.entry
   const requestedFileFromUrl = useMemo(() => {
     const file = new URLSearchParams(search).get('file')
@@ -818,6 +835,7 @@ export function EditorPage() {
                 deployError={deployError}
                 deployButtonClass={deployButtonClass}
                 deployLabel={deployLabel}
+                hasUnsavedChanges={hasUnsavedChanges}
                 deployUploadedFiles={deployUploadedFiles}
                 deployBuildLogs={deployBuildLogs}
                 copyState={copyState}

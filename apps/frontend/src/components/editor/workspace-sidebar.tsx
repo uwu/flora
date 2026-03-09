@@ -6,6 +6,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import {
   Briefcase,
@@ -46,6 +47,7 @@ type WorkspaceSidebarProps = {
   deployError: string | null
   deployButtonClass: string
   deployLabel: string
+  hasUnsavedChanges: boolean
   deployUploadedFiles: string[]
   deployBuildLogs: string[]
   copyState: 'idle' | 'copied'
@@ -79,6 +81,7 @@ export function WorkspaceSidebar({
   deployError,
   deployButtonClass,
   deployLabel,
+  hasUnsavedChanges,
   deployUploadedFiles,
   deployBuildLogs,
   copyState,
@@ -154,6 +157,25 @@ export function WorkspaceSidebar({
           Workspace
         </div>
         <div className='flex items-center gap-1'>
+          {hasUnsavedChanges && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type='button'
+                      className='inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-600'
+                    >
+                      Unsaved
+                    </button>
+                  }
+                />
+                <TooltipContent side='bottom' align='end'>
+                  You have local edits. Deploy to save and apply them.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           {deployError
             ? (
               <DropdownMenu>
