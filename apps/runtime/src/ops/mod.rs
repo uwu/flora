@@ -55,6 +55,7 @@ deno_core::extension!(
         guilds::op_add_member_role,
         guilds::op_remove_member_role,
         guilds::op_edit_member,
+        guilds::op_edit_current_member,
         channels::op_create_channel,
         channels::op_edit_channel,
         channels::op_delete_channel,

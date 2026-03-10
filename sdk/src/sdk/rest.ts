@@ -19,6 +19,7 @@ import type {
   RawDeleteMessage,
   RawDeleteWebhook,
   RawEditChannel,
+  RawEditCurrentMember,
   RawEditGuildCommand,
   RawEditInteractionResponse,
   RawEditMember,
@@ -112,6 +113,8 @@ export const rest = {
   addMemberRole: (args: RawMemberRole): Promise<void> => ops.op_add_member_role(args),
   removeMemberRole: (args: RawMemberRole): Promise<void> => ops.op_remove_member_role(args),
   editMember: (args: RawEditMember): Promise<JsonValue> => ops.op_edit_member(args),
+  editCurrentMember: (args: RawEditCurrentMember): Promise<JsonValue> =>
+    ops.op_edit_current_member(args),
 
   createChannel: (args: RawCreateChannel): Promise<JsonValue> => ops.op_create_channel(args),
   editChannel: (args: RawEditChannel): Promise<JsonValue> => ops.op_edit_channel(args),

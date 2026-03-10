@@ -560,6 +560,7 @@ declare global {
     addMemberRole: (args: RawMemberRole) => Promise<void>
     removeMemberRole: (args: RawMemberRole) => Promise<void>
     editMember: (args: RawEditMember) => Promise<JsonValue>
+    editCurrentMember: (args: RawEditCurrentMember) => Promise<JsonValue>
     createChannel: (args: RawCreateChannel) => Promise<JsonValue>
     editChannel: (args: RawEditChannel) => Promise<JsonValue>
     deleteChannel: (args: RawDeleteChannel) => Promise<JsonValue>

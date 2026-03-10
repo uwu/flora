@@ -16,7 +16,7 @@ use flora::{
             RawCommandPermissions, RawCreateGuildCommand, RawDeleteGuildCommand,
             RawEditGuildCommand, RawGetGuildCommand, RawGuildId,
         },
-        guilds::{RawBanMember, RawEditMember, RawGuildUser, RawMemberRole},
+        guilds::{RawBanMember, RawEditCurrentMember, RawEditMember, RawGuildUser, RawMemberRole},
         interaction::{
             RawDeferInteractionResponse, RawDeleteFollowupMessage, RawDeleteInteractionResponse,
             RawEditInteractionResponse, RawFollowupMessage, RawInteractionResponse,
@@ -111,6 +111,7 @@ fn main() {
         RawBanMember,
         RawMemberRole,
         RawEditMember,
+        RawEditCurrentMember,
         // Channel types
         RawCreateChannel,
         RawEditChannel,

@@ -1598,6 +1598,16 @@ export type RawEditMember = {
   reason?: string
 }
 
+/** Arguments for editing the current member in a guild. */
+export type RawEditCurrentMember = {
+  /** The guild's snowflake ID. */
+  guildId: string
+  /** JSON payload with fields to update (nick, avatar, banner, bio). */
+  payload: number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null
+  /** Audit log reason for this action. */
+  reason?: string
+}
+
 /** Arguments for creating a guild channel. */
 export type RawCreateChannel = {
   /** The guild's snowflake ID. */

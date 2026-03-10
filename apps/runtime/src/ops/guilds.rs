@@ -190,6 +190,39 @@ pub async fn op_edit_member(
     serde_json::to_value(member).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
+/// Arguments for editing the current member in a guild.
+#[expose_input]
+pub struct RawEditCurrentMember {
+    /// The guild's snowflake ID.
+    pub guild_id: String,
+    /// JSON payload with fields to update (nick, avatar, banner, bio).
+    pub payload: serde_json::Value,
+    /// Audit log reason for this action.
+    pub reason: Option<String>,
+}
+
+#[op2(async)]
+#[serde]
+pub async fn op_edit_current_member(
+    state: Rc<RefCell<OpState>>,
+    #[serde] args: RawEditCurrentMember,
+) -> Result<serde_json::Value, JsErrorBox> {
+    let http = {
+        let state = state.borrow();
+        state.borrow::<Arc<Http>>().clone()
+    };
+    let guild_id = parse_guild_id(&args.guild_id)?;
+    {
+        let state = state.borrow();
+        ensure_guild_scope(&state, guild_id)?;
+    }
+    let member = http
+        .edit_member_me(guild_id, &args.payload, args.reason.as_deref())
+        .await
+        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    serde_json::to_value(member).map_err(|err| JsErrorBox::generic(err.to_string()))
+}
+
 fn parse_guild_id(value: &str) -> Result<GuildId, JsErrorBox> {
     value
         .parse::<u64>()
