@@ -14,7 +14,7 @@ import { useApp } from '@/contexts/AppContext'
 import { useRecentGuilds } from '@/hooks/use-recent-guilds'
 import { cn } from '@/lib/utils'
 import { domAnimation, LazyMotion, m, useReducedMotion } from 'framer-motion'
-import { BookText, FileCode2, ListChecks, Shield } from 'lucide-react'
+import { BookText, Database, FileCode2, ListChecks, Shield } from 'lucide-react'
 import { useLocation } from 'wouter'
 import DashboardNavigation, { type Route } from './nav-main'
 import { NavUser } from './nav-user'
@@ -82,6 +82,12 @@ export function DashboardSidebar() {
         onClick: () => setLocation(`/${guild.id}/deployments`),
         isActive: view === 'deployments' && selectedGuild === guild.id,
         icon: <ListChecks className='h-4 w-4' />
+      },
+      {
+        title: 'KV',
+        onClick: () => setLocation(`/${guild.id}/kv`),
+        isActive: view === 'kv' && selectedGuild === guild.id,
+        icon: <Database className='h-4 w-4' />
       }
     ]
   })) || []

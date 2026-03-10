@@ -6,6 +6,7 @@ import { Seo } from '@/lib/seo'
 import { ThemeProvider } from '@/lib/theme'
 import { Dashboard } from '@/pages/dashboard'
 import { DeploymentsPage } from '@/pages/deployments-page'
+import { KvPage } from '@/pages/kv-page'
 import { LoginPage } from '@/pages/login-page'
 import { OverviewPage } from '@/pages/overview-page'
 import { PrivacyPolicyPage } from '@/pages/privacy-policy-page'
@@ -91,6 +92,7 @@ export default function App() {
           <ProtectedRoute path='/' component={Dashboard} />
           <ProtectedRoute path='/:guildId/editor' component={EditorPageRoute} />
           <ProtectedRoute path='/:guildId/deployments' component={DeploymentsPage} />
+          <ProtectedRoute path='/:guildId/kv' component={KvPage} />
           <ProtectedRoute path='/:guildId/settings' component={Settings} />
           <ProtectedRoute path='/:guildId' component={OverviewPage} />
           <Route component={NotFoundPage} />
