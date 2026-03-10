@@ -16,9 +16,16 @@ export default defineConfig(({ mode }) => {
       }),
       tailwindcss()
     ],
+    optimizeDeps: {
+      exclude: ['modern-monaco', 'modern-monaco/core']
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        'modern-monaco/core': path.resolve(
+          __dirname,
+          'node_modules/modern-monaco/dist/core.mjs'
+        ),
         'monaco-themes/themes/themelist.json': path.resolve(
           __dirname,
           'node_modules/monaco-themes/themes/themelist.json'

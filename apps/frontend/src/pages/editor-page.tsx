@@ -23,7 +23,7 @@ import { $api } from '@/lib/openapi-client'
 import { Seo } from '@/lib/seo'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
-import { lazy as lazyMonaco, Workspace } from 'modern-monaco'
+import { lazy as lazyMonaco, Workspace } from 'modern-monaco/core'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useParams, useSearch } from 'wouter'
@@ -279,9 +279,14 @@ export function EditorPage() {
     workspaceRef.current = workspace
 
     if (!sharedWorkspaceBootstrapped) {
+      Object.assign(globalThis, {
+        MonacoEnvironment: { useBuiltinLSP: true }
+      })
+
       lazyMonaco({
         workspace,
         defaultTheme: 'vitesse-dark',
+        langs: ['javascript', 'typescript', 'json'],
         lsp: {
           json: {
             allowComments: true,
