@@ -7,6 +7,7 @@ export default defineConfig({
   description:
     'flora lets you focus on writing discord bots for your servers, not running infrastructure.',
   themeConfig: {
+    logo: '/logo.svg',
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'Home', link: '/' },
