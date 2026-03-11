@@ -1,85 +1,15 @@
 import { runEditorBuildFlow } from '@/components/editor/deploy-flow'
-import { EditorMainPane } from '@/components/editor/editor-main-pane'
-import { DeleteConfirmModal, TextActionModal } from '@/components/editor/editor-modals'
-import {
-  buildFileTree,
-  collectParentFolders,
-  extractFilesFromDeployment,
-  floraSdkModuleTypes,
-  getParentFolder,
-  normalizePath
-} from '@/components/editor/editor-utils'
-import { TreeContextMenu } from '@/components/editor/tree-context-menu'
-import type {
-  ContextMenuState,
-  TextActionModalState,
-  TreeSelection
-} from '@/components/editor/types'
-import { WorkspaceSidebar } from '@/components/editor/workspace-sidebar'
+import { EditorSidePanel } from '@/components/editor/editor-side-panel'
+import { extractFilesFromDeployment } from '@/components/editor/editor-utils'
+import { EditorWorkbench } from '@/components/editor/workbench'
 import { DashboardSidebar } from '@/components/sidebar/app-sidebar'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { useApp } from '@/contexts/AppContext'
 import { $api } from '@/lib/openapi-client'
 import { Seo } from '@/lib/seo'
-import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
-import { lazy as lazyMonaco, Workspace } from 'modern-monaco/core'
-import type { MouseEvent as ReactMouseEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useParams, useSearch } from 'wouter'
-import floraSdkGlobalTypes from '../../../../sdk/global-types.d.ts?raw'
-
-const WORKSPACE_SUPPORT_FILES: Record<string, string> = {
-  'node_modules/@uwu/flora-sdk/global-types.d.ts': floraSdkGlobalTypes,
-  'node_modules/@uwu/flora-sdk/index.d.ts': floraSdkModuleTypes
-}
-
-const WORKSPACE_SUPPORT_PATHS = new Set(Object.keys(WORKSPACE_SUPPORT_FILES))
-
-let sharedWorkspace: Workspace | null = null
-let sharedWorkspaceBootstrapped = false
-
-function getSharedWorkspace() {
-  if (sharedWorkspace) return sharedWorkspace
-
-  sharedWorkspace = new Workspace({
-    name: 'flora-editor',
-    initialFiles: {
-      ...WORKSPACE_SUPPORT_FILES,
-      'src/main.ts': '// Loading workspace...'
-    },
-    entryFile: 'src/main.ts'
-  })
-
-  return sharedWorkspace
-}
-
-function toWorkspacePath(input: string) {
-  return normalizePath(input.replace(/^file:\/\//, ''))
-}
-
-function dirname(path: string) {
-  const normalized = normalizePath(path)
-  const idx = normalized.lastIndexOf('/')
-  return idx === -1 ? '' : normalized.slice(0, idx)
-}
-
-async function listWorkspaceFiles(workspace: Workspace, root = '/'): Promise<string[]> {
-  const entries = await workspace.fs.readDirectory(root)
-  const files: string[] = []
-
-  for (const [name, type] of entries) {
-    const nextPath = `${root}${root.endsWith('/') ? '' : '/'}${name}`
-    if (type === 2) {
-      const nested = await listWorkspaceFiles(workspace, `${nextPath}/`)
-      files.push(...nested)
-      continue
-    }
-    if (type === 1) files.push(normalizePath(nextPath))
-  }
-
-  return files
-}
+import { useParams } from 'wouter'
 
 function areFileMapsEqual(a: Record<string, string>, b: Record<string, string>) {
   const aKeys = Object.keys(a)
@@ -98,31 +28,16 @@ export function EditorPage() {
   'use no memo'
   const { guildId } = useParams<{ guildId: string }>()
   const { setView, setSelectedGuild } = useApp()
-  const { theme } = useTheme()
-  const [filesSectionOpen, setFilesSectionOpen] = useState(true)
   const [logsSectionOpen, setLogsSectionOpen] = useState(true)
-  const [selectedFile, setSelectedFile] = useState('src/main.ts')
-  const [selectedTreeNode, setSelectedTreeNode] = useState<TreeSelection | null>(null)
-  const [explicitFolders, setExplicitFolders] = useState<string[]>([])
   const [fileContents, setFileContents] = useState<Record<string, string>>({})
-  const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({ src: true })
   const [isDeploying, setIsDeploying] = useState(false)
   const [deployState, setDeployState] = useState<'idle' | 'deploying' | 'success' | 'error'>('idle')
   const [deployError, setDeployError] = useState<string | null>(null)
   const [deployBuildLogs, setDeployBuildLogs] = useState<string[]>([])
   const [deployUploadedFiles, setDeployUploadedFiles] = useState<string[]>([])
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle')
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
-  const [textActionModal, setTextActionModal] = useState<TextActionModalState | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<TreeSelection | null>(null)
   const [tailLogs, setTailLogs] = useState(false)
-  const [workspaceReady, setWorkspaceReady] = useState(false)
-  const workspaceRef = useRef<Workspace | null>(null)
-  const selectedFileRef = useRef(selectedFile)
   const logsAreaRef = useRef<HTMLDivElement | null>(null)
-  const contextMenuRef = useRef<HTMLDivElement | null>(null)
-  const search = useSearch()
-  const [, setLocation] = useLocation()
 
   useEffect(() => {
     if (guildId) setSelectedGuild(guildId)
@@ -170,14 +85,6 @@ export function EditorPage() {
 
     const timer = window.setTimeout(() => {
       setFileContents(filesFromDeployment)
-      const folders = Array.from(
-        new Set(
-          Object.keys(filesFromDeployment)
-            .flatMap((path) => collectParentFolders(path))
-            .filter(Boolean)
-        )
-      )
-      setExplicitFolders(folders)
     }, 0)
 
     return () => {
@@ -185,230 +92,10 @@ export function EditorPage() {
     }
   }, [filesFromDeployment])
 
-  const files = useMemo(() => Object.keys(fileContents), [fileContents])
-  const fileTree = useMemo(() => buildFileTree(files, explicitFolders), [explicitFolders, files])
   const hasUnsavedChanges = useMemo(
     () => !areFileMapsEqual(fileContents, filesFromDeployment),
     [fileContents, filesFromDeployment]
   )
-  const preferredEntryFile = deploymentQuery.data?.entry
-  const requestedFileFromUrl = useMemo(() => {
-    const file = new URLSearchParams(search).get('file')
-    return file ? normalizePath(file) : ''
-  }, [search])
-
-  useEffect(() => {
-    if (!requestedFileFromUrl) return
-    const timer = window.setTimeout(() => {
-      setSelectedFile((prev) => (prev === requestedFileFromUrl ? prev : requestedFileFromUrl))
-    }, 0)
-    return () => {
-      window.clearTimeout(timer)
-    }
-  }, [requestedFileFromUrl])
-
-  useEffect(() => {
-    if (!guildId || !selectedFile) return
-    const params = new URLSearchParams(search)
-    if (params.get('file') === selectedFile) return
-
-    params.set('file', selectedFile)
-    const query = params.toString()
-    setLocation(`/${guildId}/editor${query ? `?${query}` : ''}`)
-  }, [guildId, search, selectedFile, setLocation])
-
-  useEffect(() => {
-    if (files.length === 0) return
-    if (files.includes(selectedFile)) return
-
-    const preferredMatches = [
-      preferredEntryFile,
-      preferredEntryFile ? `src/${preferredEntryFile}` : null
-    ].filter((value): value is string => !!value)
-
-    const preferred = preferredMatches.find((entry) => files.includes(entry))
-    const timer = window.setTimeout(() => {
-      setSelectedFile(preferred ?? files[0])
-    }, 0)
-
-    return () => {
-      window.clearTimeout(timer)
-    }
-  }, [files, preferredEntryFile, selectedFile])
-
-  useEffect(() => {
-    selectedFileRef.current = selectedFile
-    if (!selectedFile) return
-
-    const timer = window.setTimeout(() => {
-      setSelectedTreeNode({ kind: 'file', path: selectedFile })
-    }, 0)
-
-    return () => {
-      window.clearTimeout(timer)
-    }
-  }, [selectedFile])
-
-  useEffect(() => {
-    const parts = selectedFile.split('/').filter(Boolean)
-    if (parts.length <= 1) return
-
-    const next = { ...openFolders }
-    let changed = false
-    let currentPath = ''
-    for (let i = 0; i < parts.length - 1; i += 1) {
-      currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i]
-      if (!next[currentPath]) {
-        next[currentPath] = true
-        changed = true
-      }
-    }
-    if (!changed) return
-
-    const timer = window.setTimeout(() => {
-      setOpenFolders(next)
-    }, 0)
-
-    return () => {
-      window.clearTimeout(timer)
-    }
-  }, [openFolders, selectedFile])
-
-  useEffect(() => {
-    const workspace = getSharedWorkspace()
-    workspaceRef.current = workspace
-
-    if (!sharedWorkspaceBootstrapped) {
-      Object.assign(globalThis, {
-        MonacoEnvironment: { useBuiltinLSP: true }
-      })
-
-      lazyMonaco({
-        workspace,
-        defaultTheme: 'vitesse-dark',
-        langs: ['javascript', 'typescript', 'json'],
-        lsp: {
-          json: {
-            allowComments: true,
-            trailingCommas: 'ignore'
-          },
-          typescript: {
-            compilerOptions: {
-              allowNonTsExtensions: true,
-              allowSyntheticDefaultImports: true,
-              esModuleInterop: true,
-              resolveJsonModule: true,
-              allowJs: true,
-              checkJs: true
-            }
-          }
-        }
-      })
-      sharedWorkspaceBootstrapped = true
-    }
-
-    const timer = window.setTimeout(() => {
-      setWorkspaceReady(true)
-    }, 0)
-
-    return () => {
-      window.clearTimeout(timer)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!workspaceReady) return
-    const workspace = workspaceRef.current
-    if (!workspace) return
-    if (Object.keys(filesFromDeployment).length === 0) return
-
-    let cancelled = false
-
-    const syncWorkspace = async () => {
-      const existingPaths = await listWorkspaceFiles(workspace)
-      const nextPaths = new Set(Object.keys(filesFromDeployment))
-
-      for (const existingPath of existingPaths) {
-        if (WORKSPACE_SUPPORT_PATHS.has(existingPath)) continue
-        if (nextPaths.has(existingPath)) continue
-        await workspace.fs.delete(existingPath)
-      }
-
-      for (const [path, contents] of Object.entries(filesFromDeployment)) {
-        const folder = dirname(path)
-        if (folder) await workspace.fs.createDirectory(folder)
-        await workspace.fs.writeFile(path, contents)
-      }
-
-      if (cancelled) return
-      await workspace.openTextDocument(selectedFileRef.current)
-    }
-
-    void syncWorkspace().catch(() => {})
-
-    return () => {
-      cancelled = true
-    }
-  }, [filesFromDeployment, workspaceReady])
-
-  useEffect(() => {
-    if (!workspaceReady) return
-    const workspace = workspaceRef.current
-    if (!workspace) return
-
-    const unwatch = workspace.fs.watch('/', { recursive: true }, (kind, filename, type) => {
-      const path = toWorkspacePath(filename)
-      if (!path || WORKSPACE_SUPPORT_PATHS.has(path)) return
-
-      if (kind === 'remove') {
-        setFileContents((prev) => {
-          if (!(path in prev) && !Object.keys(prev).some((key) => key.startsWith(`${path}/`))) {
-            return prev
-          }
-          const next: Record<string, string> = {}
-          for (const [entryPath, contents] of Object.entries(prev)) {
-            if (entryPath === path || entryPath.startsWith(`${path}/`)) continue
-            next[entryPath] = contents
-          }
-          return next
-        })
-        return
-      }
-
-      if (type !== 1) return
-
-      void workspace.fs.readTextFile(path).then((contents) => {
-        setFileContents((prev) => {
-          if (prev[path] === contents) return prev
-          return { ...prev, [path]: contents }
-        })
-      })
-    })
-
-    return () => {
-      unwatch()
-    }
-  }, [workspaceReady])
-
-  useEffect(() => {
-    if (!workspaceReady || !selectedFile) return
-    const workspace = workspaceRef.current
-    if (!workspace) return
-    void workspace.openTextDocument(selectedFile).catch(() => {})
-  }, [selectedFile, workspaceReady])
-
-  useEffect(() => {
-    if (!workspaceReady) return
-    const workspace = workspaceRef.current
-    if (!workspace) return
-
-    return workspace.history.onChange(({ current }) => {
-      const path = toWorkspacePath(current)
-      if (!path || WORKSPACE_SUPPORT_PATHS.has(path)) return
-      setSelectedFile((prev) => (prev === path ? prev : path))
-      setSelectedTreeNode({ kind: 'file', path })
-    })
-  }, [workspaceReady])
 
   useEffect(() => {
     const root = logsAreaRef.current
@@ -441,274 +128,10 @@ export function EditorPage() {
   }, [logsQuery.data, tailLogs, logsSectionOpen])
 
   useEffect(() => {
-    if (!contextMenu) return
-
-    const onPointerDown = (event: MouseEvent) => {
-      if (!contextMenuRef.current) return
-      if (contextMenuRef.current.contains(event.target as Node)) return
-      setContextMenu(null)
-    }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setContextMenu(null)
-    }
-
-    window.addEventListener('mousedown', onPointerDown)
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('mousedown', onPointerDown)
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [contextMenu])
-
-  useEffect(() => {
     if (deployState !== 'success') return
     const timer = window.setTimeout(() => setDeployState('idle'), 1800)
     return () => window.clearTimeout(timer)
   }, [deployState])
-
-  const handleFolderClick = (path: string, isOpen: boolean) => {
-    setSelectedTreeNode({ kind: 'folder', path })
-    setOpenFolders((prev) => ({
-      ...prev,
-      [path]: !isOpen
-    }))
-  }
-
-  const handleFileClick = (path: string) => {
-    setSelectedTreeNode({ kind: 'file', path })
-    setSelectedFile(path)
-  }
-
-  const addOrOpenFolders = (paths: string[]) => {
-    if (paths.length === 0) return
-    const normalized = paths.map((path) => normalizePath(path)).filter(Boolean)
-    setExplicitFolders((prev) => Array.from(new Set([...prev, ...normalized])))
-    setOpenFolders((prev) => {
-      const next = { ...prev }
-      for (const path of normalized) {
-        next[path] = true
-      }
-      return next
-    })
-  }
-
-  const openContextMenu = (event: ReactMouseEvent, target: TreeSelection | null) => {
-    event.preventDefault()
-    event.stopPropagation()
-    if (target) setSelectedTreeNode(target)
-    setContextMenu({
-      x: event.clientX,
-      y: event.clientY,
-      target
-    })
-  }
-
-  const handleCreateFile = (target: TreeSelection | null = selectedTreeNode) => {
-    const baseFolder = target?.kind === 'folder'
-      ? target.path
-      : getParentFolder(selectedFile) || 'src'
-    setTextActionModal({
-      mode: 'create_file',
-      target,
-      value: baseFolder ? `${baseFolder}/new-file.ts` : 'src/new-file.ts'
-    })
-    setContextMenu(null)
-  }
-
-  const handleCreateFolder = (target: TreeSelection | null = selectedTreeNode) => {
-    const baseFolder = target?.kind === 'folder'
-      ? target.path
-      : getParentFolder(selectedFile) || 'src'
-    setTextActionModal({
-      mode: 'create_folder',
-      target,
-      value: baseFolder ? `${baseFolder}/new-folder` : 'src/new-folder'
-    })
-    setContextMenu(null)
-  }
-
-  const handleRenameSelected = (target: TreeSelection | null = selectedTreeNode) => {
-    if (!target) return
-    setTextActionModal({
-      mode: 'rename',
-      target,
-      value: target.path
-    })
-    setContextMenu(null)
-  }
-
-  const handleDeleteSelected = (target: TreeSelection | null = selectedTreeNode) => {
-    if (!target) return
-    setDeleteTarget(target)
-    setContextMenu(null)
-  }
-
-  const applyDelete = (target: TreeSelection) => {
-    const workspace = workspaceRef.current
-    if (workspace) {
-      void workspace.fs.delete(
-        target.path,
-        target.kind === 'folder' ? { recursive: true } : undefined
-      ).catch(() => {})
-    }
-
-    if (target.kind === 'file') {
-      setFileContents((prev) => {
-        if (!(target.path in prev)) return prev
-        const rest = { ...prev }
-        delete rest[target.path]
-        const nextKeys = Object.keys(rest)
-        if (selectedFile === target.path && nextKeys.length > 0) {
-          setSelectedFile(nextKeys[0])
-        }
-        return rest
-      })
-      setSelectedTreeNode(null)
-      return
-    }
-
-    setFileContents((prev) => {
-      const next: Record<string, string> = {}
-      for (const [path, contents] of Object.entries(prev)) {
-        if (path === target.path || path.startsWith(`${target.path}/`)) continue
-        next[path] = contents
-      }
-      const nextKeys = Object.keys(next)
-      if (
-        (selectedFile === target.path ||
-          selectedFile.startsWith(`${target.path}/`)) &&
-        nextKeys.length > 0
-      ) {
-        setSelectedFile(nextKeys[0])
-      }
-      return next
-    })
-    setExplicitFolders((prev) =>
-      prev.filter((path) => path !== target.path && !path.startsWith(`${target.path}/`))
-    )
-    setOpenFolders((prev) => {
-      const next: Record<string, boolean> = {}
-      for (const [path, isOpen] of Object.entries(prev)) {
-        if (path === target.path || path.startsWith(`${target.path}/`)) continue
-        next[path] = isOpen
-      }
-      return next
-    })
-    setSelectedTreeNode(null)
-  }
-
-  const applyCreateFile = (pathInput: string) => {
-    const normalized = normalizePath(pathInput)
-    if (!normalized) return
-
-    const workspace = workspaceRef.current
-    if (workspace) {
-      void (async () => {
-        const folder = dirname(normalized)
-        if (folder) await workspace.fs.createDirectory(folder)
-        await workspace.fs.writeFile(normalized, '')
-        await workspace.openTextDocument(normalized)
-      })().catch(() => {})
-    }
-
-    setFileContents((prev) => {
-      if (normalized in prev) return prev
-      return { ...prev, [normalized]: '' }
-    })
-    addOrOpenFolders(collectParentFolders(normalized))
-    setSelectedTreeNode({ kind: 'file', path: normalized })
-    setSelectedFile(normalized)
-  }
-
-  const applyCreateFolder = (pathInput: string) => {
-    const normalized = normalizePath(pathInput)
-    if (!normalized) return
-
-    const workspace = workspaceRef.current
-    if (workspace) {
-      void workspace.fs.createDirectory(normalized).catch(() => {})
-    }
-
-    addOrOpenFolders([normalized, ...collectParentFolders(normalized)])
-    setSelectedTreeNode({ kind: 'folder', path: normalized })
-  }
-
-  const applyRename = (target: TreeSelection, pathInput: string) => {
-    const nextPath = normalizePath(pathInput)
-    if (!nextPath || nextPath === target.path) return
-
-    const workspace = workspaceRef.current
-    if (workspace) {
-      void workspace.fs.rename(target.path, nextPath, { overwrite: false }).catch(() => {})
-    }
-
-    if (target.kind === 'file') {
-      setFileContents((prev) => {
-        if (!(target.path in prev)) return prev
-        const next = { ...prev }
-        const currentContents = next[target.path]
-        delete next[target.path]
-        next[nextPath] = currentContents
-        return next
-      })
-      addOrOpenFolders(collectParentFolders(nextPath))
-      if (selectedFile === target.path) setSelectedFile(nextPath)
-      setSelectedTreeNode({ kind: 'file', path: nextPath })
-      return
-    }
-
-    setFileContents((prev) => {
-      const next: Record<string, string> = {}
-      for (const [path, contents] of Object.entries(prev)) {
-        if (path === target.path || path.startsWith(`${target.path}/`)) {
-          const suffix = path.slice(target.path.length)
-          next[`${nextPath}${suffix}`] = contents
-        } else {
-          next[path] = contents
-        }
-      }
-      return next
-    })
-
-    setExplicitFolders((prev) =>
-      Array.from(
-        new Set(
-          prev
-            .map((path) => {
-              if (path === target.path || path.startsWith(`${target.path}/`)) {
-                const suffix = path.slice(target.path.length)
-                return `${nextPath}${suffix}`
-              }
-              return path
-            })
-            .concat(collectParentFolders(nextPath))
-            .map((path) => normalizePath(path))
-            .filter(Boolean)
-        )
-      )
-    )
-
-    setOpenFolders((prev) => {
-      const next: Record<string, boolean> = {}
-      for (const [path, isOpen] of Object.entries(prev)) {
-        if (path === target.path || path.startsWith(`${target.path}/`)) {
-          const suffix = path.slice(target.path.length)
-          next[`${nextPath}${suffix}`] = isOpen
-        } else {
-          next[path] = isOpen
-        }
-      }
-      next[nextPath] = true
-      return next
-    })
-
-    if (selectedFile === target.path || selectedFile.startsWith(`${target.path}/`)) {
-      const suffix = selectedFile.slice(target.path.length)
-      setSelectedFile(`${nextPath}${suffix}`)
-    }
-    setSelectedTreeNode({ kind: 'folder', path: nextPath })
-  }
 
   const handleDeploy = () => {
     if (!guildId || isDeploying) return
@@ -719,12 +142,13 @@ export function EditorPage() {
     setDeployBuildLogs([])
 
     const preferredEntry = deploymentQuery.data?.entry ?? 'src/main.ts'
+    const fallbackEntry = preferredEntry ?? Object.keys(fileContents)[0] ?? 'src/main.ts'
 
     void runEditorBuildFlow({
       guildId,
       fileContents,
       preferredEntry,
-      fallbackEntry: selectedFile,
+      fallbackEntry,
       onBuildLog: (line) => setDeployBuildLogs((prev) => [...prev, line])
     })
       .then(async (buildResult) => {
@@ -774,23 +198,6 @@ export function EditorPage() {
     window.setTimeout(() => setCopyState('idle'), 1200)
   }
 
-  const submitTextAction = () => {
-    if (!textActionModal) return
-    const value = textActionModal.value.trim()
-    if (!value) return
-
-    if (textActionModal.mode === 'create_file') {
-      applyCreateFile(value)
-    } else if (textActionModal.mode === 'create_folder') {
-      applyCreateFolder(value)
-    } else if (textActionModal.mode === 'rename' && textActionModal.target) {
-      applyRename(textActionModal.target, value)
-    }
-
-    setTextActionModal(null)
-  }
-
-  const contextTarget = contextMenu?.target ?? selectedTreeNode
   const deployLabel = deployState === 'deploying'
     ? 'Deploying...'
     : deployState === 'success'
@@ -809,6 +216,13 @@ export function EditorPage() {
     deployState === 'idle' && 'hover:bg-accent'
   )
 
+  const entryCandidates = [
+    deploymentQuery.data?.entry,
+    deploymentQuery.data?.entry ? `src/${deploymentQuery.data.entry}` : null,
+    Object.keys(fileContents)[0]
+  ].filter((value): value is string => !!value)
+  const entryFile = entryCandidates.find((candidate) => fileContents[candidate] != null)
+
   return (
     <>
       <Seo
@@ -825,27 +239,22 @@ export function EditorPage() {
               <SidebarTrigger />
             </div>
             <div className='flex h-full min-h-0 w-full overflow-hidden'>
-              <WorkspaceSidebar
-                filesSectionOpen={filesSectionOpen}
-                onFilesSectionOpenChange={setFilesSectionOpen}
+              <EditorWorkbench
+                files={fileContents}
+                entryFile={entryFile}
+                onFilesChange={setFileContents}
+              />
+              <EditorSidePanel
                 logsSectionOpen={logsSectionOpen}
                 onLogsSectionOpenChange={setLogsSectionOpen}
-                fileTree={fileTree}
-                openFolders={openFolders}
-                selectedTreeNode={selectedTreeNode}
-                selectedFile={selectedFile}
-                onFolderClick={handleFolderClick}
-                onFileClick={handleFileClick}
-                onOpenContextMenu={openContextMenu}
                 deployError={deployError}
                 deployButtonClass={deployButtonClass}
                 deployLabel={deployLabel}
-                hasUnsavedChanges={hasUnsavedChanges}
                 deployUploadedFiles={deployUploadedFiles}
                 deployBuildLogs={deployBuildLogs}
                 copyState={copyState}
                 guildId={guildId}
-                fileCount={files.length}
+                fileCount={Object.keys(fileContents).length}
                 isDeploying={isDeploying}
                 onDeploy={handleDeploy}
                 onCopyDeployDetails={handleCopyDeployDetails}
@@ -858,45 +267,11 @@ export function EditorPage() {
                   data: logsQuery.data
                 }}
               />
-              <EditorMainPane
-                theme={theme}
-                deploymentState={{
-                  isLoading: deploymentQuery.isLoading,
-                  isError: deploymentQuery.isError
-                }}
-              />
             </div>
-            {contextMenu && (
-              <TreeContextMenu
-                contextMenu={contextMenu}
-                contextMenuRef={contextMenuRef}
-                contextTarget={contextTarget}
-                onClose={() => setContextMenu(null)}
-                onCreateFile={handleCreateFile}
-                onCreateFolder={handleCreateFolder}
-                onRename={handleRenameSelected}
-                onDelete={handleDeleteSelected}
-              />
-            )}
-            {textActionModal && (
-              <TextActionModal
-                state={textActionModal}
-                onChangeValue={(value) => {
-                  setTextActionModal((prev) => (prev ? { ...prev, value } : prev))
-                }}
-                onClose={() => setTextActionModal(null)}
-                onSubmit={submitTextAction}
-              />
-            )}
-            {deleteTarget && (
-              <DeleteConfirmModal
-                target={deleteTarget}
-                onClose={() => setDeleteTarget(null)}
-                onConfirm={() => {
-                  applyDelete(deleteTarget)
-                  setDeleteTarget(null)
-                }}
-              />
+            {hasUnsavedChanges && (
+              <div className='pointer-events-none absolute right-4 bottom-4 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold text-amber-600'>
+                Unsaved changes
+              </div>
             )}
           </SidebarInset>
         </div>
