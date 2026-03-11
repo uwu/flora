@@ -128,6 +128,9 @@ importers:
       '@codingame/monaco-vscode-configuration-service-override':
         specifier: 28.0.1
         version: 28.0.1
+      '@codingame/monaco-vscode-explorer-service-override':
+        specifier: 28.0.1
+        version: 28.0.1
       '@codingame/monaco-vscode-extensions-service-override':
         specifier: 28.0.1
         version: 28.0.1
@@ -644,6 +647,9 @@ packages:
 
   '@codingame/monaco-vscode-environment-service-override@28.0.1':
     resolution: {integrity: sha512-OGB4QMlnp051pCiMwv1p+RgnLwcyhJtRKIdiogHjUb4r59R3K6xLCj7fDjuY6WZQx4xSwS6TrltS21TwtrikXg==}
+
+  '@codingame/monaco-vscode-explorer-service-override@28.0.1':
+    resolution: {integrity: sha512-4Y6l/losBUwIxgfoXzlX9Ftc1jENz24343KmOk4XcFGwz0X/3E9CKvPbA9U7DCL5V/CoTftdCfM4RddnNN5QNQ==}
 
   '@codingame/monaco-vscode-extension-api@28.0.1':
     resolution: {integrity: sha512-ACPKtKAIeiW2yQ+kXeHYrF9NC48YWld14La44XucHUmj6OccjI90KTD1epHK7OsW3syXgqnLQeJb7yMJgug34g==}
@@ -6042,6 +6048,10 @@ snapshots:
       '@codingame/monaco-vscode-api': 28.0.1
 
   '@codingame/monaco-vscode-environment-service-override@28.0.1':
+    dependencies:
+      '@codingame/monaco-vscode-api': 28.0.1
+
+  '@codingame/monaco-vscode-explorer-service-override@28.0.1':
     dependencies:
       '@codingame/monaco-vscode-api': 28.0.1
 

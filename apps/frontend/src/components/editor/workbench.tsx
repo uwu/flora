@@ -28,8 +28,6 @@ import getKeybindingsServiceOverride, {
 } from '@codingame/monaco-vscode-keybindings-service-override'
 import getLanguagesServiceOverride from '@codingame/monaco-vscode-languages-service-override'
 import getModelServiceOverride from '@codingame/monaco-vscode-model-service-override'
-import getQuickAccessServiceOverride from '@codingame/monaco-vscode-quickaccess-service-override'
-import getSearchServiceOverride from '@codingame/monaco-vscode-search-service-override'
 import getStorageServiceOverride from '@codingame/monaco-vscode-storage-service-override'
 import getTextmateServiceOverride from '@codingame/monaco-vscode-textmate-service-override'
 import getThemeServiceOverride from '@codingame/monaco-vscode-theme-service-override'
@@ -67,16 +65,6 @@ const workerLoaders: Partial<Record<string, () => Worker>> = {
   TextMateWorker: () =>
     new Worker(
       new URL('@codingame/monaco-vscode-textmate-service-override/worker', import.meta.url),
-      { type: 'module' }
-    ),
-  extensionHostWorkerMain: () =>
-    new Worker(
-      new URL('@codingame/monaco-vscode-api/workers/extensionHost.worker', import.meta.url),
-      { type: 'module' }
-    ),
-  LocalFileSearchWorker: () =>
-    new Worker(
-      new URL('@codingame/monaco-vscode-search-service-override/worker', import.meta.url),
       { type: 'module' }
     )
 }
@@ -260,12 +248,7 @@ async function createController(
       ...getFilesServiceOverride(),
       ...getStorageServiceOverride(),
       ...getExtensionServiceOverride({
-        enableWorkerExtensionHost: true
-      }),
-      ...getSearchServiceOverride(),
-      ...getQuickAccessServiceOverride({
-        isKeybindingConfigurationVisible: () => true,
-        shouldUseGlobalPicker: () => true
+        enableWorkerExtensionHost: false
       }),
       ...getExplorerServiceOverride(),
       ...getWorkbenchServiceOverride()

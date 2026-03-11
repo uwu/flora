@@ -16,6 +16,7 @@
     "@base-ui/react": "^1.0.0",
     "@codingame/monaco-vscode-api": "28.0.1",
     "@codingame/monaco-vscode-configuration-service-override": "28.0.1",
+    "@codingame/monaco-vscode-explorer-service-override": "28.0.1",
     "@codingame/monaco-vscode-extensions-service-override": "28.0.1",
     "@codingame/monaco-vscode-files-service-override": "28.0.1",
     "@codingame/monaco-vscode-javascript-default-extension": "28.0.1",
