@@ -1,4 +1,5 @@
-import { $api, queryClient } from '@/lib/openapi-client'
+import { authSessionQueryOptions, guildsQueryOptions, tokensQueryOptions } from '@/data/queries'
+import { queryClient } from '@/lib/openapi-client'
 import type { components } from '@/lib/openapi-schema'
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react'
 
@@ -59,7 +60,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSessionLoading(true)
 
     return queryClient
-      .fetchQuery($api.queryOptions('get', '/auth/me', {}))
+      .fetchQuery(authSessionQueryOptions())
       .then((data) => {
         const user = data ? data.user : null
         setSession(user)
@@ -80,7 +81,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshGuilds = useCallback((): Promise<void> => {
     return queryClient
-      .fetchQuery($api.queryOptions('get', '/guilds/', {}))
+      .fetchQuery(guildsQueryOptions())
       .then((data) => {
         setGuilds({ data: data ?? null, loading: false, error: null })
       })
@@ -100,7 +101,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshTokens = useCallback((): Promise<void> => {
     return queryClient
-      .fetchQuery($api.queryOptions('get', '/tokens/', {}))
+      .fetchQuery(tokensQueryOptions())
       .then((data) => {
         setTokens({ data: data ?? null, loading: false, error: null })
       })

@@ -10,13 +10,17 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table'
-import { $api } from '@/lib/openapi-client'
+import {
+  useCreateKvStoreMutation,
+  useDeleteKvKeyMutation,
+  useDeleteKvStoreMutation,
+  useSetKvKeyMutation
+} from '@/data/mutations'
+import { useKvKeysQuery, useKvStoresQuery, useKvValueQuery } from '@/data/queries'
 import type { components } from '@/lib/openapi-schema'
 import { cn } from '@/lib/utils'
 import { Database, KeyRound, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-
-const KEY_LIMIT = 200
 
 type KvStore = components['schemas']['KvStore']
 type RawKvKeyInfo = components['schemas']['RawKvKeyInfo']
@@ -67,59 +71,13 @@ export function KvManager({ guildId }: { guildId: string }) {
   const [selectedKey, setSelectedKey] = useState<RawKvKeyInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const storesQuery = $api.useQuery(
-    'get',
-    '/kv/stores',
-    {
-      params: {
-        query: {
-          guild_id: guildId
-        }
-      }
-    },
-    {
-      enabled: !!guildId,
-      refetchOnWindowFocus: false
-    }
-  )
+  const storesQuery = useKvStoresQuery(guildId)
 
-  const keysQuery = $api.useQuery(
-    'get',
-    '/kv/{guild_id}/{store_name}',
-    {
-      params: {
-        path: { guild_id: guildId, store_name: selectedStore },
-        query: {
-          prefix: keyPrefix.trim() ? keyPrefix.trim() : undefined,
-          limit: KEY_LIMIT
-        }
-      }
-    },
-    {
-      enabled: !!guildId && !!selectedStore,
-      refetchOnWindowFocus: false
-    }
-  )
+  const keysQuery = useKvKeysQuery(guildId, selectedStore, keyPrefix)
 
-  const valueQuery = $api.useQuery(
-    'get',
-    '/kv/{guild_id}/{store_name}/{key}',
-    {
-      params: {
-        path: {
-          guild_id: guildId,
-          store_name: selectedStore,
-          key: selectedKey?.name ?? ''
-        }
-      }
-    },
-    {
-      enabled: !!guildId && !!selectedStore && !!selectedKey?.name,
-      refetchOnWindowFocus: false
-    }
-  )
+  const valueQuery = useKvValueQuery(guildId, selectedStore, selectedKey?.name ?? null)
 
-  const createStoreMutation = $api.useMutation('post', '/kv/stores', {
+  const createStoreMutation = useCreateKvStoreMutation({
     onSuccess: () => {
       setStoreName('')
       void storesQuery.refetch()
@@ -129,7 +87,7 @@ export function KvManager({ guildId }: { guildId: string }) {
     }
   })
 
-  const deleteStoreMutation = $api.useMutation('delete', '/kv/stores/{guild_id}/{store_name}', {
+  const deleteStoreMutation = useDeleteKvStoreMutation({
     onSuccess: () => {
       void storesQuery.refetch()
       setSelectedStore('')
@@ -140,7 +98,7 @@ export function KvManager({ guildId }: { guildId: string }) {
     }
   })
 
-  const setKeyMutation = $api.useMutation('put', '/kv/{guild_id}/{store_name}/{key}', {
+  const setKeyMutation = useSetKvKeyMutation({
     onSuccess: () => {
       void keysQuery.refetch()
       setSelectedKey(null)
@@ -154,7 +112,7 @@ export function KvManager({ guildId }: { guildId: string }) {
     }
   })
 
-  const deleteKeyMutation = $api.useMutation('delete', '/kv/{guild_id}/{store_name}/{key}', {
+  const deleteKeyMutation = useDeleteKvKeyMutation({
     onSuccess: () => {
       void keysQuery.refetch()
       setSelectedKey(null)

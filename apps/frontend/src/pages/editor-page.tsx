@@ -5,7 +5,8 @@ import { EditorWorkbench } from '@/components/editor/workbench'
 import { DashboardSidebar } from '@/components/sidebar/app-sidebar'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { useApp } from '@/contexts/AppContext'
-import { $api } from '@/lib/openapi-client'
+import { useDeployMutation } from '@/data/mutations'
+import { useDeploymentQuery, useLogsQuery } from '@/data/queries'
 import { Seo } from '@/lib/seo'
 import { cn } from '@/lib/utils'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -44,36 +45,11 @@ export function EditorPage() {
     setView('editor')
   }, [guildId, setSelectedGuild, setView])
 
-  const deploymentQuery = $api.useQuery(
-    'get',
-    '/deployments/{guild_id}',
-    {
-      params: {
-        path: { guild_id: guildId ?? '' },
-        query: { include_bundle: true }
-      }
-    },
-    {
-      enabled: !!guildId
-    }
-  )
+  const deploymentQuery = useDeploymentQuery(guildId)
 
-  const logsQuery = $api.useQuery(
-    'get',
-    '/logs/{guild_id}',
-    {
-      params: {
-        path: { guild_id: guildId ?? '' },
-        query: { limit: 100 }
-      }
-    },
-    {
-      enabled: !!guildId,
-      refetchInterval: 3000
-    }
-  )
+  const logsQuery = useLogsQuery(guildId)
 
-  const deployMutation = $api.useMutation('post', '/deployments/{guild_id}')
+  const deployMutation = useDeployMutation()
 
   const filesFromDeployment = useMemo(
     () => extractFilesFromDeployment(deploymentQuery.data),

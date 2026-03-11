@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useApp } from '@/contexts/AppContext'
-import { $api } from '@/lib/openapi-client'
+import { useCreateTokenMutation, useDeleteTokenMutation } from '@/data/mutations'
 import { formatDistanceToNow } from 'date-fns'
 import { Copy, Plus, Shield, Trash2 } from 'lucide-react'
 import { useState } from 'react'
@@ -40,8 +40,8 @@ export function TokenManager() {
   const [tokenLabel, setTokenLabel] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
 
-  const createTokenMutation = $api.useMutation('post', '/tokens/', {
-    onSuccess: (data) => {
+  const createTokenMutation = useCreateTokenMutation({
+    onSuccess: (data: { token: string } | undefined) => {
       setNewToken(data?.token || null)
       setTokenLabel('')
       void refreshTokens()
@@ -52,7 +52,7 @@ export function TokenManager() {
     }
   })
 
-  const deleteTokenMutation = $api.useMutation('delete', '/tokens/{token_id}', {
+  const deleteTokenMutation = useDeleteTokenMutation({
     onSuccess: () => {
       void refreshTokens()
     },

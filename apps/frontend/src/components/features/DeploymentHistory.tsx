@@ -10,8 +10,10 @@ import {
   TableRow
 } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import type { DeploymentRevision } from '@/data/deployments/types'
+import { useRollbackDeploymentMutation } from '@/data/mutations'
+import { useDeploymentHistoryQuery, useDeploymentRevisionQuery } from '@/data/queries'
 import { cn } from '@/lib/utils'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { ChevronDown, Loader2, RotateCcw } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
@@ -21,36 +23,6 @@ const LazyMultiFileDiff = lazy(async () => {
   return { default: mod.MultiFileDiff }
 })
 
-type DeploymentChangeSummary = {
-  added_files: number
-  removed_files: number
-  modified_files: number
-}
-
-type DeploymentRevision = {
-  id: string
-  guild_id: string
-  entry: string
-  status: string
-  deployed_at: string
-  deploy_source: string
-  actor: {
-    user_id?: string | null
-    username?: string | null
-    actor_type: string
-  }
-  error_message?: string | null
-  build_id?: string | null
-  base_revision_id?: string | null
-  change_summary?: DeploymentChangeSummary | null
-  files?: Array<{ path: string; contents: string }> | null
-}
-
-type ApiError = {
-  message?: string
-}
-
-const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 const DIFFABLE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cts'])
 const DIFFABLE_FILENAMES = new Set([
   'package.json',
@@ -115,34 +87,10 @@ function formatStatusLabel(status: string) {
     .join(' ')
 }
 
-async function requestJson<T>(path: string, init?: RequestInit) {
-  const response = await fetch(`${API_BASE}${path}`, { credentials: 'include', ...init })
-  if (!response.ok) {
-    let message = `Request failed (${response.status})`
-    try {
-      const body = (await response.json()) as ApiError
-      if (body.message) message = body.message
-    } catch {
-      // ignore JSON parse errors
-    }
-    throw new Error(message)
-  }
-
-  return (await response.json()) as T
-}
-
 export function DeploymentHistory({ guildId }: { guildId: string }) {
   const [selectedRevisionId, setSelectedRevisionId] = useState<string | null>(null)
   const [diffOpen, setDiffOpen] = useState(false)
-  const queryClient = useQueryClient()
-
-  const historyQuery = useQuery({
-    queryKey: ['deployment-history', guildId],
-    queryFn: () =>
-      requestJson<DeploymentRevision[]>(
-        `/deployments/${encodeURIComponent(guildId)}/history?limit=100`
-      )
-  })
+  const historyQuery = useDeploymentHistoryQuery(guildId)
 
   const selectedSummary = useMemo(
     () => historyQuery.data?.find((row) => row.id === selectedRevisionId),
@@ -162,41 +110,24 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
 
   const shouldLoadDiffs = diffOpen && !!selectedRevisionId
 
-  const selectedRevisionQuery = useQuery({
-    queryKey: ['deployment-revision', guildId, selectedRevisionId],
-    enabled: shouldLoadDiffs,
-    queryFn: () =>
-      requestJson<DeploymentRevision>(
-        `/deployments/${encodeURIComponent(guildId)}/revisions/${selectedRevisionId}`
-      )
-  })
+  const selectedRevisionQuery = useDeploymentRevisionQuery(
+    guildId,
+    selectedRevisionId,
+    shouldLoadDiffs
+  )
 
   const selectedRevision = selectedRevisionQuery.data ?? selectedSummary ?? null
   const latestRevisionId = historyQuery.data?.[0]?.id ?? null
   const isLatestRevision = selectedRevision?.id === latestRevisionId
   const baseRevisionId = selectedRevision?.base_revision_id ?? null
-  const baseRevisionQuery = useQuery({
-    queryKey: ['deployment-revision', guildId, baseRevisionId],
-    enabled: diffOpen && !!baseRevisionId,
-    queryFn: () =>
-      requestJson<DeploymentRevision>(
-        `/deployments/${encodeURIComponent(guildId)}/revisions/${baseRevisionId}`
-      )
-  })
+  const baseRevisionQuery = useDeploymentRevisionQuery(
+    guildId,
+    baseRevisionId,
+    diffOpen && !!baseRevisionId
+  )
 
-  const rollbackMutation = useMutation({
-    mutationFn: async (revisionId: string) =>
-      requestJson<DeploymentRevision>(
-        `/deployments/${encodeURIComponent(guildId)}/rollback/${revisionId}`,
-        {
-          method: 'POST'
-        }
-      ),
-    onSuccess: async (revision) => {
-      setSelectedRevisionId(revision.id)
-      await queryClient.invalidateQueries({ queryKey: ['deployment-history', guildId] })
-      await queryClient.invalidateQueries({ queryKey: ['deployment-revision', guildId] })
-    }
+  const rollbackMutation = useRollbackDeploymentMutation(guildId, (revision) => {
+    setSelectedRevisionId(revision.id)
   })
 
   const diffFiles = useMemo(() => {
