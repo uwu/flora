@@ -4,7 +4,7 @@ outline: deep
 
 # Limitations
 
-This page documents known limitations and design trade-offs in the flora runtime.
+This page documents known limitations and design trade-offs you may face in flora's runtime.
 
 ## Cron Jobs
 
@@ -48,7 +48,7 @@ If your use case requires:
 
 - **Exactly-once execution** with audit logs
 - **Catch-up runs** after downtime
-- **Non-idempotent side effects** (billing, one-time notifications)
+- **Non-idempotent side effects** (webhooks, one-time notifications)
 
 Consider implementing your own persistence layer using the [KV store](/docs/sdk#kv-store) to track execution state:
 

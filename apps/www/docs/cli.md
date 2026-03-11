@@ -4,27 +4,15 @@ outline: deep
 
 # CLI
 
-The Flora CLI manages deployments, logs, and KV stores against the runtime API.
+:::info
+Currently the CLI is unpublished. It will be published soon as `@uwu/flora-cli`.
+:::
 
-## Install or run
+The Flora CLI manages deployments, logs, and KV stores with the Flora Server API.
 
-From the repo root:
+## Login
 
-```bash
-pnpm --filter @uwu/flora-cli run dev -- --help
-```
-
-To build the local CLI:
-
-```bash
-pnpm --filter @uwu/flora-cli run build
-```
-
-## Auth and config
-
-- The CLI stores config in a per-user local config file.
-- Set `FLORA_API_URL` or pass `--api-url` to point at your runtime.
-- Authenticate once with a token:
+Generate a API Token at https://app.flora.uwu.network/settings and then login with:
 
 ```bash
 flora login <token>
@@ -34,17 +22,15 @@ flora login <token>
 
 ### Deploy
 
-Package a script and deploy to a guild:
+To deploy to a guild:
 
 ```bash
-flora deploy --guild 123456789012345678 path/to/main.ts
+flora deploy
 ```
 
-Deploy with an explicit root (what gets packaged):
-
-```bash
-flora deploy --guild 123456789012345678 path/to/main.ts --root path/to
-```
+- You can add `--guild [guildId]` to specify your guild (it prompts by default).
+- A positional arg to specify a custom entrypoint script is also provided if needed.
+- Using `--root path/to` allows you to specify a custom root (what gets packaged).
 
 ### Get
 

@@ -249,12 +249,12 @@ cron('long-task', '*/5 * * * *', async (ctx) => {
 
 - `skipIfRunning`: If `true`, the job won't start a new execution if the previous one is still running. Default: `false`.
 
-Cron expressions follow standard 5-field format: `minute hour day-of-month month day-of-week`.
+Cron expressions follow the usual standard 5-field format: `minute hour day-of-month month day-of-week`.
 
 Limits:
 
-- Max cron jobs per guild: 32 (configurable via `max_cron_jobs`)
-- Handler timeout: 5 seconds (configurable via `cron_timeout_secs`)
+- Max cron jobs per guild: 32
+- Handler timeout: 5 seconds
 
 ## Utilities
 
@@ -269,5 +269,4 @@ const group = getSubcommandGroup(ctx)
 
 ## Types
 
-Types are generated from the Rust runtime and available in the SDK. Use these
-when authoring bot scripts and tests outside of the runtime bundle.
+Types are automatically generated from the runtime structs using https://github.com/taskylizard/t0x. They are available in the `@uwu/flora-sdk` package, and also globally.

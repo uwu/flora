@@ -4,7 +4,7 @@ outline: deep
 
 # Examples
 
-This page covers the common flows end-to-end: prefix commands, slash commands,
+This page covers the common flows like prefix commands, slash commands,
 subcommands, embeds, KV usage, and deployment via the CLI.
 
 ## Minimal bot
@@ -168,3 +168,5 @@ flora kv set --guild 123456789012345678 --store notes --key welcome "hi there"
 flora kv get --guild 123456789012345678 --store notes welcome
 flora kv list-keys --guild 123456789012345678 --store notes
 ```
+
+See the [cli page](/docs/cli) for more info.
