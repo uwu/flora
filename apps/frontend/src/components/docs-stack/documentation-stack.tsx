@@ -41,7 +41,15 @@ export function DocumentationStack() {
     <div
       className='relative w-full flex items-center justify-center'
       style={{ minHeight: 600 }}
+      role='button'
+      tabIndex={0}
       onClick={() => setSelectedCardId(null)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          setSelectedCardId(null)
+        }
+      }}
     >
       <LazyMotion features={domAnimation}>
         <m.div

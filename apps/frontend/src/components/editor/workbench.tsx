@@ -33,7 +33,7 @@ import getTextmateServiceOverride from '@codingame/monaco-vscode-textmate-servic
 import getThemeServiceOverride from '@codingame/monaco-vscode-theme-service-override'
 import getWorkbenchServiceOverride from '@codingame/monaco-vscode-workbench-service-override'
 import * as monaco from 'monaco-editor'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import floraSdkGlobalTypes from '../../../../../sdk/global-types.d.ts?raw'
 import { getParentFolder, normalizePath } from './editor-utils'
@@ -361,11 +361,9 @@ export function EditorWorkbench({ files, entryFile, onFilesChange }: EditorWorkb
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const filesMemo = useMemo(() => files, [files])
-
   useEffect(() => {
     const container = containerRef.current
-    if (!container || Object.keys(filesMemo).length === 0) return
+    if (!container || Object.keys(files).length === 0) return
 
     let changeDisposable: IDisposable | null = null
     let unsubscribe: (() => void) | null = null
@@ -373,14 +371,14 @@ export function EditorWorkbench({ files, entryFile, onFilesChange }: EditorWorkb
     const setup = async () => {
       try {
         if (!sharedController) {
-          sharedController = await createController(container, filesMemo, entryFile)
+          sharedController = await createController(container, files, entryFile)
         }
 
         changeDisposable = sharedController.provider.onDidChangeFile((changes) => {
           void handleFileChange(sharedController!.provider, changes)
         })
 
-        void sharedController.syncFiles(filesMemo)
+        void sharedController.syncFiles(files)
         unsubscribe = sharedController.subscribe(onFilesChange)
         setReady(true)
         setError(null)
@@ -397,7 +395,7 @@ export function EditorWorkbench({ files, entryFile, onFilesChange }: EditorWorkb
       changeDisposable?.dispose()
       if (unsubscribe) unsubscribe()
     }
-  }, [entryFile, filesMemo, onFilesChange])
+  }, [entryFile, files, onFilesChange])
 
   return (
     <div className='relative h-full min-w-0 flex-1'>

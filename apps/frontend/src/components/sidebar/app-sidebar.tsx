@@ -163,6 +163,7 @@ export function DashboardSidebar() {
           <NavUser
             user={session}
             onSettingsClick={() => {
+              setView('guild')
               setLocation('/settings')
               if (isMobile) setOpenMobile(false)
             }}

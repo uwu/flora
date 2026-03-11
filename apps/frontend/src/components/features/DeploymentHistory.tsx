@@ -16,7 +16,7 @@ import { useDeploymentHistoryQuery, useDeploymentRevisionQuery } from '@/data/qu
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { ChevronDown, Loader2, RotateCcw } from 'lucide-react'
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { match } from 'ts-pattern'
 
 const LazyMultiFileDiff = lazy(async () => {
@@ -93,27 +93,25 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
   const [diffOpen, setDiffOpen] = useState(false)
   const historyQuery = useDeploymentHistoryQuery(guildId)
 
-  const selectedSummary = useMemo(
-    () => historyQuery.data?.find((row) => row.id === selectedRevisionId),
-    [historyQuery.data, selectedRevisionId]
-  )
-
-  useEffect(() => {
-    if (!historyQuery.data?.length) {
-      setSelectedRevisionId(null)
-      return
+  const resolvedRevisionId = useMemo(() => {
+    const rows = historyQuery.data
+    if (!rows?.length) return null
+    if (selectedRevisionId && rows.some((row) => row.id === selectedRevisionId)) {
+      return selectedRevisionId
     }
-
-    if (!selectedRevisionId || !historyQuery.data.some((row) => row.id === selectedRevisionId)) {
-      setSelectedRevisionId(historyQuery.data[0]?.id ?? null)
-    }
+    return rows[0]?.id ?? null
   }, [historyQuery.data, selectedRevisionId])
 
-  const shouldLoadDiffs = diffOpen && !!selectedRevisionId
+  const selectedSummary = useMemo(
+    () => historyQuery.data?.find((row) => row.id === resolvedRevisionId),
+    [historyQuery.data, resolvedRevisionId]
+  )
+
+  const shouldLoadDiffs = diffOpen && !!resolvedRevisionId
 
   const selectedRevisionQuery = useDeploymentRevisionQuery(
     guildId,
-    selectedRevisionId,
+    resolvedRevisionId,
     shouldLoadDiffs
   )
 
@@ -377,7 +375,7 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
           </TableHeader>
           <TableBody>
             {historyQuery.data?.map((row) => {
-              const isSelected = row.id === selectedRevisionId
+              const isSelected = row.id === resolvedRevisionId
 
               return (
                 <TableRow

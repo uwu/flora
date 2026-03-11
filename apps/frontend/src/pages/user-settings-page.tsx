@@ -1,17 +1,9 @@
 import { TokenManager } from '@/components/features/TokenManager'
 import { DashboardSidebar } from '@/components/sidebar/app-sidebar'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
-import { useApp } from '@/contexts/AppContext'
 import { Seo } from '@/lib/seo'
-import { useEffect } from 'react'
 
 export function UserSettingsPage() {
-  const { setView } = useApp()
-
-  useEffect(() => {
-    setView('guild')
-  }, [setView])
-
   return (
     <>
       <Seo
