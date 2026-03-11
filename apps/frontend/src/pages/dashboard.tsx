@@ -7,6 +7,7 @@ import { useRecentGuilds } from '@/hooks/use-recent-guilds'
 import { Seo } from '@/lib/seo'
 import { Clock4 } from 'lucide-react'
 import { useMemo } from 'react'
+import { match } from 'ts-pattern'
 import { useLocation } from 'wouter'
 
 function getGuildInitials(name: string) {
@@ -27,6 +28,52 @@ export function Dashboard() {
     const rest = all.filter((guild) => !fromRecent.some((recent) => recent.id === guild.id))
     return [...fromRecent, ...rest].slice(0, 2)
   }, [guilds.data, recentGuildIds])
+
+  const recentGuildsContent = match(recentGuilds.length)
+    .with(
+      0,
+      () => (
+        <div className='rounded-xl border border-dashed p-8 text-sm text-muted-foreground'>
+          Pick a server from the sidebar to create your recent list.
+        </div>
+      )
+    )
+    .otherwise(() => (
+      <div className='grid gap-4 md:grid-cols-2'>
+        {recentGuilds.map((guild) => (
+          <button
+            key={guild.id}
+            type='button'
+            className='group cursor-pointer rounded-2xl border bg-card p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md'
+            onClick={() => {
+              setSelectedGuild(guild.id)
+              setView('overview')
+              setLocation(`/${guild.id}`)
+            }}
+          >
+            <div className='mb-4 flex items-center gap-3'>
+              <Avatar className='h-10 w-10'>
+                <AvatarImage
+                  src={guild.icon
+                    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`
+                    : undefined}
+                />
+                <AvatarFallback>{getGuildInitials(guild.name)}</AvatarFallback>
+              </Avatar>
+              <div>
+                <div className='font-medium'>{guild.name}</div>
+                <div className='text-xs text-muted-foreground'>
+                  Guild ID: {guild.id}
+                </div>
+              </div>
+            </div>
+            <div className='inline-flex items-center gap-2 text-sm text-muted-foreground group-hover:text-foreground'>
+              <Clock4 className='h-4 w-4' />Continue managing guild
+            </div>
+          </button>
+        ))}
+      </div>
+    ))
 
   return (
     <>
@@ -51,48 +98,7 @@ export function Dashboard() {
                       Your most recently used servers.
                     </p>
                   </div>
-                  {recentGuilds.length === 0
-                    ? (
-                      <div className='rounded-xl border border-dashed p-8 text-sm text-muted-foreground'>
-                        Pick a server from the sidebar to create your recent list.
-                      </div>
-                    )
-                    : (
-                      <div className='grid gap-4 md:grid-cols-2'>
-                        {recentGuilds.map((guild) => (
-                          <button
-                            key={guild.id}
-                            type='button'
-                            className='group cursor-pointer rounded-2xl border bg-card p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md'
-                            onClick={() => {
-                              setSelectedGuild(guild.id)
-                              setView('overview')
-                              setLocation(`/${guild.id}`)
-                            }}
-                          >
-                            <div className='mb-4 flex items-center gap-3'>
-                              <Avatar className='h-10 w-10'>
-                                <AvatarImage
-                                  src={guild.icon
-                                    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`
-                                    : undefined}
-                                />
-                                <AvatarFallback>{getGuildInitials(guild.name)}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <div className='font-medium'>{guild.name}</div>
-                                <div className='text-xs text-muted-foreground'>
-                                  Guild ID: {guild.id}
-                                </div>
-                              </div>
-                            </div>
-                            <div className='inline-flex items-center gap-2 text-sm text-muted-foreground group-hover:text-foreground'>
-                              <Clock4 className='h-4 w-4' />Continue managing guild
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                  {recentGuildsContent}
                 </section>
 
                 <section className='space-y-6'>

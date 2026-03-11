@@ -15,6 +15,7 @@ import { useRecentGuilds } from '@/hooks/use-recent-guilds'
 import { cn } from '@/lib/utils'
 import { domAnimation, LazyMotion, m, useReducedMotion } from 'framer-motion'
 import { BookText, Database, FileCode2, ListChecks, Shield } from 'lucide-react'
+import { match } from 'ts-pattern'
 import { useLocation } from 'wouter'
 import DashboardNavigation, { type Route } from './nav-main'
 import { NavUser } from './nav-user'
@@ -92,6 +93,27 @@ export function DashboardSidebar() {
     ]
   })) || []
 
+  const guildsContent = match({ isLoading: guilds.loading, hasRoutes: routes.length > 0 })
+    .with({ isLoading: true }, () => (
+      <div className='space-y-2 px-2'>
+        <Skeleton className='h-8 w-full' />
+        <Skeleton className='h-8 w-full' />
+        <Skeleton className='h-8 w-full' />
+      </div>
+    ))
+    .with({ isLoading: false, hasRoutes: false }, () => (
+      <div
+        className={cn(
+          'flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-4 text-center',
+          !isCollapsed && 'mt-3'
+        )}
+      >
+        <Shield className='h-5 w-5 text-muted-foreground' />
+        {!isCollapsed && <p className='text-xs text-muted-foreground'>No guilds found</p>}
+      </div>
+    ))
+    .otherwise(() => <DashboardNavigation routes={routes} />)
+
   return (
     <Sidebar variant='inset' collapsible='icon'>
       <SidebarHeader
@@ -134,29 +156,7 @@ export function DashboardSidebar() {
         </LazyMotion>
       </SidebarHeader>
       <SidebarContent className={cn('gap-4 px-2', !isCollapsed && 'py-4')}>
-        <div>
-          {guilds.loading
-            ? (
-              <div className='space-y-2 px-2'>
-                <Skeleton className='h-8 w-full' />
-                <Skeleton className='h-8 w-full' />
-                <Skeleton className='h-8 w-full' />
-              </div>
-            )
-            : routes.length === 0
-            ? (
-              <div
-                className={cn(
-                  'flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-4 text-center',
-                  !isCollapsed && 'mt-3'
-                )}
-              >
-                <Shield className='h-5 w-5 text-muted-foreground' />
-                {!isCollapsed && <p className='text-xs text-muted-foreground'>No guilds found</p>}
-              </div>
-            )
-            : <DashboardNavigation routes={routes} />}
-        </div>
+        <div>{guildsContent}</div>
       </SidebarContent>
       <SidebarFooter className='px-2'>
         {session && (

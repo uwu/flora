@@ -21,6 +21,7 @@ import {
   Upload
 } from 'lucide-react'
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react'
+import { match, P } from 'ts-pattern'
 
 import { formatLogLine, getLanguageFromPath } from './editor-utils'
 import type { FileTreeNode, TreeSelection } from './types'
@@ -149,6 +150,89 @@ export function WorkspaceSidebar({
     )
   }
 
+  const uploadedFilesContent = match(deployUploadedFiles.length)
+    .with(0, () => <div>(none)</div>)
+    .otherwise(() => deployUploadedFiles.map((path) => <div key={path}>{path}</div>))
+
+  const buildLogsContent = match(deployBuildLogs.length)
+    .with(0, () => <div>(none)</div>)
+    .otherwise(() => deployBuildLogs.map((line) => <div key={line}>{line}</div>))
+
+  const deployAction = match(deployError)
+    .with(P.string, (errorMessage) => (
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <button
+              type='button'
+              className={deployButtonClass}
+            >
+              <Upload className='h-3 w-3' />
+              {deployLabel}
+            </button>
+          }
+        />
+        <DropdownMenuContent align='end' className='w-[32rem] p-3'>
+          <div className='space-y-3'>
+            <div>
+              <div className='text-[11px] font-semibold uppercase tracking-wide text-muted-foreground'>
+                Error
+              </div>
+              <div className='mt-1 max-h-28 overflow-auto rounded border bg-muted/40 p-2 font-mono text-xs text-destructive'>
+                {errorMessage}
+              </div>
+            </div>
+            <div>
+              <div className='text-[11px] font-semibold uppercase tracking-wide text-muted-foreground'>
+                Uploaded Files
+              </div>
+              <div className='mt-1 max-h-28 overflow-auto rounded border bg-muted/40 p-2 font-mono text-xs'>
+                {uploadedFilesContent}
+              </div>
+            </div>
+            <div>
+              <div className='text-[11px] font-semibold uppercase tracking-wide text-muted-foreground'>
+                Build Logs
+              </div>
+              <div className='mt-1 max-h-40 overflow-auto rounded border bg-muted/40 p-2 font-mono text-xs'>
+                {buildLogsContent}
+              </div>
+            </div>
+            <div className='flex justify-end gap-2'>
+              <button
+                type='button'
+                onClick={onDeploy}
+                disabled={!guildId || fileCount === 0 || isDeploying}
+                className='inline-flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium hover:bg-accent disabled:opacity-50'
+              >
+                <Upload className='h-3.5 w-3.5' />
+                Retry
+              </button>
+              <button
+                type='button'
+                onClick={onCopyDeployDetails}
+                className='inline-flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium hover:bg-accent'
+              >
+                <Copy className='h-3.5 w-3.5' />
+                {copyState === 'copied' ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ))
+    .otherwise(() => (
+      <button
+        type='button'
+        onClick={onDeploy}
+        disabled={!guildId || fileCount === 0 || isDeploying}
+        className={deployButtonClass}
+      >
+        <Upload className='h-3 w-3' />
+        {deployLabel}
+      </button>
+    ))
+
   return (
     <div className='h-full w-72 border-r bg-muted/10'>
       <div className='flex h-12 items-center justify-between px-2'>
@@ -176,84 +260,7 @@ export function WorkspaceSidebar({
               </Tooltip>
             </TooltipProvider>
           )}
-          {deployError
-            ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <button
-                      type='button'
-                      className={deployButtonClass}
-                    >
-                      <Upload className='h-3 w-3' />
-                      {deployLabel}
-                    </button>
-                  }
-                />
-                <DropdownMenuContent align='end' className='w-[32rem] p-3'>
-                  <div className='space-y-3'>
-                    <div>
-                      <div className='text-[11px] font-semibold uppercase tracking-wide text-muted-foreground'>
-                        Error
-                      </div>
-                      <div className='mt-1 max-h-28 overflow-auto rounded border bg-muted/40 p-2 font-mono text-xs text-destructive'>
-                        {deployError}
-                      </div>
-                    </div>
-                    <div>
-                      <div className='text-[11px] font-semibold uppercase tracking-wide text-muted-foreground'>
-                        Uploaded Files
-                      </div>
-                      <div className='mt-1 max-h-28 overflow-auto rounded border bg-muted/40 p-2 font-mono text-xs'>
-                        {deployUploadedFiles.length > 0
-                          ? deployUploadedFiles.map((path) => <div key={path}>{path}</div>)
-                          : <div>(none)</div>}
-                      </div>
-                    </div>
-                    <div>
-                      <div className='text-[11px] font-semibold uppercase tracking-wide text-muted-foreground'>
-                        Build Logs
-                      </div>
-                      <div className='mt-1 max-h-40 overflow-auto rounded border bg-muted/40 p-2 font-mono text-xs'>
-                        {deployBuildLogs.length > 0
-                          ? deployBuildLogs.map((line) => <div key={line}>{line}</div>)
-                          : <div>(none)</div>}
-                      </div>
-                    </div>
-                    <div className='flex justify-end gap-2'>
-                      <button
-                        type='button'
-                        onClick={onDeploy}
-                        disabled={!guildId || fileCount === 0 || isDeploying}
-                        className='inline-flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium hover:bg-accent disabled:opacity-50'
-                      >
-                        <Upload className='h-3.5 w-3.5' />
-                        Retry
-                      </button>
-                      <button
-                        type='button'
-                        onClick={onCopyDeployDetails}
-                        className='inline-flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium hover:bg-accent'
-                      >
-                        <Copy className='h-3.5 w-3.5' />
-                        {copyState === 'copied' ? 'Copied' : 'Copy'}
-                      </button>
-                    </div>
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )
-            : (
-              <button
-                type='button'
-                onClick={onDeploy}
-                disabled={!guildId || fileCount === 0 || isDeploying}
-                className={deployButtonClass}
-              >
-                <Upload className='h-3 w-3' />
-                {deployLabel}
-              </button>
-            )}
+          {deployAction}
         </div>
       </div>
       <Separator />

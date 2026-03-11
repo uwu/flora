@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { ChevronDown, Loader2, RotateCcw } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { match } from 'ts-pattern'
 
 const LazyMultiFileDiff = lazy(async () => {
   const mod = await import('@pierre/diffs/react')
@@ -147,122 +148,292 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
       .sort((a, b) => a.path.localeCompare(b.path))
   }, [baseRevisionQuery.data?.files, selectedRevisionQuery.data?.files])
 
+  const revisionSummary = match({
+    hasRevision: Boolean(selectedRevision),
+    shouldLoadDiffs,
+    isLoading: selectedRevisionQuery.isLoading,
+    isError: selectedRevisionQuery.isError
+  })
+    .with({ hasRevision: false }, () => (
+      <div className='text-sm text-muted-foreground'>
+        Select a revision to inspect metadata and source diffs.
+      </div>
+    ))
+    .with(
+      { hasRevision: true, shouldLoadDiffs: true, isLoading: true },
+      () => (
+        <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+          <Loader2 className='size-4 animate-spin' />
+          Loading Revision Details…
+        </div>
+      )
+    )
+    .with({ hasRevision: true, isError: true }, () => (
+      <div className='text-sm text-destructive'>
+        Failed to load revision: {toErrorMessage(selectedRevisionQuery.error)}
+      </div>
+    ))
+    .otherwise(() => {
+      if (!selectedRevision) return null
+
+      return (
+        <div className='space-y-3'>
+          <div className='flex items-center justify-between gap-2'>
+            <div>
+              <div className='flex items-center gap-2 text-sm font-medium'>
+                <Badge
+                  variant='outline'
+                  className={cn('border-0', statusBadgeClass(selectedRevision.status))}
+                >
+                  {formatStatusLabel(selectedRevision.status)}
+                </Badge>
+                <span>Revision {selectedRevision.id}</span>
+              </div>
+              <div className='text-xs text-muted-foreground'>
+                {formatDateTime(selectedRevision.deployed_at)}
+              </div>
+            </div>
+            {!isLatestRevision
+              ? (
+                <Button
+                  size='sm'
+                  variant='outline'
+                  disabled={rollbackMutation.isPending || selectedRevision.status !== 'success'}
+                  onClick={() => {
+                    if (selectedRevision.id) rollbackMutation.mutate(selectedRevision.id)
+                  }}
+                >
+                  {rollbackMutation.isPending
+                    ? (
+                      <>
+                        <Loader2 className='mr-1 size-4 animate-spin' />
+                        Rolling back…
+                      </>
+                    )
+                    : (
+                      <>
+                        <RotateCcw className='mr-1 size-4' />
+                        Rollback to this
+                      </>
+                    )}
+                </Button>
+              )
+              : null}
+          </div>
+
+          {rollbackMutation.isError
+            ? (
+              <div className='text-xs text-destructive'>
+                Rollback failed: {toErrorMessage(rollbackMutation.error)}
+              </div>
+            )
+            : null}
+
+          <div className='grid gap-3 md:grid-cols-2'>
+            <div className='rounded-md border p-2'>
+              <div className='text-[11px] text-muted-foreground'>Source</div>
+              <div className='mt-1 text-sm font-medium'>{selectedRevision.deploy_source}</div>
+            </div>
+            <div className='rounded-md border p-2'>
+              <div className='text-[11px] text-muted-foreground'>Actor</div>
+              <div className='mt-1 text-sm font-medium'>
+                {formatActor(selectedRevision.actor)}
+              </div>
+            </div>
+          </div>
+
+          <div className='grid grid-cols-2 gap-3 text-xs md:grid-cols-3'>
+            <div className='rounded-md border p-2'>
+              <div className='text-muted-foreground'>Entry</div>
+              <div className='font-mono'>{selectedRevision.entry}</div>
+            </div>
+            <div className='rounded-md border p-2'>
+              <div className='text-muted-foreground'>Build</div>
+              <div className='font-mono'>{selectedRevision.build_id ?? '—'}</div>
+            </div>
+            <div className='rounded-md border p-2'>
+              <div className='text-muted-foreground'>Base Revision</div>
+              <div className='font-mono'>
+                {selectedRevision.base_revision_id
+                  ? shortId(selectedRevision.base_revision_id)
+                  : '—'}
+              </div>
+            </div>
+          </div>
+
+          {selectedRevision.error_message
+            ? (
+              <pre className='overflow-x-auto rounded border bg-muted/30 p-2 text-xs text-destructive'>
+                {selectedRevision.error_message}
+              </pre>
+            )
+            : null}
+        </div>
+      )
+    })
+
+  const diffContent = match({
+    shouldLoadDiffs,
+    isRevisionLoading: selectedRevisionQuery.isLoading,
+    hasBaseRevision: Boolean(baseRevisionId),
+    isBaseLoading: baseRevisionQuery.isLoading,
+    isBaseError: baseRevisionQuery.isError,
+    hasDiffFiles: diffFiles.length > 0,
+    diffOpen
+  })
+    .with(
+      { shouldLoadDiffs: true, isRevisionLoading: true },
+      () => <div className='text-sm text-muted-foreground'>Loading revision files…</div>
+    )
+    .with(
+      { hasBaseRevision: true, isBaseLoading: true },
+      () => <div className='text-sm text-muted-foreground'>Loading base revision…</div>
+    )
+    .with({ isBaseError: true }, () => (
+      <div className='text-sm text-destructive'>
+        Failed to load base revision: {toErrorMessage(baseRevisionQuery.error)}
+      </div>
+    ))
+    .with(
+      { hasBaseRevision: false },
+      () => <div className='text-sm text-muted-foreground'>No base revision for this entry.</div>
+    )
+    .with(
+      { hasDiffFiles: false },
+      () => <div className='text-sm text-muted-foreground'>No diffable source-file changes.</div>
+    )
+    .with({ diffOpen: false }, () => null)
+    .otherwise(() => (
+      <div className='max-h-[42dvh] space-y-3 overflow-auto'>
+        {diffFiles.map((file) => (
+          <div key={file.path} className='overflow-hidden rounded-lg border'>
+            <Suspense
+              fallback={
+                <div className='flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground'>
+                  <Loader2 className='size-3 animate-spin' />
+                  Loading diff renderer…
+                </div>
+              }
+            >
+              <LazyMultiFileDiff
+                oldFile={{ name: file.path, contents: file.oldContents }}
+                newFile={{ name: file.path, contents: file.newContents }}
+                options={{
+                  diffStyle: 'split',
+                  overflow: 'wrap',
+                  lineDiffType: 'word'
+                }}
+              />
+            </Suspense>
+          </div>
+        ))}
+      </div>
+    ))
+
+  const historyContent = match({
+    isLoading: historyQuery.isLoading,
+    isError: historyQuery.isError,
+    hasEntries: Boolean(historyQuery.data?.length)
+  })
+    .with(
+      { isLoading: true },
+      () => (
+        <div className='flex h-full items-center justify-center gap-2 text-sm text-muted-foreground'>
+          <Loader2 className='size-4 animate-spin' />
+          Loading Deployment History…
+        </div>
+      )
+    )
+    .with(
+      { isError: true },
+      () => (
+        <div className='flex h-full items-center justify-center text-sm text-destructive'>
+          Failed to load history: {toErrorMessage(historyQuery.error)}
+        </div>
+      )
+    )
+    .with(
+      { hasEntries: false },
+      () => (
+        <div className='flex h-full items-center justify-center text-sm text-muted-foreground'>
+          No deployments yet for this guild.
+        </div>
+      )
+    )
+    .otherwise(() => (
+      <div className='h-full overflow-auto'>
+        <Table>
+          <TableHeader className='sticky top-0 bg-background/95 backdrop-blur'>
+            <TableRow className='hover:bg-transparent'>
+              <TableHead>Id</TableHead>
+              <TableHead>Actor</TableHead>
+              <TableHead>Deployed</TableHead>
+              <TableHead>Source</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Entry</TableHead>
+              <TableHead>Build</TableHead>
+              <TableHead>Error</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {historyQuery.data?.map((row) => {
+              const isSelected = row.id === selectedRevisionId
+
+              return (
+                <TableRow
+                  key={row.id}
+                  data-state={isSelected ? 'selected' : undefined}
+                  className='cursor-pointer'
+                  onClick={() => {
+                    setSelectedRevisionId(row.id)
+                  }}
+                >
+                  <TableCell className='font-mono text-xs'>{shortId(row.id)}</TableCell>
+                  <TableCell className='text-xs'>{formatActor(row.actor)}</TableCell>
+                  <TableCell className='text-xs whitespace-nowrap'>
+                    {formatTimeAgo(row.deployed_at)}
+                  </TableCell>
+                  <TableCell className='text-xs'>{row.deploy_source}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant='outline'
+                      className={cn('border-0', statusBadgeClass(row.status))}
+                    >
+                      {row.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className='font-mono text-xs'>{row.entry}</TableCell>
+                  <TableCell className='font-mono text-xs'>{row.build_id ?? '—'}</TableCell>
+                  <TableCell className='max-w-60 text-xs'>
+                    {row.error_message
+                      ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <span className='block truncate text-destructive'>
+                                {row.error_message}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className='max-w-lg'>
+                              {row.error_message}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )
+                      : '—'}
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    ))
+
   return (
     <div className='flex h-full min-h-0 flex-col gap-4'>
       <div className='rounded-lg border bg-card p-4'>
-        {!selectedRevision
-          ? (
-            <div className='text-sm text-muted-foreground'>
-              Select a revision to inspect metadata and source diffs.
-            </div>
-          )
-          : shouldLoadDiffs && selectedRevisionQuery.isLoading
-          ? (
-            <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-              <Loader2 className='size-4 animate-spin' />
-              Loading Revision Details…
-            </div>
-          )
-          : selectedRevisionQuery.isError
-          ? (
-            <div className='text-sm text-destructive'>
-              Failed to load revision: {toErrorMessage(selectedRevisionQuery.error)}
-            </div>
-          )
-          : (
-            <div className='space-y-3'>
-              <div className='flex items-center justify-between gap-2'>
-                <div>
-                  <div className='flex items-center gap-2 text-sm font-medium'>
-                    <Badge
-                      variant='outline'
-                      className={cn('border-0', statusBadgeClass(selectedRevision.status))}
-                    >
-                      {formatStatusLabel(selectedRevision.status)}
-                    </Badge>
-                    <span>Revision {selectedRevision.id}</span>
-                  </div>
-                  <div className='text-xs text-muted-foreground'>
-                    {formatDateTime(selectedRevision.deployed_at)}
-                  </div>
-                </div>
-                {!isLatestRevision
-                  ? (
-                    <Button
-                      size='sm'
-                      variant='outline'
-                      disabled={rollbackMutation.isPending || selectedRevision.status !== 'success'}
-                      onClick={() => {
-                        if (selectedRevision.id) rollbackMutation.mutate(selectedRevision.id)
-                      }}
-                    >
-                      {rollbackMutation.isPending
-                        ? (
-                          <>
-                            <Loader2 className='mr-1 size-4 animate-spin' />
-                            Rolling back…
-                          </>
-                        )
-                        : (
-                          <>
-                            <RotateCcw className='mr-1 size-4' />
-                            Rollback to this
-                          </>
-                        )}
-                    </Button>
-                  )
-                  : null}
-              </div>
-
-              {rollbackMutation.isError
-                ? (
-                  <div className='text-xs text-destructive'>
-                    Rollback failed: {toErrorMessage(rollbackMutation.error)}
-                  </div>
-                )
-                : null}
-
-              <div className='grid gap-3 md:grid-cols-2'>
-                <div className='rounded-md border p-2'>
-                  <div className='text-[11px] text-muted-foreground'>Source</div>
-                  <div className='mt-1 text-sm font-medium'>{selectedRevision.deploy_source}</div>
-                </div>
-                <div className='rounded-md border p-2'>
-                  <div className='text-[11px] text-muted-foreground'>Actor</div>
-                  <div className='mt-1 text-sm font-medium'>
-                    {formatActor(selectedRevision.actor)}
-                  </div>
-                </div>
-              </div>
-
-              <div className='grid grid-cols-2 gap-3 text-xs md:grid-cols-3'>
-                <div className='rounded-md border p-2'>
-                  <div className='text-muted-foreground'>Entry</div>
-                  <div className='font-mono'>{selectedRevision.entry}</div>
-                </div>
-                <div className='rounded-md border p-2'>
-                  <div className='text-muted-foreground'>Build</div>
-                  <div className='font-mono'>{selectedRevision.build_id ?? '—'}</div>
-                </div>
-                <div className='rounded-md border p-2'>
-                  <div className='text-muted-foreground'>Base Revision</div>
-                  <div className='font-mono'>
-                    {selectedRevision.base_revision_id
-                      ? shortId(selectedRevision.base_revision_id)
-                      : '—'}
-                  </div>
-                </div>
-              </div>
-
-              {selectedRevision.error_message
-                ? (
-                  <pre className='overflow-x-auto rounded border bg-muted/30 p-2 text-xs text-destructive'>
-                    {selectedRevision.error_message}
-                  </pre>
-                )
-                : null}
-            </div>
-          )}
+        {revisionSummary}
       </div>
 
       <Collapsible open={diffOpen} onOpenChange={setDiffOpen} className='rounded-lg border bg-card'>
@@ -274,140 +445,12 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
           <ChevronDown className={cn('size-4 transition-transform', diffOpen && 'rotate-180')} />
         </CollapsibleTrigger>
         <CollapsibleContent className='border-t p-3'>
-          {shouldLoadDiffs && selectedRevisionQuery.isLoading
-            ? <div className='text-sm text-muted-foreground'>Loading revision files…</div>
-            : baseRevisionId && baseRevisionQuery.isLoading
-            ? <div className='text-sm text-muted-foreground'>Loading base revision…</div>
-            : baseRevisionQuery.isError
-            ? (
-              <div className='text-sm text-destructive'>
-                Failed to load base revision: {toErrorMessage(baseRevisionQuery.error)}
-              </div>
-            )
-            : !baseRevisionId
-            ? <div className='text-sm text-muted-foreground'>No base revision for this entry.</div>
-            : !diffFiles.length
-            ? <div className='text-sm text-muted-foreground'>No diffable source-file changes.</div>
-            : !diffOpen
-            ? null
-            : (
-              <div className='max-h-[42dvh] space-y-3 overflow-auto'>
-                {diffFiles.map((file) => (
-                  <div key={file.path} className='overflow-hidden rounded-lg border'>
-                    <Suspense
-                      fallback={
-                        <div className='flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground'>
-                          <Loader2 className='size-3 animate-spin' />
-                          Loading diff renderer…
-                        </div>
-                      }
-                    >
-                      <LazyMultiFileDiff
-                        oldFile={{ name: file.path, contents: file.oldContents }}
-                        newFile={{ name: file.path, contents: file.newContents }}
-                        options={{
-                          diffStyle: 'split',
-                          overflow: 'wrap',
-                          lineDiffType: 'word'
-                        }}
-                      />
-                    </Suspense>
-                  </div>
-                ))}
-              </div>
-            )}
+          {diffContent}
         </CollapsibleContent>
       </Collapsible>
 
       <div className='min-h-0 flex-1 overflow-hidden rounded-lg border bg-card'>
-        {historyQuery.isLoading
-          ? (
-            <div className='flex h-full items-center justify-center gap-2 text-sm text-muted-foreground'>
-              <Loader2 className='size-4 animate-spin' />
-              Loading Deployment History…
-            </div>
-          )
-          : historyQuery.isError
-          ? (
-            <div className='flex h-full items-center justify-center text-sm text-destructive'>
-              Failed to load history: {toErrorMessage(historyQuery.error)}
-            </div>
-          )
-          : !historyQuery.data?.length
-          ? (
-            <div className='flex h-full items-center justify-center text-sm text-muted-foreground'>
-              No deployments yet for this guild.
-            </div>
-          )
-          : (
-            <div className='h-full overflow-auto'>
-              <Table>
-                <TableHeader className='sticky top-0 bg-background/95 backdrop-blur'>
-                  <TableRow className='hover:bg-transparent'>
-                    <TableHead>Id</TableHead>
-                    <TableHead>Actor</TableHead>
-                    <TableHead>Deployed</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Entry</TableHead>
-                    <TableHead>Build</TableHead>
-                    <TableHead>Error</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {historyQuery.data.map((row) => {
-                    const isSelected = row.id === selectedRevisionId
-
-                    return (
-                      <TableRow
-                        key={row.id}
-                        data-state={isSelected ? 'selected' : undefined}
-                        className='cursor-pointer'
-                        onClick={() => {
-                          setSelectedRevisionId(row.id)
-                        }}
-                      >
-                        <TableCell className='font-mono text-xs'>{shortId(row.id)}</TableCell>
-                        <TableCell className='text-xs'>{formatActor(row.actor)}</TableCell>
-                        <TableCell className='text-xs whitespace-nowrap'>
-                          {formatTimeAgo(row.deployed_at)}
-                        </TableCell>
-                        <TableCell className='text-xs'>{row.deploy_source}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant='outline'
-                            className={cn('border-0', statusBadgeClass(row.status))}
-                          >
-                            {row.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className='font-mono text-xs'>{row.entry}</TableCell>
-                        <TableCell className='font-mono text-xs'>{row.build_id ?? '—'}</TableCell>
-                        <TableCell className='max-w-60 text-xs'>
-                          {row.error_message
-                            ? (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger>
-                                    <span className='block truncate text-destructive'>
-                                      {row.error_message}
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent className='max-w-lg'>
-                                    {row.error_message}
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )
-                            : '—'}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+        {historyContent}
       </div>
     </div>
   )
