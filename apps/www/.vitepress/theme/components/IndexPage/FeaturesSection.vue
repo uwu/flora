@@ -148,11 +148,10 @@ onMounted(() => {
 }
 
 .flora-stepper {
-  --pill-bg: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
-  --pill-active-bg: color-mix(in srgb, var(--foreground) 95%, transparent);
-  --pill-fill-bg: color-mix(in srgb, var(--accent) 60%, transparent);
-  --pill-container-bg: color-mix(in srgb, var(--background) 55%, transparent);
-  --pill-container-border: color-mix(in srgb, var(--border) 90%, transparent);
+  --pill-bg: rgba(255, 255, 255, 0.3);
+  --pill-active-bg: rgba(255, 255, 255, 0.9);
+  --pill-container-bg: rgba(0, 0, 0, 0.2);
+  --pill-container-border: rgba(255, 255, 255, 0.12);
   width: 32px;
   height: auto;
   padding: 10px 0;
