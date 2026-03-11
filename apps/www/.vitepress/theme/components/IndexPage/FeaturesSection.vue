@@ -58,7 +58,6 @@ onMounted(() => {
             :active="active"
             :filling="filling"
             :fill-duration="fillDuration"
-            orientation="vertical"
             class="flora-stepper"
             @step-click="active = $event"
           />
@@ -141,10 +140,9 @@ onMounted(() => {
 
 .stepper-wrap {
   position: absolute;
-  left: 16px;
-  top: 50%;
+  right: 18px;
+  bottom: 18px;
   z-index: 10;
-  transform: translateY(-50%);
 }
 
 .flora-stepper {
@@ -152,9 +150,9 @@ onMounted(() => {
   --pill-active-bg: rgba(255, 255, 255, 0.9);
   --pill-container-bg: rgba(0, 0, 0, 0.2);
   --pill-container-border: rgba(255, 255, 255, 0.12);
-  width: 32px;
-  height: auto;
-  padding: 10px 0;
+  width: auto;
+  height: 32px;
+  padding: 0 10px;
   justify-content: center;
   align-items: center;
   backdrop-filter: blur(12px);
@@ -174,8 +172,8 @@ onMounted(() => {
   .stepper-wrap {
     left: auto;
     right: 12px;
-    top: 14px;
-    transform: none;
+    bottom: 12px;
+    top: auto;
   }
 
   .feature-slide-content {
@@ -204,7 +202,8 @@ onMounted(() => {
 
   .stepper-wrap {
     right: 8px;
-    top: 10px;
+    bottom: 10px;
+    top: auto;
   }
 }
 </style>

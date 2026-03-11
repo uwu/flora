@@ -19,7 +19,7 @@
           stroke="currentColor"
           stroke-width="2"
         >
-          <path d="M7 17L17 7M17 7H7M17 7v10" />
+          <path d="M3 3h7v7H3zM14 3h7v5h-7zM14 10h7v11h-7zM3 14h7v7H3z" />
         </svg>
       </a>
       <a

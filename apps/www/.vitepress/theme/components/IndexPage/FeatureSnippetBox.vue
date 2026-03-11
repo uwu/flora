@@ -127,11 +127,15 @@ const snippetHtml = computed(() =>
 
   .terminal-body {
     --uno: "p-4 px-5 overflow-x-auto";
-    min-height: 240px;
+    min-height: 320px;
   }
 }
 
 @media (max-width: 600px) {
+  .terminal-body {
+    min-height: 360px;
+  }
+
   .terminal-body pre {
     font-size: 11px;
   }

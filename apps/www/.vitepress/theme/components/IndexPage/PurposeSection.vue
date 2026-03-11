@@ -2,7 +2,10 @@
   <section class="purpose">
     <div class="purpose-inner">
       <div class="purpose-text">
-        <h2 class="purpose-title">Writing bots should stay fun.</h2>
+        <div class="purpose-heading">
+          <h2 class="purpose-title">Writing bots should be fun.</h2>
+          <img class="purpose-title-art" src="/purpose-flowers.png" alt="" />
+        </div>
         <p class="purpose-copy">
           Building Discord bots is exciting. Deploying them, chasing API changes, and maintaining
           them months later usually is not.
@@ -45,6 +48,10 @@
   filter: drop-shadow(0 18px 30px rgb(0 0 0 / 0.32));
 }
 
+.purpose-heading {
+  display: block;
+}
+
 .purpose-title {
   --uno: "m-0 mb-5 font-600";
   color: var(--gb-fg);
@@ -52,6 +59,13 @@
   line-height: 1.08;
   letter-spacing: -0.03em;
   max-width: 860px;
+}
+
+.purpose-title-art {
+  display: none;
+  width: min(120px, 24vw);
+  height: auto;
+  filter: drop-shadow(0 14px 24px rgb(0 0 0 / 0.3));
 }
 
 .purpose-copy {
@@ -78,6 +92,26 @@
 @media (max-width: 600px) {
   .purpose {
     --uno: "px-5 py-14";
+  }
+
+  .purpose-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .purpose-title {
+    margin-bottom: 0;
+  }
+
+  .purpose-title-art {
+    display: block;
+    width: min(120px, 26vw);
+  }
+
+  .purpose-art {
+    display: none;
   }
 
   .purpose-art img {
