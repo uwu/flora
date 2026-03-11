@@ -11,11 +11,15 @@ import {
 } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { MultiFileDiff } from '@pierre/diffs/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { ChevronDown, Loader2, RotateCcw } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+
+const LazyMultiFileDiff = lazy(async () => {
+  const mod = await import('@pierre/diffs/react')
+  return { default: mod.MultiFileDiff }
+})
 
 type DeploymentChangeSummary = {
   added_files: number
@@ -76,11 +80,6 @@ function formatActor(actor: DeploymentRevision['actor']) {
   return actor.user_id ?? actor.actor_type
 }
 
-function buildSummaryLabel(summary?: DeploymentChangeSummary | null) {
-  if (!summary) return '—'
-  return `+${summary.added_files} ~${summary.modified_files} -${summary.removed_files}`
-}
-
 function isDiffableFile(path: string) {
   const lowerPath = path.toLowerCase()
   const fileName = lowerPath.split('/').at(-1) ?? lowerPath
@@ -107,6 +106,13 @@ function statusBadgeClass(status: string) {
   }
 
   return 'bg-green-500/15 text-green-700 hover:bg-green-500/25 dark:bg-green-500/10 dark:text-green-300 dark:hover:bg-green-500/20 border-0'
+}
+
+function formatStatusLabel(status: string) {
+  return status
+    .split('_')
+    .map((word) => (word ? word[0]?.toUpperCase() + word.slice(1) : word))
+    .join(' ')
 }
 
 async function requestJson<T>(path: string, init?: RequestInit) {
@@ -154,19 +160,24 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
     }
   }, [historyQuery.data, selectedRevisionId])
 
+  const shouldLoadDiffs = diffOpen && !!selectedRevisionId
+
   const selectedRevisionQuery = useQuery({
     queryKey: ['deployment-revision', guildId, selectedRevisionId],
-    enabled: !!selectedRevisionId,
+    enabled: shouldLoadDiffs,
     queryFn: () =>
       requestJson<DeploymentRevision>(
         `/deployments/${encodeURIComponent(guildId)}/revisions/${selectedRevisionId}`
       )
   })
 
-  const baseRevisionId = selectedRevisionQuery.data?.base_revision_id ?? null
+  const selectedRevision = selectedRevisionQuery.data ?? selectedSummary ?? null
+  const latestRevisionId = historyQuery.data?.[0]?.id ?? null
+  const isLatestRevision = selectedRevision?.id === latestRevisionId
+  const baseRevisionId = selectedRevision?.base_revision_id ?? null
   const baseRevisionQuery = useQuery({
     queryKey: ['deployment-revision', guildId, baseRevisionId],
-    enabled: !!baseRevisionId,
+    enabled: diffOpen && !!baseRevisionId,
     queryFn: () =>
       requestJson<DeploymentRevision>(
         `/deployments/${encodeURIComponent(guildId)}/revisions/${baseRevisionId}`
@@ -205,8 +216,6 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
       .sort((a, b) => a.path.localeCompare(b.path))
   }, [baseRevisionQuery.data?.files, selectedRevisionQuery.data?.files])
 
-  const selectedRevision = selectedRevisionQuery.data ?? selectedSummary ?? null
-
   return (
     <div className='flex h-full min-h-0 flex-col gap-4'>
       <div className='rounded-lg border bg-card p-4'>
@@ -216,7 +225,7 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
               Select a revision to inspect metadata and source diffs.
             </div>
           )
-          : selectedRevisionQuery.isLoading
+          : shouldLoadDiffs && selectedRevisionQuery.isLoading
           ? (
             <div className='flex items-center gap-2 text-sm text-muted-foreground'>
               <Loader2 className='size-4 animate-spin' />
@@ -233,33 +242,45 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
             <div className='space-y-3'>
               <div className='flex items-center justify-between gap-2'>
                 <div>
-                  <div className='text-sm font-medium'>Revision {selectedRevision.id}</div>
+                  <div className='flex items-center gap-2 text-sm font-medium'>
+                    <Badge
+                      variant='outline'
+                      className={cn('border-0', statusBadgeClass(selectedRevision.status))}
+                    >
+                      {formatStatusLabel(selectedRevision.status)}
+                    </Badge>
+                    <span>Revision {selectedRevision.id}</span>
+                  </div>
                   <div className='text-xs text-muted-foreground'>
                     {formatDateTime(selectedRevision.deployed_at)}
                   </div>
                 </div>
-                <Button
-                  size='sm'
-                  variant='outline'
-                  disabled={rollbackMutation.isPending || selectedRevision.status !== 'success'}
-                  onClick={() => {
-                    if (selectedRevision.id) rollbackMutation.mutate(selectedRevision.id)
-                  }}
-                >
-                  {rollbackMutation.isPending
-                    ? (
-                      <>
-                        <Loader2 className='mr-1 size-4 animate-spin' />
-                        Rolling back…
-                      </>
-                    )
-                    : (
-                      <>
-                        <RotateCcw className='mr-1 size-4' />
-                        Rollback to this
-                      </>
-                    )}
-                </Button>
+                {!isLatestRevision
+                  ? (
+                    <Button
+                      size='sm'
+                      variant='outline'
+                      disabled={rollbackMutation.isPending || selectedRevision.status !== 'success'}
+                      onClick={() => {
+                        if (selectedRevision.id) rollbackMutation.mutate(selectedRevision.id)
+                      }}
+                    >
+                      {rollbackMutation.isPending
+                        ? (
+                          <>
+                            <Loader2 className='mr-1 size-4 animate-spin' />
+                            Rolling back…
+                          </>
+                        )
+                        : (
+                          <>
+                            <RotateCcw className='mr-1 size-4' />
+                            Rollback to this
+                          </>
+                        )}
+                    </Button>
+                  )
+                  : null}
               </div>
 
               {rollbackMutation.isError
@@ -270,16 +291,7 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
                 )
                 : null}
 
-              <div className='grid gap-3 md:grid-cols-4'>
-                <div className='rounded-md border p-2'>
-                  <div className='text-[11px] text-muted-foreground'>Status</div>
-                  <Badge
-                    variant='outline'
-                    className={cn('mt-1 border-0', statusBadgeClass(selectedRevision.status))}
-                  >
-                    {selectedRevision.status}
-                  </Badge>
-                </div>
+              <div className='grid gap-3 md:grid-cols-2'>
                 <div className='rounded-md border p-2'>
                   <div className='text-[11px] text-muted-foreground'>Source</div>
                   <div className='mt-1 text-sm font-medium'>{selectedRevision.deploy_source}</div>
@@ -290,19 +302,9 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
                     {formatActor(selectedRevision.actor)}
                   </div>
                 </div>
-                <div className='rounded-md border p-2'>
-                  <div className='text-[11px] text-muted-foreground'>Changes</div>
-                  <div className='mt-1 font-mono text-sm'>
-                    {buildSummaryLabel(selectedRevision.change_summary)}
-                  </div>
-                </div>
               </div>
 
-              <div className='grid grid-cols-2 gap-3 text-xs md:grid-cols-4'>
-                <div className='rounded-md border p-2'>
-                  <div className='text-muted-foreground'>Guild</div>
-                  <div className='font-mono'>{selectedRevision.guild_id}</div>
-                </div>
+              <div className='grid grid-cols-2 gap-3 text-xs md:grid-cols-3'>
                 <div className='rounded-md border p-2'>
                   <div className='text-muted-foreground'>Entry</div>
                   <div className='font-mono'>{selectedRevision.entry}</div>
@@ -341,7 +343,9 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
           <ChevronDown className={cn('size-4 transition-transform', diffOpen && 'rotate-180')} />
         </CollapsibleTrigger>
         <CollapsibleContent className='border-t p-3'>
-          {baseRevisionId && baseRevisionQuery.isLoading
+          {shouldLoadDiffs && selectedRevisionQuery.isLoading
+            ? <div className='text-sm text-muted-foreground'>Loading revision files…</div>
+            : baseRevisionId && baseRevisionQuery.isLoading
             ? <div className='text-sm text-muted-foreground'>Loading base revision…</div>
             : baseRevisionQuery.isError
             ? (
@@ -353,19 +357,30 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
             ? <div className='text-sm text-muted-foreground'>No base revision for this entry.</div>
             : !diffFiles.length
             ? <div className='text-sm text-muted-foreground'>No diffable source-file changes.</div>
+            : !diffOpen
+            ? null
             : (
               <div className='max-h-[42dvh] space-y-3 overflow-auto'>
                 {diffFiles.map((file) => (
                   <div key={file.path} className='overflow-hidden rounded-lg border'>
-                    <MultiFileDiff
-                      oldFile={{ name: file.path, contents: file.oldContents }}
-                      newFile={{ name: file.path, contents: file.newContents }}
-                      options={{
-                        diffStyle: 'split',
-                        overflow: 'wrap',
-                        lineDiffType: 'word'
-                      }}
-                    />
+                    <Suspense
+                      fallback={
+                        <div className='flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground'>
+                          <Loader2 className='size-3 animate-spin' />
+                          Loading diff renderer…
+                        </div>
+                      }
+                    >
+                      <LazyMultiFileDiff
+                        oldFile={{ name: file.path, contents: file.oldContents }}
+                        newFile={{ name: file.path, contents: file.newContents }}
+                        options={{
+                          diffStyle: 'split',
+                          overflow: 'wrap',
+                          lineDiffType: 'word'
+                        }}
+                      />
+                    </Suspense>
                   </div>
                 ))}
               </div>
@@ -400,7 +415,6 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
                   <TableRow className='hover:bg-transparent'>
                     <TableHead>Id</TableHead>
                     <TableHead>Actor</TableHead>
-                    <TableHead>Changes</TableHead>
                     <TableHead>Deployed</TableHead>
                     <TableHead>Source</TableHead>
                     <TableHead>Status</TableHead>
@@ -424,9 +438,6 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
                       >
                         <TableCell className='font-mono text-xs'>{shortId(row.id)}</TableCell>
                         <TableCell className='text-xs'>{formatActor(row.actor)}</TableCell>
-                        <TableCell className='font-mono text-xs'>
-                          {buildSummaryLabel(row.change_summary)}
-                        </TableCell>
                         <TableCell className='text-xs whitespace-nowrap'>
                           {formatTimeAgo(row.deployed_at)}
                         </TableCell>
