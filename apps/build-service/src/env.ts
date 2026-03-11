@@ -17,6 +17,10 @@ export function getPort(): number {
   return port
 }
 
+export function getHost(): string {
+  return process.env.BUILD_SERVICE_HOST ?? '0.0.0.0'
+}
+
 export function getBuildWorkspaceDir(): string {
   const configured = process.env.BUILD_SERVICE_WORKSPACE_DIR
   if (configured) return path.resolve(configured)

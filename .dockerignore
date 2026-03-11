@@ -1,0 +1,14 @@
+.git
+node_modules
+**/node_modules
+dist
+**/dist
+build-workspace
+**/build-workspace
+buck-out
+**/buck-out
+target
+**/target
+.tmp
+**/.tmp
+.env

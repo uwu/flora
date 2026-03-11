@@ -2,7 +2,7 @@ import { colors } from 'consola/utils'
 import { H3, HTTPError, serve } from 'h3'
 
 import { bearerAuth } from './auth'
-import { getPort, requireEnv } from './env'
+import { getHost, getPort, requireEnv } from './env'
 import { logger } from './lib/logger'
 import { handleCreateBuild } from './routes/create-build'
 import { handleGetBuild } from './routes/get-build'
@@ -43,7 +43,7 @@ app.get('/internal/builds/:build_id/logs', handleStreamLogs)
 
 app.get('/health', () => ({ status: 'ok' }))
 
-serve(app, { port, hostname: '127.0.0.1' })
+serve(app, { port, hostname: getHost() })
 
 function formatRequestLog(
   method: string,

@@ -1,0 +1,35 @@
+services:
+  build-service:
+    build:
+      context: .
+      dockerfile: apps/build-service/Dockerfile
+    image: flora-build-service:latest
+    ports:
+      - '3001:3001'
+    environment:
+      BUILD_SERVICE_SECRET: ${BUILD_SERVICE_SECRET?set BUILD_SERVICE_SECRET}
+      BUILD_SERVICE_HOST: 0.0.0.0
+      BUILD_SERVICE_PORT: 3001
+      BUILD_SERVICE_WORKSPACE_DIR: /app/build-workspace
+    volumes:
+      - build_service_workspace:/app/build-workspace
+    networks:
+      - flora
+    healthcheck:
+      test: [
+        'CMD',
+        'node',
+        '-e',
+        "fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+      ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  build_service_workspace:
+
+networks:
+  flora:
+    name: flora
