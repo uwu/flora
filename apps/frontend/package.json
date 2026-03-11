@@ -41,7 +41,6 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "fflate": "^0.8.2",
-    "framer-motion": "^12.23.26",
     "lucide-react": "^0.562.0",
     "monaco-editor": "npm:@codingame/monaco-vscode-editor-api@28.0.1",
     "motion": "12.35.0",

@@ -1,5 +1,5 @@
-import { domAnimation, LazyMotion, m } from 'framer-motion'
 import { ArrowUpRight } from 'lucide-react'
+import { domAnimation, LazyMotion, m } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { StackCardGraphic } from './stack-card-graphic'
