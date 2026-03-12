@@ -22,7 +22,7 @@ services:
         '-e',
         "fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
       ]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       retries: 5
     restart: unless-stopped
