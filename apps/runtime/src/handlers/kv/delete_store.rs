@@ -27,6 +27,8 @@ pub struct DeleteStoreParams {
         ("guild_id" = String, Path, description = "Guild ID"),
         ("store_name" = String, Path, description = "Store name"),
     ),
+    summary = "Delete a store",
+    description = "Deletes a store and all stored keys.",
     responses(
         (status = 200, description = "Store deleted successfully"),
         (status = 401, description = "Not authenticated"),
@@ -34,7 +36,7 @@ pub struct DeleteStoreParams {
         (status = 404, description = "Store not found"),
         (status = 500, description = "Internal server error"),
     ),
-    tag = "kv"
+    tag = "KV"
 )]
 pub async fn delete_store_handler(
     State(state): State<AppState>,

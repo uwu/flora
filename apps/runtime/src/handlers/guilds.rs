@@ -16,7 +16,7 @@ use crate::{
 #[openapi(
     paths(list_guilds_handler),
     components(schemas(GuildResponse, crate::handlers::error::ErrorResponse)),
-    tags((name = "guilds", description = "Guilds the user can manage"))
+    tags((name = "Guilds", description = "Guilds the user can manage"))
 )]
 pub struct GuildApi;
 
@@ -37,7 +37,7 @@ pub struct GuildResponse {
 #[utoipa::path(
     get,
     path = "/",
-    tag = "guilds",
+    tag = "Guilds",
     responses(
         (status = 200, description = "Guilds available for deployment", body = [GuildResponse]),
         (status = 401, description = "Not authenticated", body = crate::handlers::error::ErrorResponse)

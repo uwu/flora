@@ -26,7 +26,7 @@ use utoipa::{OpenApi, ToSchema};
 #[openapi(
     paths(login_handler, callback_handler, me_handler),
     components(schemas(AuthUser, AuthResponse, crate::handlers::error::ErrorResponse)),
-    tags((name = "auth", description = "Discord authentication"))
+    tags((name = "Auth", description = "Discord authentication"))
 )]
 pub struct AuthApi;
 
@@ -73,7 +73,7 @@ pub struct CallbackQuery {
 #[utoipa::path(
     get,
     path = "/login",
-    tag = "auth",
+    tag = "Auth",
     responses(
         (status = 302, description = "Redirect to Discord")
     )
@@ -98,7 +98,7 @@ pub async fn login_handler(State(state): State<AppState>) -> Result<ApiRedirect,
 #[utoipa::path(
     get,
     path = "/callback",
-    tag = "auth",
+    tag = "Auth",
     params(
         ("code" = String, Query, description = "Discord authorization code"),
         ("state" = String, Query, description = "Opaque state value returned by Discord")
@@ -171,7 +171,7 @@ pub async fn callback_handler(
 #[utoipa::path(
     get,
     path = "/me",
-    tag = "auth",
+    tag = "Auth",
     responses(
         (status = 200, description = "Session is valid", body = AuthResponse),
         (status = 401, description = "No active session", body = crate::handlers::error::ErrorResponse)

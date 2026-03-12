@@ -39,7 +39,7 @@ pub use upsert::{
             super::error::ErrorResponse
         )
     ),
-    tags((name = "deployment", description = "Manage per-guild bot deployments"))
+    tags((name = "Deployments", description = "Manage per-guild bot deployments"))
 )]
 pub struct DeploymentApi;
 

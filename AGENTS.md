@@ -10,6 +10,47 @@ This guide is for AI agents working in the flora codebase.
 - At the end of each plan, give me a list of unresolved questions to answer, if any. Make the questions extremely concise.
 - Prefer runtime workflows via `./x` commands.
 
+## OpenAPI Writing + Naming
+
+### Model Names
+
+- Singular nouns, PascalCase (`Invoice`, `LineItem`, `PaymentMethod`).
+- Name by what data represents, not how used (`Address` not `UserAddressInputObject`).
+- Use one variant suffix convention consistently:
+  - `CreateUserRequest`, `UpdateUserRequest`, `UserResponse` (preferred).
+- Avoid redundant prefixes within same service (`Profile`, `Settings`, `Preferences`).
+
+### Local Overrides
+
+- `CreateXRequest` naming is preferred.
+- `snake_case` is OK in OpenAPI schemas.
+- Non-statement booleans are OK.
+- Use "Guild ID" wording in params/descriptions.
+- Tag `deployment` only if it represents a singular resource; otherwise use plural.
+
+### Property Names
+
+- Domain concept names, not implementation (`expiresAt` not `exp_timestamp_unix`).
+- Booleans read as statements (`isActive`, `hasVerifiedEmail`, `requiresMfa`).
+- Dates/times always have a suffix (`createdAt`, `scheduledFor`, `cancelledAt`).
+
+### Descriptions
+
+- Schema descriptions answer “what is this?”.
+- Property descriptions answer “what does this mean and what are bounds?”.
+- Explicitly state units, null meaning, mutability, constraints, enum meaning.
+
+### Operation Descriptions
+
+- `summary`: short verb phrase.
+- `description`: side effects, preconditions, conflict behavior.
+
+### General Writing
+
+- Write for new devs.
+- Use present tense (“Returns”, “Creates”).
+- Avoid filler. Keep terminology consistent.
+
 ## Runtime Commands (`./x`)
 
 Use these from repo root:

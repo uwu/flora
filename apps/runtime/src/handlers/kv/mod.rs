@@ -66,7 +66,7 @@ pub fn router() -> Router<AppState> {
         ExportGuildParams,
     )),
     tags(
-        (name = "kv", description = "Key-value store management endpoints")
+        (name = "KV", description = "Key-value store management endpoints")
     )
 )]
 pub struct KvApi;

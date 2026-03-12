@@ -27,11 +27,13 @@ pub struct DeploymentRevisionQuery {
     get,
     path = "/{guild_id}/revisions/{revision_id}",
     params(
-        ("guild_id" = String, Path, description = "Discord guild id"),
+        ("guild_id" = String, Path, description = "Guild ID"),
         ("revision_id" = String, Path, description = "Revision id"),
         ("include_bundle" = Option<bool>, Query, description = "Include bundled output in response")
     ),
-    tag = "deployment",
+    tag = "Deployments",
+    summary = "Get deployment revision",
+    description = "Returns details for a specific deployment revision.",
     responses(
         (status = 200, description = "Revision found", body = DeploymentRevisionResponse),
         (status = 404, description = "Revision not found", body = crate::handlers::error::ErrorResponse),

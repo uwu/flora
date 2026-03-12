@@ -18,7 +18,7 @@ use crate::{
 #[openapi(
     paths(create_token_handler, list_tokens_handler, delete_token_handler),
     components(schemas(CreateTokenRequest, CreateTokenResponse, TokenResponse, crate::handlers::error::ErrorResponse)),
-    tags((name = "tokens", description = "User API tokens"))
+    tags((name = "Tokens", description = "User API tokens"))
 )]
 pub struct TokenApi;
 
@@ -41,12 +41,16 @@ pub struct CreateTokenResponse {
     pub token: String,
 }
 
-/// Token list item.
+/// Token metadata returned for list endpoints.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct TokenResponse {
+    /// Token identifier.
     pub token_id: String,
+    /// Optional user-facing label for the token.
     pub label: Option<String>,
+    /// Token creation time in RFC3339 (UTC).
     pub created_at: String,
+    /// Last usage time in RFC3339 (UTC), if available.
     pub last_used_at: Option<String>,
 }
 
@@ -65,7 +69,9 @@ impl From<UserToken> for TokenResponse {
 #[utoipa::path(
     post,
     path = "/",
-    tag = "tokens",
+    tag = "Tokens",
+    summary = "Create a token",
+    description = "Creates a new API token for the authenticated user. The plaintext token is returned only once.",
     request_body = CreateTokenRequest,
     responses(
         (status = 200, description = "Token created", body = CreateTokenResponse),
@@ -91,7 +97,9 @@ pub async fn create_token_handler(
 #[utoipa::path(
     get,
     path = "/",
-    tag = "tokens",
+    tag = "Tokens",
+    summary = "List tokens",
+    description = "Returns metadata for all API tokens owned by the authenticated user.",
     responses(
         (status = 200, description = "Tokens listed", body = [TokenResponse]),
         (status = 401, description = "Unauthorized", body = crate::handlers::error::ErrorResponse)
@@ -116,7 +124,9 @@ pub async fn list_tokens_handler(
 #[utoipa::path(
     delete,
     path = "/{token_id}",
-    tag = "tokens",
+    tag = "Tokens",
+    summary = "Delete a token",
+    description = "Deletes the specified token. Requests using this token stop authenticating immediately.",
     params(
         ("token_id" = String, Path, description = "Token identifier")
     ),

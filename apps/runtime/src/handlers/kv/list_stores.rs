@@ -27,13 +27,15 @@ pub struct ListStoresQuery {
     params(
         ListStoresQuery
     ),
+    summary = "List stores",
+    description = "Returns all key-value stores for the specified guild.",
     responses(
         (status = 200, description = "List of stores", body = Vec<KvStore>),
         (status = 401, description = "Not authenticated"),
         (status = 403, description = "Not guild admin"),
         (status = 500, description = "Internal server error"),
     ),
-    tag = "kv"
+    tag = "KV"
 )]
 pub async fn list_stores_handler(
     State(state): State<AppState>,

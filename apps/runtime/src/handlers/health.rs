@@ -2,7 +2,7 @@
 #[derive(utoipa::OpenApi)]
 #[openapi(
     paths(health_check),
-    tags((name = "health", description = "Health endpoints"))
+    tags((name = "Health", description = "Health endpoints"))
 )]
 pub struct HealthApi;
 
@@ -10,7 +10,7 @@ pub struct HealthApi;
 #[utoipa::path(
     get,
     path = "/",
-    tag = "health",
+    tag = "Health",
     responses(
         (status = 200, description = "API is healthy", body = String)
     )

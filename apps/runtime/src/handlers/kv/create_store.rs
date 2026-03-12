@@ -26,6 +26,8 @@ pub struct CreateStoreResponse {
 #[utoipa::path(
     post,
     path = "/stores",
+    summary = "Create a store",
+    description = "Creates a new key-value store for the specified guild.",
     request_body = CreateStoreRequest,
     responses(
         (status = 200, description = "Store created successfully", body = CreateStoreResponse),
@@ -34,7 +36,7 @@ pub struct CreateStoreResponse {
         (status = 403, description = "Not guild admin"),
         (status = 500, description = "Internal server error"),
     ),
-    tag = "kv"
+    tag = "KV"
 )]
 pub async fn create_store_handler(
     State(state): State<AppState>,

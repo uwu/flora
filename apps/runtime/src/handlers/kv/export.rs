@@ -35,6 +35,8 @@ pub struct ExportGuildResponse {
     params(
         ("guild_id" = String, Path, description = "Guild ID"),
     ),
+    summary = "Export guild stores",
+    description = "Creates a backup of all stores for a guild and returns a backup id.",
     responses(
         (status = 200, description = "Export created successfully", body = ExportGuildResponse),
         (status = 401, description = "Not authenticated"),
@@ -42,7 +44,7 @@ pub struct ExportGuildResponse {
         (status = 404, description = "No stores found for guild"),
         (status = 500, description = "Internal server error"),
     ),
-    tag = "kv"
+    tag = "KV"
 )]
 pub async fn export_guild_handler(
     State(state): State<AppState>,

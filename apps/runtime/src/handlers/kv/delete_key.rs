@@ -29,6 +29,8 @@ pub struct DeleteKeyParams {
         ("store_name" = String, Path, description = "Store name"),
         ("key" = String, Path, description = "Key to delete"),
     ),
+    summary = "Delete a key",
+    description = "Deletes a key from the store if it exists.",
     responses(
         (status = 200, description = "Key deleted successfully"),
         (status = 401, description = "Not authenticated"),
@@ -36,7 +38,7 @@ pub struct DeleteKeyParams {
         (status = 404, description = "Store not found"),
         (status = 500, description = "Internal server error"),
     ),
-    tag = "kv"
+    tag = "KV"
 )]
 pub async fn delete_key_handler(
     State(state): State<AppState>,

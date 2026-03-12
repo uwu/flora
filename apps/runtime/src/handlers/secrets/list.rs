@@ -35,9 +35,11 @@ impl From<SecretMetadata> for SecretMetadataResponse {
 #[utoipa::path(
     get,
     path = "/{guild_id}",
-    tag = "secrets",
+    tag = "Secrets",
+    summary = "List secrets",
+    description = "Returns metadata for all secrets stored for a guild. Values are never returned.",
     params(
-        ("guild_id" = String, Path, description = "Discord guild id")
+        ("guild_id" = String, Path, description = "Guild ID")
     ),
     responses(
         (status = 200, description = "List of secret names", body = [SecretMetadataResponse]),

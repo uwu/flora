@@ -36,6 +36,8 @@ pub struct GetValueResponse {
         ("store_name" = String, Path, description = "Store name"),
         ("key" = String, Path, description = "Key to retrieve"),
     ),
+    summary = "Get a value",
+    description = "Returns the stored value or null when the key is missing.",
     responses(
         (status = 200, description = "Value retrieved", body = GetValueResponse),
         (status = 401, description = "Not authenticated"),
@@ -43,7 +45,7 @@ pub struct GetValueResponse {
         (status = 404, description = "Store or key not found"),
         (status = 500, description = "Internal server error"),
     ),
-    tag = "kv"
+    tag = "KV"
 )]
 pub async fn get_value_handler(
     State(state): State<AppState>,

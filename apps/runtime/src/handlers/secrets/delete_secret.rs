@@ -23,9 +23,11 @@ pub struct DeleteSecretResponse {
 #[utoipa::path(
     delete,
     path = "/{guild_id}/{name}",
-    tag = "secrets",
+    tag = "Secrets",
+    summary = "Delete a secret",
+    description = "Deletes a secret and refreshes the runtime to remove it.",
     params(
-        ("guild_id" = String, Path, description = "Discord guild id"),
+        ("guild_id" = String, Path, description = "Guild ID"),
         ("name" = String, Path, description = "Secret name")
     ),
     responses(

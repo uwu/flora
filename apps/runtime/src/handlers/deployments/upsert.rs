@@ -38,16 +38,24 @@ pub struct DeploymentRequest {
     pub build_id: Option<String>,
 }
 
+/// Deployment snapshot stored for a guild.
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct DeploymentResponse {
+    /// Guild ID for the deployment.
     pub guild_id: String,
+    /// Snapshot creation time in RFC3339 (UTC).
     pub created_at: String,
+    /// Snapshot update time in RFC3339 (UTC).
     pub updated_at: String,
+    /// Entry file path used for the deployment.
     pub entry: String,
+    /// Raw files when the deployment was uploaded as sources.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub files: Option<Vec<DeploymentFile>>,
+    /// Source map included with the bundle, if provided.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_map: Option<DeploymentSourceMapFile>,
+    /// Bundled output when stored, if included.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bundle: Option<String>,
 }
@@ -67,6 +75,7 @@ pub struct DeploymentRevisionResponse {
     pub guild_id: String,
     pub entry: String,
     pub status: DeploymentRevisionStatus,
+    /// Deployment time in RFC3339 (UTC).
     pub deployed_at: String,
     pub deploy_source: DeploymentSource,
     pub actor: DeploymentActorResponse,
@@ -244,9 +253,11 @@ fn validate_request(request: &DeploymentRequest) -> Result<(), ApiError> {
     path = "/{guild_id}",
     request_body = DeploymentRequest,
     params(
-        ("guild_id" = String, Path, description = "Discord guild id")
+        ("guild_id" = String, Path, description = "Guild ID")
     ),
-    tag = "deployment",
+    tag = "Deployments",
+    summary = "Deploy a guild",
+    description = "Creates or updates the active deployment for a guild, then records a revision.",
     responses(
         (status = 200, description = "Deployment stored", body = DeploymentResponse),
         (status = 500, description = "Internal server error", body = crate::handlers::error::ErrorResponse)

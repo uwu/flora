@@ -25,7 +25,7 @@ pub use upsert::*;
         SecretMetadataResponse,
         UpsertSecretRequest,
     )),
-    tags((name = "secrets", description = "Manage per-guild secrets"))
+    tags((name = "Secrets", description = "Manage per-guild secrets"))
 )]
 pub struct SecretsApi;
 

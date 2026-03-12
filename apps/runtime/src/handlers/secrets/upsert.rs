@@ -25,9 +25,11 @@ pub struct UpsertSecretRequest {
 #[utoipa::path(
     put,
     path = "/{guild_id}/{name}",
-    tag = "secrets",
+    tag = "Secrets",
+    summary = "Upsert a secret",
+    description = "Creates or updates a secret value for a guild and refreshes the runtime.",
     params(
-        ("guild_id" = String, Path, description = "Discord guild id"),
+        ("guild_id" = String, Path, description = "Guild ID"),
         ("name" = String, Path, description = "Secret name")
     ),
     request_body = UpsertSecretRequest,

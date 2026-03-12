@@ -15,7 +15,9 @@ use crate::{
 #[utoipa::path(
     get,
     path = "/",
-    tag = "deployment",
+    tag = "Deployments",
+    summary = "List deployments",
+    description = "Returns deployment snapshots the caller can administer.",
     responses(
         (status = 200, description = "Deployments retrieved", body = [DeploymentResponse]),
         (status = 500, description = "Internal server error", body = crate::handlers::error::ErrorResponse)

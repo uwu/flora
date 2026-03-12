@@ -44,6 +44,8 @@ pub struct ListKeysResponse {
         ("store_name" = String, Path, description = "Store name"),
         ListKeysQuery
     ),
+    summary = "List keys",
+    description = "Returns keys in a store. Use cursor for pagination when list_complete is false.",
     responses(
         (status = 200, description = "List of keys", body = ListKeysResponse),
         (status = 401, description = "Not authenticated"),
@@ -51,7 +53,7 @@ pub struct ListKeysResponse {
         (status = 404, description = "Store not found"),
         (status = 500, description = "Internal server error"),
     ),
-    tag = "kv"
+    tag = "KV"
 )]
 pub async fn list_keys_handler(
     State(state): State<AppState>,

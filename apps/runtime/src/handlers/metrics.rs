@@ -27,7 +27,7 @@ pub struct MetricsApi;
     responses(
         (status = 200, description = "Prometheus metrics", content_type = "text/plain")
     ),
-    tag = "metrics"
+    tag = "Metrics"
 )]
 pub async fn get_metrics(
     State(state): State<AppState>,
@@ -49,7 +49,7 @@ pub async fn get_metrics(
     responses(
         (status = 200, description = "Metrics as JSON", body = metrics::MetricsSnapshot)
     ),
-    tag = "metrics"
+    tag = "Metrics"
 )]
 pub async fn get_metrics_json(
     State(state): State<AppState>,

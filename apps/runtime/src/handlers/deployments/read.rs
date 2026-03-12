@@ -26,10 +26,12 @@ pub struct DeploymentQuery {
     get,
     path = "/{guild_id}",
     params(
-        ("guild_id" = String, Path, description = "Discord guild id"),
+        ("guild_id" = String, Path, description = "Guild ID"),
         ("include_bundle" = Option<bool>, Query, description = "Include bundled output in response")
     ),
-    tag = "deployment",
+    tag = "Deployments",
+    summary = "Get deployment",
+    description = "Returns the latest successful deployment snapshot for a guild.",
     responses(
         (status = 200, description = "Deployment found", body = DeploymentResponse),
         (status = 404, description = "Deployment not found", body = crate::handlers::error::ErrorResponse),

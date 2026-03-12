@@ -23,7 +23,7 @@ use crate::{
 #[openapi(
     paths(create_build_handler, get_build_handler),
     components(schemas(CreateBuildResponse, BuildStatusResponse)),
-    tags((name = "builds", description = "Server-side build pipeline"))
+    tags((name = "Builds", description = "Server-side build pipeline"))
 )]
 pub struct BuildApi;
 
@@ -34,31 +34,47 @@ pub fn router() -> Router<AppState> {
         .route("/{build_id}/logs", get(stream_build_logs_handler))
 }
 
+/// Response returned when a build is created.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CreateBuildResponse {
+    /// Build identifier.
     pub build_id: String,
+    /// Current build status string.
     pub status: String,
 }
 
+/// Build artifact output paths.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct BuildArtifactResponse {
+    /// Bundled JavaScript output.
     pub bundle: String,
+    /// Source map for the bundle.
     pub source_map: String,
 }
 
+/// Current build status and output.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct BuildStatusResponse {
+    /// Build identifier.
     pub build_id: String,
+    /// Guild ID the build targets.
     pub guild_id: String,
+    /// Entry file path used for the build.
     pub entry: String,
+    /// Current build status string.
     pub status: String,
+    /// Build logs, newest last.
     pub logs: Vec<String>,
+    /// Build start time in RFC3339 (UTC).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub started_at: Option<String>,
+    /// Build completion time in RFC3339 (UTC).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub finished_at: Option<String>,
+    /// Generated build artifacts, if available.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub artifact: Option<BuildArtifactResponse>,
+    /// Error detail when the build fails.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
@@ -66,7 +82,9 @@ pub struct BuildStatusResponse {
 #[utoipa::path(
     post,
     path = "/",
-    tag = "builds",
+    tag = "Builds",
+    summary = "Create a build",
+    description = "Queues a server-side build for the provided project archive.",
     responses(
         (status = 200, description = "Build queued", body = CreateBuildResponse),
         (status = 400, description = "Invalid request", body = crate::handlers::error::ErrorResponse),
@@ -146,7 +164,9 @@ pub async fn create_build_handler(
 #[utoipa::path(
     get,
     path = "/{build_id}",
-    tag = "builds",
+    tag = "Builds",
+    summary = "Get build status",
+    description = "Returns the current status, logs, and artifacts for a build.",
     params(
         ("build_id" = String, Path, description = "Build ID")
     ),

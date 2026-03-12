@@ -44,10 +44,12 @@ fn default_limit() -> usize {
     get,
     path = "",
     params(LogsQuery),
+    summary = "List logs",
+    description = "Returns recent log entries visible to the authenticated user.",
     responses(
         (status = 200, description = "Recent log entries", body = Vec<LogEntry>)
     ),
-    tag = "logs"
+    tag = "Logs"
 )]
 pub async fn get_logs(
     State(state): State<AppState>,
@@ -88,13 +90,15 @@ pub async fn stream_logs(
     get,
     path = "/{guild_id}",
     params(
-        ("guild_id" = String, Path, description = "Discord guild ID"),
+        ("guild_id" = String, Path, description = "Guild ID"),
         LogsQuery
     ),
+    summary = "List guild logs",
+    description = "Returns recent log entries for a specific guild.",
     responses(
         (status = 200, description = "Recent log entries for guild", body = Vec<LogEntry>)
     ),
-    tag = "logs"
+    tag = "Logs"
 )]
 pub async fn get_guild_logs(
     State(state): State<AppState>,

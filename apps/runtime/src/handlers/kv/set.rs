@@ -24,8 +24,11 @@ pub struct SetValueParams {
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct SetValueRequest {
+    /// Raw value to store.
     pub value: String,
+    /// Unix timestamp in seconds when the key expires, or null for no expiry.
     pub expiration: Option<i64>,
+    /// Optional JSON metadata attached to the key.
     pub metadata: Option<serde_json::Value>,
 }
 
@@ -42,6 +45,8 @@ pub struct SetValueResponse {
         ("store_name" = String, Path, description = "Store name"),
         ("key" = String, Path, description = "Key to set"),
     ),
+    summary = "Set a value",
+    description = "Creates or replaces a value in the store. Optional expiration controls TTL.",
     request_body = SetValueRequest,
     responses(
         (status = 200, description = "Value set successfully", body = SetValueResponse),
@@ -51,7 +56,7 @@ pub struct SetValueResponse {
         (status = 404, description = "Store not found"),
         (status = 500, description = "Internal server error"),
     ),
-    tag = "kv"
+    tag = "KV"
 )]
 pub async fn set_value_handler(
     State(state): State<AppState>,

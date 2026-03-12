@@ -37,13 +37,15 @@ fn default_history_limit() -> i64 {
     get,
     path = "/{guild_id}/history",
     params(
-        ("guild_id" = String, Path, description = "Discord guild id"),
+        ("guild_id" = String, Path, description = "Guild ID"),
         ("limit" = Option<i64>, Query, description = "Page size, max 100"),
         ("cursor_deployed_at" = Option<String>, Query, description = "RFC3339 deployed_at cursor"),
         ("cursor_id" = Option<String>, Query, description = "Revision id cursor"),
         ("include_bundle" = Option<bool>, Query, description = "Include bundled output in response")
     ),
-    tag = "deployment",
+    tag = "Deployments",
+    summary = "List deployment history",
+    description = "Returns deployment revisions for a guild in reverse chronological order.",
     responses(
         (status = 200, description = "Revision history", body = [DeploymentRevisionResponse]),
         (status = 400, description = "Invalid cursor", body = crate::handlers::error::ErrorResponse),
