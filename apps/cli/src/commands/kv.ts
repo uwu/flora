@@ -1,4 +1,4 @@
-import type { components } from '../generated/openapi-schema'
+import type { components } from '@uwu/flora-api-client'
 import { authHeaders, createApiClient, expectOk } from '../lib/http'
 import { logger } from '../lib/logger'
 import { promptIfMissing } from '../lib/prompts'

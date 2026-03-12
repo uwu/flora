@@ -13,7 +13,6 @@
     "package.json"
   ],
   "scripts": {
-    "generate:api": "openapi-typescript http://localhost:3000/api-docs/openapi.json -o src/generated/openapi-schema.ts",
     "build": "tsdown",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
@@ -24,19 +23,18 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.0.1",
+    "@uwu/flora-api-client": "workspace:*",
     "c12": "^3.3.2",
     "citty": "^0.2.1",
     "consola": "^3.4.2",
     "fflate": "^0.8.2",
     "conf": "^15.1.0",
     "ignore": "^7.0.5",
-    "openapi-fetch": "^0.17.0",
     "rolldown": "^1.0.0-beta.43",
     "tinyglobby": "^0.2.15"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
-    "openapi-typescript": "^7.13.0",
     "tsdown": "^0.20.3",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
