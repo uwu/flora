@@ -17,8 +17,8 @@ import {
   useSetKvKeyMutation
 } from '@/data/mutations'
 import { useKvKeysQuery, useKvStoresQuery, useKvValueQuery } from '@/data/queries'
-import type { components } from '@/lib/openapi-schema'
 import { cn } from '@/lib/utils'
+import type { components } from '@uwu/flora-api-client'
 import { Database, KeyRound, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 

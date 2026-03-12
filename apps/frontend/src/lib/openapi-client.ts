@@ -1,7 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
-import createClient from 'openapi-fetch'
+import { type $defs, createApiClient, type webhooks } from '@uwu/flora-api-client'
 import createRQClient from 'openapi-react-query'
-import type { $defs, paths, webhooks } from './openapi-schema'
 
 // Use Vite env override when present; default to the dev proxy at /api.
 const baseUrl = import.meta.env.VITE_API_BASE ?? '/api'
@@ -35,6 +34,6 @@ void _openApiTypeMarker
 
 export const queryClient = new QueryClient()
 
-const fetchClient = createClient<paths>({ baseUrl, fetch: fetchWithCreds })
+const fetchClient = createApiClient({ apiUrl: baseUrl, fetch: fetchWithCreds })
 
 export const $api = createRQClient(fetchClient)

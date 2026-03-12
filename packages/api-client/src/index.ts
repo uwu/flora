@@ -6,10 +6,12 @@ export type { $defs, components, operations, paths, webhooks } from './generated
 
 export interface ApiClientConfig {
   apiUrl: string
+  fetch?: typeof fetch
 }
 
 export function createApiClient(config: ApiClientConfig) {
   return createClient<paths>({
-    baseUrl: config.apiUrl
+    baseUrl: config.apiUrl,
+    fetch: config.fetch
   })
 }

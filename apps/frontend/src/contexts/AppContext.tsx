@@ -1,6 +1,6 @@
 import { authSessionQueryOptions, guildsQueryOptions, tokensQueryOptions } from '@/data/queries'
 import { queryClient } from '@/lib/openapi-client'
-import type { components } from '@/lib/openapi-schema'
+import type { components } from '@uwu/flora-api-client'
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react'
 
 type AuthUser = components['schemas']['AuthUser']

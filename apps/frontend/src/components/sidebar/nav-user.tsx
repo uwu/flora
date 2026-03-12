@@ -16,8 +16,8 @@ import {
   SidebarMenuItem,
   useSidebar
 } from '@/components/ui/sidebar'
-import type { components } from '@/lib/openapi-schema'
 import { useTheme } from '@/lib/theme'
+import type { components } from '@uwu/flora-api-client'
 import { ChevronsUpDown, LogOut, Moon, Settings, Sun } from 'lucide-react'
 
 type AuthUser = components['schemas']['AuthUser']

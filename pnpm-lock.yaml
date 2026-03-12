@@ -70,6 +70,9 @@ importers:
       '@clack/prompts':
         specifier: ^1.0.1
         version: 1.1.0
+      '@uwu/flora-api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       c12:
         specifier: ^3.3.2
         version: 3.3.3
@@ -88,9 +91,6 @@ importers:
       ignore:
         specifier: ^7.0.5
         version: 7.0.5
-      openapi-fetch:
-        specifier: ^0.17.0
-        version: 0.17.0
       rolldown:
         specifier: ^1.0.0-beta.43
         version: 1.0.0-rc.7
@@ -101,9 +101,6 @@ importers:
       '@types/node':
         specifier: ^24.3.0
         version: 24.12.0
-      openapi-typescript:
-        specifier: ^7.13.0
-        version: 7.13.0(typescript@5.9.3)
       tsdown:
         specifier: ^0.20.3
         version: 0.20.3(@typescript/native-preview@7.0.0-dev.20260306.1)(typescript@5.9.3)(vue-tsc@3.2.4(typescript@5.9.3))
@@ -191,6 +188,9 @@ importers:
       '@tanstack/react-query-devtools':
         specifier: ^5.91.1
         version: 5.91.3(@tanstack/react-query@5.90.21(react@19.2.4))(react@19.2.4)
+      '@uwu/flora-api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -212,12 +212,9 @@ importers:
       motion:
         specifier: 12.35.0
         version: 12.35.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      openapi-fetch:
-        specifier: ^0.15.0
-        version: 0.15.2
       openapi-react-query:
         specifier: ^0.5.1
-        version: 0.5.4(@tanstack/react-query@5.90.21(react@19.2.4))(openapi-fetch@0.15.2)
+        version: 0.5.4(@tanstack/react-query@5.90.21(react@19.2.4))(openapi-fetch@0.17.0)
       react:
         specifier: ^19.2.0
         version: 19.2.4
@@ -353,6 +350,16 @@ importers:
       '@uwu/flora-sdk':
         specifier: workspace:*
         version: link:../../sdk
+
+  packages/api-client:
+    dependencies:
+      openapi-fetch:
+        specifier: ^0.17.0
+        version: 0.17.0
+    devDependencies:
+      openapi-typescript:
+        specifier: ^7.13.0
+        version: 7.13.0(typescript@5.9.3)
 
   sdk:
     devDependencies:
@@ -4642,9 +4649,6 @@ packages:
     resolution: {integrity: sha512-smsWv2LzFjP03xmvFoJ331ss6h+jixfA4UUV/Bsiyuu4YJPfN+FIQGOIiv4w9/+MoHkfkJ22UIaQWRVFRfH6Vw==}
     engines: {node: '>=20'}
 
-  openapi-fetch@0.15.2:
-    resolution: {integrity: sha512-rdYTzUmSsJevmNqg7fwUVGuKc2Gfb9h6ph74EVPkPfIGJaZTfqdIbJahtbJ3qg1LKinln30hqZniLnKpH0RJBg==}
-
   openapi-fetch@0.17.0:
     resolution: {integrity: sha512-PsbZR1wAPcG91eEthKhN+Zn92FMHxv+/faECIwjXdxfTODGSGegYv0sc1Olz+HYPvKOuoXfp+0pA2XVt2cI0Ig==}
 
@@ -4653,9 +4657,6 @@ packages:
     peerDependencies:
       '@tanstack/react-query': ^5.80.0
       openapi-fetch: ^0.17.0
-
-  openapi-typescript-helpers@0.0.15:
-    resolution: {integrity: sha512-opyTPaunsklCBpTK8JGef6mfPhLSnyy5a0IN9vKtx3+4aExf+KxEqYwIy3hqkedXIB97u357uLMJsOnm3GVjsw==}
 
   openapi-typescript-helpers@0.1.0:
     resolution: {integrity: sha512-OKTGPthhivLw/fHz6c3OPtg72vi86qaMlqbJuVJ23qOvQ+53uw1n7HdmkJFibloF7QEjDrDkzJiOJuockM/ljw==}
@@ -9593,21 +9594,15 @@ snapshots:
       powershell-utils: 0.1.0
       wsl-utils: 0.3.1
 
-  openapi-fetch@0.15.2:
-    dependencies:
-      openapi-typescript-helpers: 0.0.15
-
   openapi-fetch@0.17.0:
     dependencies:
       openapi-typescript-helpers: 0.1.0
 
-  openapi-react-query@0.5.4(@tanstack/react-query@5.90.21(react@19.2.4))(openapi-fetch@0.15.2):
+  openapi-react-query@0.5.4(@tanstack/react-query@5.90.21(react@19.2.4))(openapi-fetch@0.17.0):
     dependencies:
       '@tanstack/react-query': 5.90.21(react@19.2.4)
-      openapi-fetch: 0.15.2
+      openapi-fetch: 0.17.0
       openapi-typescript-helpers: 0.1.0
-
-  openapi-typescript-helpers@0.0.15: {}
 
   openapi-typescript-helpers@0.1.0: {}
 
