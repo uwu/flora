@@ -104,7 +104,18 @@ export function Dashboard() {
                 <section className='space-y-6'>
                   <div className='space-y-1'>
                     <h2 className='text-2xl font-semibold tracking-tight'>Documentation</h2>
-                    <p className='text-sm text-muted-foreground'>Quick links into our docs.</p>
+                    <p className='text-sm text-muted-foreground'>
+                      Need to invite the bot first?{' '}
+                      <a
+                        className='font-medium text-foreground underline-offset-4 transition hover:underline'
+                        href='https://discord.com/oauth2/authorize?client_id=1446796323113140264&permissions=0&integration_type=0&scope=applications.commands+bot'
+                        rel='noreferrer'
+                        target='_blank'
+                      >
+                        Invite flora
+                      </a>
+                      .
+                    </p>
                   </div>
 
                   <DocumentationStack />
