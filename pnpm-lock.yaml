@@ -366,8 +366,8 @@ importers:
   examples/basic:
     devDependencies:
       '@uwu/flora-sdk':
-        specifier: workspace:*
-        version: link:../../sdk
+        specifier: latest
+        version: 0.0.0
 
   packages/api-client:
     dependencies:
@@ -375,9 +375,18 @@ importers:
         specifier: ^0.17.0
         version: 0.17.0
     devDependencies:
+      '@typescript/native-preview':
+        specifier: 'catalog:'
+        version: 7.0.0-dev.20260306.1
       openapi-typescript:
         specifier: ^7.13.0
         version: 7.13.0(typescript@5.9.3)
+      tsdown:
+        specifier: ^0.20.3
+        version: 0.20.3(@typescript/native-preview@7.0.0-dev.20260306.1)(typescript@5.9.3)(vue-tsc@3.2.4(typescript@5.9.3))
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   sdk:
     devDependencies:
@@ -3055,6 +3064,9 @@ packages:
     resolution: {integrity: sha512-DgG7KcUUMtoDhPOlFf2l4dR+66xZ23SdZvTYpikk5nZfLCzZd62vedutD7x0bTR6VpK2YRq39B+F+Z6TktNY/w==}
     peerDependencies:
       vite: ^2.9.0 || ^3.0.0-0 || ^4.0.0 || ^5.0.0-0 || ^6.0.0-0 || ^7.0.0-0 || ^8.0.0-0
+
+  '@uwu/flora-sdk@0.0.0':
+    resolution: {integrity: sha512-nhKm15f9MIqdK0gsyd5b76ji2+liXWmp5ZGZUO3RYVwpwYuylHV/KFN+GSkdjLFqPoPs8DpVsjjLlY3nq91h8Q==}
 
   '@vitejs/plugin-react@5.1.4':
     resolution: {integrity: sha512-VIcFLdRi/VYRU8OL/puL7QXMYafHmqOnwTZY50U1JPlCNj30PxCMx65c494b1K9be9hX83KVt0+gTEwTWLqToA==}
@@ -8069,6 +8081,8 @@ snapshots:
       tinyglobby: 0.2.15
       unplugin-utils: 0.3.1
       vite: 8.0.0-beta.16(@types/node@25.1.0)(esbuild@0.27.3)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)
+
+  '@uwu/flora-sdk@0.0.0': {}
 
   '@vitejs/plugin-react@5.1.4(@voidzero-dev/vite-plus-core@0.1.11(@types/node@25.1.0)(esbuild@0.27.3)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3))':
     dependencies:

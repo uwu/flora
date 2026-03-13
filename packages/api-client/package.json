@@ -5,22 +5,26 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.mjs"
     }
   },
-  "types": "./src/index.ts",
+  "types": "./dist/index.d.ts",
   "files": [
-    "src",
+    "dist",
     "package.json"
   ],
   "scripts": {
+    "build": "tsdown",
     "generate:api": "openapi-typescript http://localhost:3000/api-docs/openapi.json -o src/generated/openapi-schema.ts"
   },
   "dependencies": {
     "openapi-fetch": "^0.17.0"
   },
   "devDependencies": {
-    "openapi-typescript": "^7.13.0"
+    "@typescript/native-preview": "catalog:",
+    "openapi-typescript": "^7.13.0",
+    "tsdown": "^0.20.3",
+    "typescript": "^5.9.3"
   }
 }

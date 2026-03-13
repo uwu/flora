@@ -3,6 +3,6 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@uwu/flora-sdk": "workspace:*"
+    "@uwu/flora-sdk": "latest"
   }
 }
