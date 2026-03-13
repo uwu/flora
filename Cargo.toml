@@ -17,6 +17,7 @@ color-eyre = { version = "0.6.5", features = ["capture-spantrace", "issue-url"] 
 confique = { version = "0.4.0", features = ["toml"] }
 cookie = "0.18"
 croner = "3.0"
+dashmap = "6.1.0"
 deno_core = { git = "file:///home/tasky/flora/submodules/deno_core", branch = "flora-locker-compat", default-features = false, features = ["v8_use_custom_libcxx"] }
 deno_error = "0.7.1"
 deno_fetch = "0.249.0"
@@ -51,8 +52,8 @@ sled = "0.34"
 sqlx = { version = "0.8.6", features = ["chrono", "macros", "postgres", "runtime-tokio-rustls", "uuid"] }
 syn = { version = "2.0.117", features = ["full", "extra-traits", "parsing"] }
 sys_traits = { version = "0.1.17", features = ["libc", "real"] }
-t0x = { version = "0.1.5", features = ["serde-json-impl"] }
-t0x-macros = "0.1.5"
+t0x = { version = "0.1.8", features = ["serde-json-impl"] }
+t0x-macros = "0.1.8"
 thiserror = "2.0.18"
 time = "0.3.47"
 tokio = { version = "1.50.0", features = ["full"] }

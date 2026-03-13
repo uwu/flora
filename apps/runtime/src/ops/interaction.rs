@@ -25,7 +25,13 @@ use super::message::{
     RawAllowedMentions, RawAttachment, RawEmbed, build_allowed_mentions, build_attachment,
     build_embed,
 };
-use super::{authz::ensure_guild_scope, components::parse_components};
+use super::{
+    authz::{ensure_guild_scope, runtime_guild_id_from_state},
+    components::parse_components,
+};
+use crate::services::discord_rest::{DiscordRest, RestRetry};
+
+use super::FloraError;
 
 /// Arguments for sending an initial interaction response.
 #[expose_input]
@@ -116,27 +122,37 @@ pub async fn op_send_interaction_response(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawInteractionResponse,
 ) -> Result<(), JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+    let interaction_id = parse_interaction_id(&args.interaction_id)?;
 
-    let interaction_id = args
-        .interaction_id
-        .parse::<u64>()
-        .map_err(|_| JsErrorBox::generic("Invalid interaction id"))?;
-
-    let built = build_interaction_response(&http, args).await?;
+    let built = build_interaction_response(rest.http(), args).await?;
 
     let response = CreateInteractionResponse::Message(built.message);
-    http.create_interaction_response(
-        InteractionId::new(interaction_id),
-        &built.token,
-        &response,
-        built.files,
-    )
-    .await
-    .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let token = built.token;
+    let files = built.files;
+    let route = format!("POST /interactions/{}/callback", interaction_id);
+    rest.execute(runtime_guild_id, route, RestRetry::None, move |http| {
+        let response = response.clone();
+        let token = token.clone();
+        let files = files.clone();
+        async move {
+            http.create_interaction_response(
+                InteractionId::new(interaction_id),
+                &token,
+                &response,
+                files,
+            )
+            .await
+        }
+    })
+    .await?;
 
     Ok(())
 }
@@ -157,27 +173,38 @@ pub async fn op_defer_interaction_response(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawDeferInteractionResponse,
 ) -> Result<(), JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
-    let interaction_id = args
-        .interaction_id
-        .parse::<u64>()
-        .map_err(|_| JsErrorBox::generic("Invalid interaction id"))?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+
+    let interaction_id = parse_interaction_id(&args.interaction_id)?;
     let mut message = CreateInteractionResponseMessage::new();
     if let Some(ephemeral) = args.ephemeral {
         message = message.ephemeral(ephemeral);
     }
     let response = CreateInteractionResponse::Defer(message);
-    http.create_interaction_response(
-        InteractionId::new(interaction_id),
-        &args.token,
-        &response,
-        Vec::new(),
-    )
-    .await
-    .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let token = args.token;
+    let route = format!("POST /interactions/{interaction_id}/callback");
+    rest.execute(runtime_guild_id, route, RestRetry::None, move |http| {
+        let token = token.clone();
+        let response = response.clone();
+        async move {
+            http.create_interaction_response(
+                InteractionId::new(interaction_id),
+                &token,
+                &response,
+                Vec::new(),
+            )
+            .await
+        }
+    })
+    .await?;
+
     Ok(())
 }
 
@@ -209,25 +236,37 @@ pub async fn op_update_interaction_response(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawUpdateInteractionResponse,
 ) -> Result<(), JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
-    let interaction_id = args
-        .interaction_id
-        .parse::<u64>()
-        .map_err(|_| JsErrorBox::generic("Invalid interaction id"))?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
 
-    let built = build_interaction_update(&http, args).await?;
+    let interaction_id = parse_interaction_id(&args.interaction_id)?;
+    let built = build_interaction_update(rest.http(), args).await?;
     let response = CreateInteractionResponse::UpdateMessage(built.message);
-    http.create_interaction_response(
-        InteractionId::new(interaction_id),
-        &built.token,
-        &response,
-        built.files,
-    )
-    .await
-    .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let token = built.token;
+    let files = built.files;
+    let route = format!("POST /interactions/{interaction_id}/callback");
+    rest.execute(runtime_guild_id, route, RestRetry::None, move |http| {
+        let response = response.clone();
+        let token = token.clone();
+        let files = files.clone();
+        async move {
+            http.create_interaction_response(
+                InteractionId::new(interaction_id),
+                &token,
+                &response,
+                files,
+            )
+            .await
+        }
+    })
+    .await?;
+
     Ok(())
 }
 
@@ -256,15 +295,32 @@ pub async fn op_edit_original_interaction_response(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawEditInteractionResponse,
 ) -> Result<serde_json::Value, JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
-    let built = build_edit_interaction_response(&http, args).await?;
-    let message = http
-        .edit_original_interaction_response(&built.token, &built.message, built.files)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+
+    let built = build_edit_interaction_response(rest.http(), args).await?;
+    let token = built.token;
+    let message_payload = built.message;
+    let files = built.files;
+    let route = "PATCH /webhooks/@original".to_string();
+    let message = rest
+        .execute(runtime_guild_id, route, RestRetry::None, move |http| {
+            let token = token.clone();
+            let message_payload = message_payload.clone();
+            let files = files.clone();
+            async move {
+                http.edit_original_interaction_response(&token, &message_payload, files)
+                    .await
+            }
+        })
+        .await?;
+
     serde_json::to_value(message).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
@@ -280,13 +336,23 @@ pub async fn op_delete_original_interaction_response(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawDeleteInteractionResponse,
 ) -> Result<(), JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
-    http.delete_original_interaction_response(&args.token)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let runtime_guild_id = {
+        let state = state.borrow();
+        runtime_guild_id_from_state(&state)?
+    };
+
+    let token = args.token;
+    let route = "DELETE /webhooks/@original".to_string();
+    rest.execute(runtime_guild_id, route, RestRetry::None, move |http| {
+        let token = token.clone();
+        async move { http.delete_original_interaction_response(&token).await }
+    })
+    .await?;
+
     Ok(())
 }
 
@@ -492,6 +558,12 @@ fn hash_json(value: String) -> u64 {
     let mut hasher = DefaultHasher::new();
     value.hash(&mut hasher);
     hasher.finish()
+}
+
+fn parse_interaction_id(value: &str) -> Result<u64, FloraError> {
+    value
+        .parse::<u64>()
+        .map_err(|_| FloraError::invalid_input("interaction_id", "invalid snowflake"))
 }
 
 /// Build the response payload and attachments for an interaction reply.

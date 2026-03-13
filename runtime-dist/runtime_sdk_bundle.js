@@ -1,6 +1,5 @@
 var flora = (function(exports) {
   Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
-
   // #region src/sdk/commands.ts
   function prefix(command) {
     return command
@@ -8,7 +7,20 @@ var flora = (function(exports) {
   function slash(command) {
     return command
   }
+  function getCreateBotState() {
+    const state = globalThis.__floraCreateBotState
+    if (state) return state
+    const initialState = { initialized: false }
+    globalThis.__floraCreateBotState = initialState
+    return initialState
+  }
   function createBot(options) {
+    const state = getCreateBotState()
+    if (state.initialized) {
+      console.log('[flora/sdk] createBot called multiple times; skipping duplicate registration')
+      return
+    }
+    state.initialized = true
     const prefix = options.prefix ?? '!'
     const commands = options.commands ?? options.prefixCommands ?? []
     const slashCommands = options.slashCommands ?? []
@@ -17,8 +29,7 @@ var flora = (function(exports) {
       if (ctx.msg.author?.bot) return
       const content = ctx.msg.content.trim()
       if (!content.startsWith(prefix)) return
-      const body = content.slice(prefix.length).trim()
-      const [commandName, ...args] = body.split(/\s+/)
+      const [commandName, ...args] = content.slice(prefix.length).trim().split(/\s+/)
       const command = commands.find((cmd) => cmd.name === commandName)
       if (!command) return
       await command.run({
@@ -76,9 +87,7 @@ var flora = (function(exports) {
   }
   async function handleSubcommand(ctx, command) {
     const rawData = ctx.msg.data
-    if (!rawData?.options || !Array.isArray(rawData.options)) {
-      return
-    }
+    if (!rawData?.options || !Array.isArray(rawData.options)) return
     const firstOption = rawData.options[0]
     if (!firstOption) return
     const subcommandName = firstOption.name
@@ -86,26 +95,21 @@ var flora = (function(exports) {
     if (!subcommandMap) return
     const subcommandHandler = subcommandMap[subcommandName]
     if (!subcommandHandler) return
-    const subcommandOptions = firstOption.options || []
-    const flatOptions = flattenInteractionOptions(subcommandOptions)
-    const enrichedCtx = {
+    const flatOptions = flattenInteractionOptions(firstOption.options || [])
+    await subcommandHandler({
       ...ctx,
       options: flatOptions
-    }
-    await subcommandHandler(enrichedCtx)
+    })
   }
   function flattenInteractionOptions(options) {
     const result = {}
     for (const opt of options) {
       if (opt.type === 1 || opt.type === 2) {
         Object.assign(result, flattenInteractionOptions(opt.options || []))
-      } else {
-        result[opt.name] = opt.value
-      }
+      } else result[opt.name] = opt.value
     }
     return result
   }
-
   // #endregion
   // #region src/generated.ts
   const ButtonStyle = {
@@ -151,7 +155,6 @@ var flora = (function(exports) {
     IS_VOICE_MESSAGE: 8192,
     IS_COMPONENTS_V2: 32768
   }
-
   // #endregion
   // #region src/sdk/components.ts
   const isBuilder = (value) => typeof value?.toJSON === 'function'
@@ -518,8 +521,8 @@ var flora = (function(exports) {
         type: ComponentType.Container,
         components: this.#components.map(resolveComponent)
       }
-      if (this.#accentColor !== undefined) data.accent_color = this.#accentColor
-      if (this.#spoiler !== undefined) data.spoiler = this.#spoiler
+      if (this.#accentColor !== void 0) data.accent_color = this.#accentColor
+      if (this.#spoiler !== void 0) data.spoiler = this.#spoiler
       return data
     }
   }
@@ -548,7 +551,7 @@ var flora = (function(exports) {
         label: this.#label,
         component: this.#component ? resolveComponent(this.#component) : null
       }
-      if (this.#description !== undefined) data.description = this.#description
+      if (this.#description !== void 0) data.description = this.#description
       return data
     }
   }
@@ -599,7 +602,6 @@ var flora = (function(exports) {
   const fileUpload = (customId) => new FileUploadBuilder(customId)
   const ButtonStyles = ButtonStyle
   const InputTextStyles = InputTextStyle
-
   // #endregion
   // #region src/sdk/embed.ts
   var EmbedBuilder = class {
@@ -673,7 +675,6 @@ var flora = (function(exports) {
   function embed(initial) {
     return new EmbedBuilder(initial)
   }
-
   // #endregion
   // #region src/sdk/helpers.ts
   function hasRole(ctx, roleId) {
@@ -681,21 +682,16 @@ var flora = (function(exports) {
   }
   function getSubcommand(ctx) {
     const rawData = ctx.msg.data
-    if (!rawData?.options || !Array.isArray(rawData.options)) return undefined
+    if (!rawData?.options || !Array.isArray(rawData.options)) return void 0
     return rawData.options[0]?.name
   }
   function getSubcommandGroup(ctx) {
     const rawData = ctx.msg.data
-    if (!rawData?.options || !Array.isArray(rawData.options)) return undefined
+    if (!rawData?.options || !Array.isArray(rawData.options)) return void 0
     const firstOption = rawData.options[0]
-    if (!firstOption) return undefined
-    const type = firstOption.type
-    if (type === 2) {
-      return firstOption.name
-    }
-    return undefined
+    if (!firstOption) return void 0
+    if (firstOption.type === 2) return firstOption.name
   }
-
   // #endregion
   // #region src/sdk/kv.ts
   var KvStore = class {
@@ -720,9 +716,7 @@ var flora = (function(exports) {
      */
     async getWithMetadata(key) {
       const result = await Deno.core.ops.op_kv_get_with_metadata(this.#storeName, key)
-      if (result === null) {
-        return { value: null }
-      }
+      if (result === null) return { value: null }
       const [value, metadata] = result
       return {
         value,
@@ -740,8 +734,8 @@ var flora = (function(exports) {
      */
     async set(key, value, options) {
       await Deno.core.ops.op_kv_set(this.#storeName, key, value, {
-        expiration: options?.expiration ?? undefined,
-        metadata: options?.metadata ?? undefined
+        expiration: options?.expiration ?? void 0,
+        metadata: options?.metadata ?? void 0
       })
     }
     /**
@@ -751,7 +745,7 @@ var flora = (function(exports) {
      * @param metadata - The metadata to set, or null to remove metadata
      */
     async updateMetadata(key, metadata) {
-      await Deno.core.ops.op_kv_update_metadata(this.#storeName, key, metadata ?? undefined)
+      await Deno.core.ops.op_kv_update_metadata(this.#storeName, key, metadata ?? void 0)
     }
     /**
      * Delete a key from the store.
@@ -769,9 +763,9 @@ var flora = (function(exports) {
      */
     async list(options) {
       return await Deno.core.ops.op_kv_list_keys({
-        prefix: options?.prefix ?? undefined,
-        limit: options?.limit ?? undefined,
-        cursor: options?.cursor ?? undefined
+        prefix: options?.prefix ?? void 0,
+        limit: options?.limit ?? void 0,
+        cursor: options?.cursor ?? void 0
       }, this.#storeName)
     }
   }
@@ -779,10 +773,13 @@ var flora = (function(exports) {
     return new KvStore(name)
   }
   const kv = { store }
-
   // #endregion
   // #region src/sdk/rest.ts
   const ops = Deno.core.ops
+  /**
+   * Lightweight REST bindings over core ops.
+   * Errors include a `code` field (e.g. DISCORD_RATE_LIMITED).
+   */
   const rest = {
     sendMessage: (args) => ops.op_send_message(args),
     editMessage: (args) => ops.op_edit_message(args),
@@ -819,6 +816,7 @@ var flora = (function(exports) {
     addMemberRole: (args) => ops.op_add_member_role(args),
     removeMemberRole: (args) => ops.op_remove_member_role(args),
     editMember: (args) => ops.op_edit_member(args),
+    editCurrentMember: (args) => ops.op_edit_current_member(args),
     createChannel: (args) => ops.op_create_channel(args),
     editChannel: (args) => ops.op_edit_channel(args),
     deleteChannel: (args) => ops.op_delete_channel(args),
@@ -832,7 +830,6 @@ var flora = (function(exports) {
     editWebhook: (args) => ops.op_edit_webhook(args),
     deleteWebhook: (args) => ops.op_delete_webhook(args)
   }
-
   // #endregion
   exports.ActionRowBuilder = ActionRowBuilder
   exports.ButtonBuilder = ButtonBuilder

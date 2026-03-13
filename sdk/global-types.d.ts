@@ -525,7 +525,7 @@ declare global {
   const kv: { store: (name: string) => KvStore }
 
   const rest: {
-    sendMessage: (args: RawSendMessage) => Promise<void>
+    sendMessage: (args: RawSendMessage) => Promise<JsonValue>
     editMessage: (args: RawEditMessage) => Promise<void>
     deleteMessage: (args: RawDeleteMessage) => Promise<void>
     bulkDeleteMessages: (args: RawBulkDeleteMessages) => Promise<void>
@@ -955,6 +955,38 @@ declare global {
     replyTo?: string
   }
 
+  type SendMessageOptions = {
+    content?: string | undefined
+    embeds?: {
+      title?: string
+      description?: string
+      url?: string
+      color?: number
+      timestamp?: string
+      footer?: { text?: string; iconUrl?: string }
+      image?: { url?: string }
+      thumbnail?: { url?: string }
+      author?: { name?: string; url?: string; iconUrl?: string }
+      fields?: { name: string; value: string; inline: boolean }[]
+    }[] | undefined
+    attachments?: { url: { url: string; filename?: string; description?: string } } | {
+      base64: { data: string; filename: string; description?: string }
+    }[] | undefined
+    components?:
+      | (number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null[])
+      | undefined
+    tts?: boolean | undefined
+    allowedMentions?: {
+      parse?: string[]
+      users?: string[]
+      roles?: string[]
+      repliedUser?: boolean
+    } | undefined
+    flags?: bigint | undefined
+    messageId?: string | undefined
+    replyTo?: string | undefined
+  }
+
   type RawEditMessage = {
     channelId: string
     messageId: string
@@ -1256,6 +1288,12 @@ declare global {
   type RawEditMember = {
     guildId: string
     userId: string
+    payload: number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null
+    reason?: string
+  }
+
+  type RawEditCurrentMember = {
+    guildId: string
     payload: number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null
     reason?: string
   }

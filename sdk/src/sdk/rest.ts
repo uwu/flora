@@ -43,9 +43,6 @@ import type {
   RawUpsertGuildCommands
 } from '../generated'
 
-// Lightweight REST bindings over core ops.
-// These map 1:1 to Rust ops and mostly accept the Raw* payloads.
-
 declare const Deno: {
   core: {
     ops: any
@@ -54,8 +51,12 @@ declare const Deno: {
 
 const ops = Deno.core.ops as any
 
+/**
+ * Lightweight REST bindings over core ops.
+ * Errors include a `code` field (e.g. DISCORD_RATE_LIMITED).
+ */
 export const rest = {
-  sendMessage: (args: RawSendMessage): Promise<void> => ops.op_send_message(args),
+  sendMessage: (args: RawSendMessage): Promise<JsonValue> => ops.op_send_message(args),
   editMessage: (args: RawEditMessage): Promise<void> => ops.op_edit_message(args),
   deleteMessage: (args: RawDeleteMessage): Promise<void> => ops.op_delete_message(args),
   bulkDeleteMessages: (args: RawBulkDeleteMessages): Promise<void> =>

@@ -16,6 +16,7 @@ use crate::{
     ops::{CronRegistry, SharedCronRegistry},
     services::{
         deployments::Deployment,
+        discord_rest::DiscordRest,
         kv::KvService,
         secrets::{SecretService, SecretsRuntimeData},
     },
@@ -27,7 +28,6 @@ use deno_core::{
     v8::{self, Global},
 };
 use serde_json::Value;
-use serenity::http::Http;
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -43,7 +43,7 @@ use tracing::{error, info};
 
 pub(super) fn spawn_worker(
     id: usize,
-    http: Arc<Http>,
+    http: Arc<DiscordRest>,
     kv: KvService,
     secrets: SecretService,
     limits: RuntimeLimits,
@@ -86,7 +86,7 @@ pub(super) fn spawn_worker(
 fn worker_thread(
     worker_id: usize,
     mut receiver: mpsc::Receiver<WorkerCommand>,
-    http: Arc<Http>,
+    http: Arc<DiscordRest>,
     kv: KvService,
     secrets: SecretService,
     limits: RuntimeLimits,
@@ -438,7 +438,7 @@ async fn dispatch_cron_into_runtime(
 
 async fn initialize_worker_default(
     default_runtime: &mut Option<JsRuntimeState>,
-    http: &Arc<Http>,
+    http: &Arc<DiscordRest>,
     kv: &KvService,
     secrets: Arc<SecretsRuntimeData>,
     worker_id: usize,
@@ -474,7 +474,7 @@ async fn initialize_worker_default(
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn deploy_guild_to_worker(
     guild_runtimes: &mut HashMap<String, JsRuntimeState>,
-    http: &Arc<Http>,
+    http: &Arc<DiscordRest>,
     kv: &KvService,
     secrets: &SecretService,
     deployment: Deployment,

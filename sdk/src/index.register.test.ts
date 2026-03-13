@@ -3,7 +3,6 @@ import { createBot, slash } from './sdk/commands'
 
 describe('createBot slash registration', () => {
   beforeEach(() => {
-    // @ts-expect-error test-only reset
     globalThis.__floraCreateBotState = undefined
   })
 

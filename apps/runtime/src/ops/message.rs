@@ -20,7 +20,10 @@ use t0x::T0x;
 use tracing::info;
 use url::Url;
 
+use crate::services::discord_rest::{DiscordRest, RestRetry};
+
 use super::{
+    FloraError,
     authz::{ensure_channel_scope, runtime_guild_id_from_state},
     components::parse_components,
 };
@@ -203,32 +206,25 @@ pub fn op_log(state: &mut OpState, #[serde] args: Vec<serde_json::Value>) {
 }
 
 #[op2(async)]
+#[serde]
 pub async fn op_send_message(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawSendMessage,
-) -> Result<(), JsErrorBox> {
-    let http = {
+) -> Result<serde_json::Value, JsErrorBox> {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
 
-    let channel_id_num = args
-        .channel_id
-        .parse::<u64>()
-        .map_err(|_| JsErrorBox::generic("Invalid channel id"))?;
-    let channel_id = ChannelId::new(channel_id_num);
+    let channel_id = parse_channel_id(&args.channel_id)?;
     let runtime_guild_id = {
         let state = state.borrow();
         runtime_guild_id_from_state(&state)?
     };
-    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
+    ensure_channel_scope(runtime_guild_id, rest.scope_cache(), channel_id).await?;
+
     let reply_to = args.reply_to.or(args.message_id);
-    tracing::info!(
-        target: "flora:ops",
-        "op_send_message channel={} reply_to={:?}",
-        channel_id,
-        reply_to
-    );
+    info!(target: "flora:ops", "op_send_message channel={} reply_to={:?}", channel_id, reply_to);
 
     let mut message = CreateMessage::new();
     let mut has_content = false;
@@ -259,7 +255,8 @@ pub async fn op_send_message(
     }
 
     if let Some(components) = args.components {
-        let components = parse_components(components)?;
+        let components = parse_components(components)
+            .map_err(|err| FloraError::invalid_input("components", err.to_string()))?;
         has_components = !components.is_empty();
         message = message.components(components);
     }
@@ -268,37 +265,39 @@ pub async fn op_send_message(
         message = message.flags(MessageFlags::from_bits_truncate(flags));
     }
 
-    if let Some(message_id_str) = reply_to {
-        let message_id = message_id_str
-            .parse::<u64>()
-            .map_err(|_| JsErrorBox::generic("Invalid message id"))?;
+    if let Some(message_id) = reply_to {
+        let message_id = parse_message_id(&message_id)?;
         let reference = MessageReference::new(MessageReferenceKind::Default, channel_id.widen())
-            .message_id(MessageId::new(message_id));
+            .message_id(message_id);
         message = message.reference_message(reference);
     }
 
     if let Some(attachments) = args.attachments {
         let mut files = Vec::with_capacity(attachments.len());
         for attachment in attachments {
-            files.push(build_attachment(&http, attachment).await?);
+            files.push(build_attachment(rest.http(), attachment).await?);
         }
         has_attachments = !files.is_empty();
         message = message.add_files(files);
     }
 
-    // Fail early if we ended up with an empty payload.
     if !has_content && !has_embeds && !has_attachments && !has_components {
-        return Err(JsErrorBox::generic(
-            "Message must include content, embeds, attachments, or components",
-        ));
+        return Err(FloraError::invalid_input(
+            "payload",
+            "message must include content, embeds, attachments, or components",
+        )
+        .into());
     }
 
-    channel_id
-        .widen()
-        .send_message(&http, message)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
-    Ok(())
+    let route = format!("POST /channels/{}/messages", channel_id.get());
+    let created = rest
+        .execute(runtime_guild_id, route, RestRetry::None, move |http| {
+            let message = message.clone();
+            async move { channel_id.widen().send_message(&http, message).await }
+        })
+        .await?;
+
+    to_json_value(created).map_err(Into::into)
 }
 
 #[op2(async)]
@@ -306,26 +305,18 @@ pub async fn op_edit_message(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawEditMessage,
 ) -> Result<(), JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
 
-    let channel_id_num = args
-        .channel_id
-        .parse::<u64>()
-        .map_err(|_| JsErrorBox::generic("Invalid channel id"))?;
-    let message_id_num = args
-        .message_id
-        .parse::<u64>()
-        .map_err(|_| JsErrorBox::generic("Invalid message id"))?;
-    let channel_id = ChannelId::new(channel_id_num);
+    let channel_id = parse_channel_id(&args.channel_id)?;
+    let message_id = parse_message_id(&args.message_id)?;
     let runtime_guild_id = {
         let state = state.borrow();
         runtime_guild_id_from_state(&state)?
     };
-    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
-    let message_id = MessageId::new(message_id_num);
+    ensure_channel_scope(runtime_guild_id, rest.scope_cache(), channel_id).await?;
 
     let mut message = serenity::builder::EditMessage::new();
     let mut has_payload = false;
@@ -345,7 +336,8 @@ pub async fn op_edit_message(
     }
 
     if let Some(components) = args.components {
-        let components = parse_components(components)?;
+        let components = parse_components(components)
+            .map_err(|err| FloraError::invalid_input("components", err.to_string()))?;
         message = message.components(components);
         has_payload = true;
     }
@@ -361,16 +353,29 @@ pub async fn op_edit_message(
     }
 
     if !has_payload {
-        return Err(JsErrorBox::generic(
-            "Message edit must include content, embeds, flags, or allowed mentions",
-        ));
+        return Err(FloraError::invalid_input(
+            "payload",
+            "message edit must include content, embeds, flags, or allowed mentions",
+        )
+        .into());
     }
 
-    channel_id
-        .widen()
-        .edit_message(&http, message_id, message)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let route = format!(
+        "PATCH /channels/{}/messages/{}",
+        channel_id.get(),
+        message_id.get()
+    );
+    rest.execute(runtime_guild_id, route, RestRetry::None, move |http| {
+        let message = message.clone();
+        async move {
+            channel_id
+                .widen()
+                .edit_message(&http, message_id, message)
+                .await
+        }
+    })
+    .await?;
+
     Ok(())
 }
 
@@ -388,22 +393,36 @@ pub async fn op_delete_message(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawDeleteMessage,
 ) -> Result<(), JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let message_id = parse_message_id(&args.message_id)?;
     let runtime_guild_id = {
         let state = state.borrow();
         runtime_guild_id_from_state(&state)?
     };
-    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
-    let message_id = parse_message_id(&args.message_id)?;
-    channel_id
-        .widen()
-        .delete_message(&http, message_id, None)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    ensure_channel_scope(runtime_guild_id, rest.scope_cache(), channel_id).await?;
+
+    let route = format!(
+        "DELETE /channels/{}/messages/{}",
+        channel_id.get(),
+        message_id.get()
+    );
+    rest.execute(
+        runtime_guild_id,
+        route,
+        RestRetry::None,
+        move |http| async move {
+            channel_id
+                .widen()
+                .delete_message(&http, message_id, None)
+                .await
+        },
+    )
+    .await?;
+
     Ok(())
 }
 
@@ -421,26 +440,34 @@ pub async fn op_bulk_delete_messages(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawBulkDeleteMessages,
 ) -> Result<(), JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let runtime_guild_id = {
         let state = state.borrow();
         runtime_guild_id_from_state(&state)?
     };
-    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
-    let message_ids = args
-        .message_ids
-        .into_iter()
-        .map(|id| parse_message_id(&id))
-        .collect::<Result<Vec<_>, _>>()?;
-    channel_id
-        .widen()
-        .delete_messages(&http, &message_ids, None)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    ensure_channel_scope(runtime_guild_id, rest.scope_cache(), channel_id).await?;
+
+    let mut message_ids = Vec::with_capacity(args.message_ids.len());
+    for id in args.message_ids {
+        message_ids.push(parse_message_id(&id)?);
+    }
+
+    let route = format!("POST /channels/{}/messages/bulk-delete", channel_id.get());
+    rest.execute(runtime_guild_id, route, RestRetry::None, move |http| {
+        let message_ids = message_ids.clone();
+        async move {
+            channel_id
+                .widen()
+                .delete_messages(&http, &message_ids, None)
+                .await
+        }
+    })
+    .await?;
+
     Ok(())
 }
 
@@ -458,22 +485,31 @@ pub async fn op_pin_message(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawPinMessage,
 ) -> Result<(), JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let message_id = parse_message_id(&args.message_id)?;
     let runtime_guild_id = {
         let state = state.borrow();
         runtime_guild_id_from_state(&state)?
     };
-    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
-    let message_id = parse_message_id(&args.message_id)?;
-    channel_id
-        .widen()
-        .pin(&http, message_id, None)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    ensure_channel_scope(runtime_guild_id, rest.scope_cache(), channel_id).await?;
+
+    let route = format!(
+        "PUT /channels/{}/pins/{}",
+        channel_id.get(),
+        message_id.get()
+    );
+    rest.execute(
+        runtime_guild_id,
+        route,
+        RestRetry::None,
+        move |http| async move { channel_id.widen().pin(&http, message_id, None).await },
+    )
+    .await?;
+
     Ok(())
 }
 
@@ -482,22 +518,31 @@ pub async fn op_unpin_message(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawPinMessage,
 ) -> Result<(), JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let message_id = parse_message_id(&args.message_id)?;
     let runtime_guild_id = {
         let state = state.borrow();
         runtime_guild_id_from_state(&state)?
     };
-    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
-    let message_id = parse_message_id(&args.message_id)?;
-    channel_id
-        .widen()
-        .unpin(&http, message_id, None)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    ensure_channel_scope(runtime_guild_id, rest.scope_cache(), channel_id).await?;
+
+    let route = format!(
+        "DELETE /channels/{}/pins/{}",
+        channel_id.get(),
+        message_id.get()
+    );
+    rest.execute(
+        runtime_guild_id,
+        route,
+        RestRetry::None,
+        move |http| async move { channel_id.widen().unpin(&http, message_id, None).await },
+    )
+    .await?;
+
     Ok(())
 }
 
@@ -516,22 +561,33 @@ pub async fn op_crosspost_message(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawCrosspostMessage,
 ) -> Result<serde_json::Value, JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let message_id = parse_message_id(&args.message_id)?;
     let runtime_guild_id = {
         let state = state.borrow();
         runtime_guild_id_from_state(&state)?
     };
-    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
-    let message_id = parse_message_id(&args.message_id)?;
-    let message = channel_id
-        .crosspost(&http, message_id)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
-    serde_json::to_value(message).map_err(|err| JsErrorBox::generic(err.to_string()))
+    ensure_channel_scope(runtime_guild_id, rest.scope_cache(), channel_id).await?;
+
+    let route = format!(
+        "POST /channels/{}/messages/{}/crosspost",
+        channel_id.get(),
+        message_id.get()
+    );
+    let message = rest
+        .execute(
+            runtime_guild_id,
+            route,
+            RestRetry::None,
+            move |http| async move { channel_id.crosspost(&http, message_id).await },
+        )
+        .await?;
+
+    to_json_value(message).map_err(Into::into)
 }
 
 /// Arguments for fetching a single message.
@@ -549,22 +605,33 @@ pub async fn op_fetch_message(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawFetchMessage,
 ) -> Result<serde_json::Value, JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let message_id = parse_message_id(&args.message_id)?;
     let runtime_guild_id = {
         let state = state.borrow();
         runtime_guild_id_from_state(&state)?
     };
-    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
-    let message_id = parse_message_id(&args.message_id)?;
-    let message = http
-        .get_message(channel_id.widen(), message_id)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
-    serde_json::to_value(message).map_err(|err| JsErrorBox::generic(err.to_string()))
+    ensure_channel_scope(runtime_guild_id, rest.scope_cache(), channel_id).await?;
+
+    let route = format!(
+        "GET /channels/{}/messages/{}",
+        channel_id.get(),
+        message_id.get()
+    );
+    let message = rest
+        .execute(
+            runtime_guild_id,
+            route,
+            RestRetry::ReadOnly,
+            move |http| async move { http.get_message(channel_id.widen(), message_id).await },
+        )
+        .await?;
+
+    to_json_value(message).map_err(Into::into)
 }
 
 /// Arguments for fetching multiple messages from a channel.
@@ -588,16 +655,17 @@ pub async fn op_fetch_messages(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawFetchMessages,
 ) -> Result<Vec<serde_json::Value>, JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
     let runtime_guild_id = {
         let state = state.borrow();
         runtime_guild_id_from_state(&state)?
     };
-    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
+    ensure_channel_scope(runtime_guild_id, rest.scope_cache(), channel_id).await?;
+
     let mut builder = GetMessages::new();
     if let Some(limit) = args.limit {
         builder = builder.limit(limit);
@@ -611,15 +679,18 @@ pub async fn op_fetch_messages(
     if let Some(around) = args.around {
         builder = builder.around(parse_message_id(&around)?);
     }
-    let messages = channel_id
-        .widen()
-        .messages(&http, builder)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
-    messages
-        .into_iter()
-        .map(|msg| serde_json::to_value(msg).map_err(|err| JsErrorBox::generic(err.to_string())))
-        .collect()
+
+    let route = format!("GET /channels/{}/messages", channel_id.get());
+    let messages = rest
+        .execute(
+            runtime_guild_id,
+            route,
+            RestRetry::ReadOnly,
+            move |http| async move { channel_id.widen().messages(&http, builder).await },
+        )
+        .await?;
+
+    to_json_values(messages).map_err(Into::into)
 }
 
 /// Arguments for adding or removing a reaction.
@@ -640,23 +711,35 @@ pub async fn op_add_reaction(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawReaction,
 ) -> Result<(), JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let message_id = parse_message_id(&args.message_id)?;
+    let reaction = parse_reaction(&args.emoji)?;
     let runtime_guild_id = {
         let state = state.borrow();
         runtime_guild_id_from_state(&state)?
     };
-    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
-    let message_id = parse_message_id(&args.message_id)?;
-    let reaction = parse_reaction(&args.emoji)?;
-    channel_id
-        .widen()
-        .create_reaction(&http, message_id, reaction)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    ensure_channel_scope(runtime_guild_id, rest.scope_cache(), channel_id).await?;
+
+    let route = format!(
+        "PUT /channels/{}/messages/{}/reactions/@me",
+        channel_id.get(),
+        message_id.get()
+    );
+    rest.execute(runtime_guild_id, route, RestRetry::None, move |http| {
+        let reaction = reaction.clone();
+        async move {
+            channel_id
+                .widen()
+                .create_reaction(&http, message_id, reaction)
+                .await
+        }
+    })
+    .await?;
+
     Ok(())
 }
 
@@ -665,31 +748,40 @@ pub async fn op_remove_reaction(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawReaction,
 ) -> Result<(), JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let message_id = parse_message_id(&args.message_id)?;
+    let reaction = parse_reaction(&args.emoji)?;
+    let user_id = if let Some(user_id) = args.user_id {
+        Some(parse_user_id(&user_id)?)
+    } else {
+        None
+    };
     let runtime_guild_id = {
         let state = state.borrow();
         runtime_guild_id_from_state(&state)?
     };
-    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
-    let message_id = parse_message_id(&args.message_id)?;
-    let reaction = parse_reaction(&args.emoji)?;
-    let user_id = if let Some(id) = args.user_id {
-        Some(UserId::new(
-            id.parse::<u64>()
-                .map_err(|_| JsErrorBox::generic("Invalid user id"))?,
-        ))
-    } else {
-        None
-    };
-    channel_id
-        .widen()
-        .delete_reaction(&http, message_id, user_id, reaction)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    ensure_channel_scope(runtime_guild_id, rest.scope_cache(), channel_id).await?;
+
+    let route = format!(
+        "DELETE /channels/{}/messages/{}/reactions",
+        channel_id.get(),
+        message_id.get()
+    );
+    rest.execute(runtime_guild_id, route, RestRetry::None, move |http| {
+        let reaction = reaction.clone();
+        async move {
+            channel_id
+                .widen()
+                .delete_reaction(&http, message_id, user_id, reaction)
+                .await
+        }
+    })
+    .await?;
+
     Ok(())
 }
 
@@ -709,31 +801,50 @@ pub async fn op_clear_reactions(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawClearReactions,
 ) -> Result<(), JsErrorBox> {
-    let http = {
+    let rest = {
         let state = state.borrow();
-        state.borrow::<Arc<Http>>().clone()
+        state.borrow::<Arc<DiscordRest>>().clone()
     };
     let channel_id = parse_channel_id(&args.channel_id)?;
+    let message_id = parse_message_id(&args.message_id)?;
     let runtime_guild_id = {
         let state = state.borrow();
         runtime_guild_id_from_state(&state)?
     };
-    ensure_channel_scope(runtime_guild_id, &http, channel_id).await?;
-    let message_id = parse_message_id(&args.message_id)?;
+    ensure_channel_scope(runtime_guild_id, rest.scope_cache(), channel_id).await?;
+
     if let Some(emoji) = args.emoji {
         let reaction = parse_reaction(&emoji)?;
-        channel_id
-            .widen()
-            .delete_reaction_emoji(&http, message_id, reaction)
-            .await
-            .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+        let route = format!(
+            "DELETE /channels/{}/messages/{}/reactions/emoji",
+            channel_id.get(),
+            message_id.get()
+        );
+        rest.execute(runtime_guild_id, route, RestRetry::None, move |http| {
+            let reaction = reaction.clone();
+            async move {
+                channel_id
+                    .widen()
+                    .delete_reaction_emoji(&http, message_id, reaction)
+                    .await
+            }
+        })
+        .await?;
     } else {
-        channel_id
-            .widen()
-            .delete_reactions(&http, message_id)
-            .await
-            .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+        let route = format!(
+            "DELETE /channels/{}/messages/{}/reactions",
+            channel_id.get(),
+            message_id.get()
+        );
+        rest.execute(
+            runtime_guild_id,
+            route,
+            RestRetry::None,
+            move |http| async move { channel_id.widen().delete_reactions(&http, message_id).await },
+        )
+        .await?;
     }
+
     Ok(())
 }
 
@@ -776,7 +887,7 @@ pub(crate) fn build_allowed_mentions(input: RawAllowedMentions) -> CreateAllowed
     allowed
 }
 
-pub(crate) fn build_embed(input: RawEmbed) -> Result<CreateEmbed<'static>, JsErrorBox> {
+pub(crate) fn build_embed(input: RawEmbed) -> Result<CreateEmbed<'static>, FloraError> {
     let mut embed = CreateEmbed::new();
 
     if let Some(title) = input.title {
@@ -798,7 +909,7 @@ pub(crate) fn build_embed(input: RawEmbed) -> Result<CreateEmbed<'static>, JsErr
     if let Some(timestamp) = input.timestamp {
         let parsed = timestamp
             .parse::<Timestamp>()
-            .map_err(|_| JsErrorBox::generic("Invalid embed timestamp"))?;
+            .map_err(|_| FloraError::invalid_input("embeds[].timestamp", "invalid timestamp"))?;
         embed = embed.timestamp(parsed);
     }
 
@@ -849,7 +960,7 @@ pub(crate) fn build_embed(input: RawEmbed) -> Result<CreateEmbed<'static>, JsErr
 pub(crate) async fn build_attachment(
     http: &Arc<Http>,
     attachment: RawAttachment,
-) -> Result<CreateAttachment<'static>, JsErrorBox> {
+) -> Result<CreateAttachment<'static>, FloraError> {
     match attachment {
         RawAttachment::Url {
             url,
@@ -867,17 +978,19 @@ pub(crate) async fn build_attachment(
                     .filter(|name| !name.is_empty())
                     .unwrap_or_else(|| "attachment".to_string())
             });
-            let mut att = serenity::builder::CreateAttachment::url(http, &url, resolved_name)
-                .await
-                .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+            let mut attachment =
+                serenity::builder::CreateAttachment::url(http, &url, resolved_name)
+                    .await
+                    .map_err(|err| FloraError::invalid_input("attachments", err.to_string()))?;
 
-            if let Some(name) = filename {
-                att.filename = name.into();
+            if let Some(filename) = filename {
+                attachment.filename = filename.into();
             }
-            if let Some(desc) = description {
-                att = att.description(desc);
+            if let Some(description) = description {
+                attachment = attachment.description(description);
             }
-            Ok(att)
+
+            Ok(attachment)
         }
         RawAttachment::Base64 {
             data,
@@ -886,31 +999,56 @@ pub(crate) async fn build_attachment(
         } => {
             let bytes = base64::engine::general_purpose::STANDARD
                 .decode(data)
-                .map_err(|_| JsErrorBox::generic("Invalid base64 attachment data"))?;
-            let mut att = CreateAttachment::bytes(bytes, filename);
-            if let Some(desc) = description {
-                att = att.description(desc);
+                .map_err(|_| {
+                    FloraError::invalid_input("attachments[].data", "invalid base64 data")
+                })?;
+            let mut attachment = CreateAttachment::bytes(bytes, filename);
+            if let Some(description) = description {
+                attachment = attachment.description(description);
             }
-            Ok(att)
+            Ok(attachment)
         }
     }
 }
 
-fn parse_channel_id(value: &str) -> Result<ChannelId, JsErrorBox> {
-    let id = value
-        .parse::<u64>()
-        .map_err(|_| JsErrorBox::generic("Invalid channel id"))?;
+fn parse_channel_id(value: &str) -> Result<ChannelId, FloraError> {
+    let Ok(id) = value.parse::<u64>() else {
+        return Err(FloraError::invalid_input("channel_id", "invalid snowflake"));
+    };
     Ok(ChannelId::new(id))
 }
 
-fn parse_message_id(value: &str) -> Result<MessageId, JsErrorBox> {
-    let id = value
-        .parse::<u64>()
-        .map_err(|_| JsErrorBox::generic("Invalid message id"))?;
+fn parse_message_id(value: &str) -> Result<MessageId, FloraError> {
+    let Ok(id) = value.parse::<u64>() else {
+        return Err(FloraError::invalid_input("message_id", "invalid snowflake"));
+    };
     Ok(MessageId::new(id))
 }
 
-fn parse_reaction(value: &str) -> Result<serenity::model::channel::ReactionType, JsErrorBox> {
+fn parse_user_id(value: &str) -> Result<UserId, FloraError> {
+    let Ok(id) = value.parse::<u64>() else {
+        return Err(FloraError::invalid_input("user_id", "invalid snowflake"));
+    };
+    Ok(UserId::new(id))
+}
+
+fn parse_reaction(value: &str) -> Result<serenity::model::channel::ReactionType, FloraError> {
     serenity::model::channel::ReactionType::try_from(value)
-        .map_err(|_| JsErrorBox::generic("Invalid reaction emoji"))
+        .map_err(|_| FloraError::invalid_input("emoji", "invalid reaction emoji"))
+}
+
+fn to_json_value<T: serde::Serialize>(value: T) -> Result<serde_json::Value, FloraError> {
+    serde_json::to_value(value).map_err(|err| {
+        FloraError::discord_http(500, 0, format!("failed to serialize response: {err}"))
+    })
+}
+
+fn to_json_values<T: serde::Serialize>(
+    values: Vec<T>,
+) -> Result<Vec<serde_json::Value>, FloraError> {
+    let mut json_values = Vec::with_capacity(values.len());
+    for value in values {
+        json_values.push(to_json_value(value)?);
+    }
+    Ok(json_values)
 }

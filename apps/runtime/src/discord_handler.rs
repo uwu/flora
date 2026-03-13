@@ -19,6 +19,7 @@ use tracing::{error, info};
 #[derive(Clone)]
 pub struct DiscordHandler {
     pub runtime: Arc<BotRuntime>,
+    pub rest: Arc<crate::services::discord_rest::DiscordRest>,
     pub http: Arc<serenity::http::Http>,
     pub application_id: Arc<std::sync::RwLock<Option<ApplicationId>>>,
     pub deployments: DeploymentService,
@@ -359,6 +360,26 @@ impl EventHandler for DiscordHandler {
                 {
                     error!("dispatch_js_event (reactionRemoveEmoji) error: {:?}", err);
                 }
+            }
+            FullEvent::ChannelCreate { channel, .. }
+            | FullEvent::ChannelUpdate { new: channel, .. } => {
+                self.rest
+                    .scope_cache()
+                    .warm_channel(channel.id, channel.base.guild_id)
+                    .await;
+            }
+            FullEvent::ChannelDelete { channel, .. } => {
+                self.rest.scope_cache().invalidate_channel(channel.id).await;
+            }
+            FullEvent::ThreadCreate { thread, .. }
+            | FullEvent::ThreadUpdate { new: thread, .. } => {
+                self.rest
+                    .scope_cache()
+                    .warm_thread(thread.id, thread.base.guild_id)
+                    .await;
+            }
+            FullEvent::ThreadDelete { thread, .. } => {
+                self.rest.scope_cache().invalidate_thread(thread.id).await;
             }
             FullEvent::GuildCreate {
                 guild, is_new: _, ..

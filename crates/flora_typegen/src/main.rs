@@ -78,6 +78,7 @@ fn main() {
         RawEmbedField,
         RawEmbed,
         RawAllowedMentions,
+        // RawSendMessage emits SendMessageOptions via #[t0x(as_name = "...")].
         RawSendMessage,
         RawEditMessage,
         RawDeleteMessage,

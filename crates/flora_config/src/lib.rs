@@ -97,6 +97,14 @@ pub struct RuntimeConfig {
     /// Timeout in seconds for per-event dispatch (0 disables).
     #[config(env = "RUNTIME_DISPATCH_TIMEOUT_SECS", default = 3)]
     pub dispatch_timeout_secs: u64,
+    /// Timeout in milliseconds for Discord REST requests.
+    /// Default: 8000
+    #[config(env = "RUNTIME_REST_TIMEOUT_MS", default = 8_000)]
+    pub rest_timeout_ms: u64,
+    /// Maximum number of concurrent Discord REST requests per guild.
+    /// Default: 4
+    #[config(env = "RUNTIME_GUILD_CONCURRENCY", default = 4)]
+    pub guild_concurrency: usize,
     /// Max script size in bytes (SDK + deployment). Default: 8MB.
     #[config(env = "RUNTIME_MAX_SCRIPT_BYTES", default = 8_388_608)]
     pub max_script_bytes: usize,

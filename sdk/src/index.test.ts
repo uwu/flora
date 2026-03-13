@@ -4,7 +4,6 @@ import type { InteractionContext } from './sdk/types'
 
 describe('createBot slash commands', () => {
   beforeEach(() => {
-    // @ts-expect-error test-only reset
     globalThis.__floraCreateBotState = undefined
   })
 

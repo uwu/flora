@@ -8,7 +8,7 @@ use crate::{
     metrics::metrics,
     ops,
     ops::{SharedCronRegistry, interaction::CommandHashCache},
-    services::{kv::KvService, secrets::SecretsRuntimeData},
+    services::{discord_rest::DiscordRest, kv::KvService, secrets::SecretsRuntimeData},
 };
 use deno_core::{
     Extension, ExtensionFileSource, FastString, FsModuleLoader, JsRuntime, ModuleName,
@@ -19,7 +19,6 @@ use deno_core::{
 use deno_permissions::{
     Permissions, PermissionsContainer, PermissionsOptions, RuntimePermissionDescriptorParser,
 };
-use serenity::http::Http;
 use std::{borrow::Cow, future::Future, path::PathBuf, rc::Rc, sync::Arc, time::Duration};
 use sys_traits::impls::RealSys;
 use tokio::time::timeout;
@@ -205,7 +204,7 @@ fn bootstrap_extension() -> Extension {
 }
 
 pub(super) fn new_js_runtime(
-    http: Arc<Http>,
+    rest: Arc<DiscordRest>,
     kv: KvService,
     secrets: Arc<SecretsRuntimeData>,
     guild_id: Option<String>,
@@ -240,7 +239,7 @@ pub(super) fn new_js_runtime(
             deno_net::deno_net::init(None, None),
             deno_tls::deno_tls::init(),
             bootstrap_extension(),
-            ops::extension(http, kv.clone(), cron_registry),
+            ops::extension(rest, kv.clone(), cron_registry),
         ],
         extension_transpiler: Some(Rc::new(|specifier, source| {
             match crate::transpile::transpile_if_typescript(&specifier, source.as_str())? {

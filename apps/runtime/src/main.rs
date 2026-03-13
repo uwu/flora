@@ -136,6 +136,7 @@ async fn main() -> Result<()> {
         kv_service.clone(),
         secret_service.clone(),
         config.runtime,
+        cache_client.clone(),
     ));
     runtime.initialize().await.map_err(|err| eyre!(err))?;
 
@@ -160,6 +161,7 @@ async fn main() -> Result<()> {
 
     let handler = Arc::new(DiscordHandler {
         runtime: runtime.clone(),
+        rest: runtime.discord_rest(),
         http: http.clone(),
         application_id: Arc::new(std::sync::RwLock::new(Some(app_info.id))),
         deployments: deployment_service.clone(),

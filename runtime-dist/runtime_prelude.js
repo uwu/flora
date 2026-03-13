@@ -7,15 +7,13 @@ globalThis.secrets = {
   }
 }
 globalThis.on = function on(event, handler) {
-  if (!globalThis.__floraHandlers[event]) {
-    globalThis.__floraHandlers[event] = []
-  }
+  if (!globalThis.__floraHandlers[event]) globalThis.__floraHandlers[event] = []
   globalThis.__floraHandlers[event].push(handler)
 }
 globalThis.__floraDispatch = async function __floraDispatch(event, payload) {
   const handlers = globalThis.__floraHandlers[event] || []
   for (const handler of handlers) {
-    const context = {
+    await handler({
       msg: payload,
       reply(message) {
         const options = normalizeReply(message, payload)
@@ -28,8 +26,7 @@ globalThis.__floraDispatch = async function __floraDispatch(event, payload) {
         const options = normalizeEdit(message, payload)
         return core.ops.op_edit_message(options)
       }
-    }
-    await handler(context)
+    })
   }
 }
 globalThis.console = { log: (...args) => core.ops.op_log(args) }
@@ -48,13 +45,9 @@ globalThis.cron = function cron(name, cronExpr, handler, options) {
   if (typeof cronExpr !== 'string' || !cronExpr.length) {
     throw new TypeError('cron expression must be a non-empty string')
   }
-  if (typeof handler !== 'function') {
-    throw new TypeError('cron handler must be a function')
-  }
+  if (typeof handler !== 'function') throw new TypeError('cron handler must be a function')
   const eventName = CRON_EVENT_PREFIX + name
-  if (!globalThis.__floraHandlers[eventName]) {
-    globalThis.__floraHandlers[eventName] = []
-  }
+  if (!globalThis.__floraHandlers[eventName]) globalThis.__floraHandlers[eventName] = []
   globalThis.__floraHandlers[eventName].push(handler)
   core.ops.op_register_cron({
     name,
@@ -63,9 +56,7 @@ globalThis.cron = function cron(name, cronExpr, handler, options) {
   })
 }
 function normalizeReply(message, payload) {
-  if (payload?.interactionToken) {
-    return normalizeInteractionReply(message, payload)
-  }
+  if (payload?.interactionToken) return normalizeInteractionReply(message, payload)
   const base = { channelId: payload.channelId }
   const replyId = payload.id ?? payload.messageId
   if (typeof message === 'string') {
@@ -81,13 +72,9 @@ function normalizeReply(message, payload) {
       ...message
     }
     const explicitReplyTo = message.replyTo ?? message.replyTo
-    if (explicitReplyTo === null) {
-      delete normalized.messageId
-    } else if (explicitReplyTo !== undefined) {
-      normalized.messageId = explicitReplyTo
-    } else if (replyId) {
-      normalized.messageId = replyId
-    }
+    if (explicitReplyTo === null) delete normalized.messageId
+    else if (explicitReplyTo !== void 0) normalized.messageId = explicitReplyTo
+    else if (replyId) normalized.messageId = replyId
     delete normalized.replyTo
     delete normalized.reply_to
     return normalized
@@ -100,9 +87,7 @@ function normalizeReply(message, payload) {
 }
 function normalizeEdit(message, payload) {
   const messageId = payload.id ?? payload.messageId
-  if (!messageId || !payload?.channelId) {
-    throw new Error('Message edit requires a message payload')
-  }
+  if (!messageId || !payload?.channelId) throw new Error('Message edit requires a message payload')
   const base = {
     channelId: payload.channelId,
     messageId
@@ -140,9 +125,7 @@ function normalizeInteractionReply(message, payload) {
       ...base,
       ...message
     }
-    if (message.ephemeral !== undefined) {
-      normalized.ephemeral = message.ephemeral
-    }
+    if (message.ephemeral !== void 0) normalized.ephemeral = message.ephemeral
     return normalized
   }
   return {
@@ -150,5 +133,4 @@ function normalizeInteractionReply(message, payload) {
     content: String(message)
   }
 }
-
 // #endregion

@@ -823,6 +823,9 @@ export type RawSendMessage = {
   replyTo?: string
 }
 
+/** Message options without routing fields. */
+export type SendMessageOptions = Omit<RawSendMessage, 'channelId'>
+
 /** Arguments for editing a message. */
 export type RawEditMessage = {
   /** The channel containing the message. */

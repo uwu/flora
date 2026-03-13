@@ -10,7 +10,13 @@ mod tests;
 
 use crate::{
     metrics::metrics,
-    services::{deployments::Deployment, kv::KvService, secrets::SecretService},
+    services::{
+        deployments::Deployment,
+        discord_rest::{DiscordRest, RestConfig},
+        kv::KvService,
+        scope_cache::ScopeCache,
+        secrets::SecretService,
+    },
 };
 use constants::{DROPPABLE_EVENTS, MAX_DROPPABLE_BACKLOG, MAX_WORKERS_LIMIT};
 use deno_core::error::AnyError;
@@ -23,6 +29,7 @@ use std::{
     hash::{Hash, Hasher},
     path::PathBuf,
     sync::{Arc, atomic::Ordering},
+    time::Duration,
 };
 use tokio::{runtime::Builder, sync::Mutex};
 use tracing::{error, info};
@@ -34,6 +41,7 @@ use worker::spawn_worker;
 pub struct BotRuntime {
     workers: Vec<Worker>,
     num_workers: usize,
+    rest: Arc<DiscordRest>,
     secrets: Arc<SecretService>,
     guild_routes: Arc<parking_lot::Mutex<HashMap<String, usize>>>,
     migration_queues: Arc<Mutex<HashMap<String, Vec<QueuedGuildEvent>>>>,
@@ -46,17 +54,27 @@ impl BotRuntime {
         kv: KvService,
         secrets: SecretService,
         config: RuntimeConfig,
+        cache_pool: fred::prelude::Pool,
     ) -> Self {
         let num_workers = config.max_workers.clamp(1, MAX_WORKERS_LIMIT);
         let queue_capacity = config.worker_queue_capacity.max(1);
         info!(target: "flora:runtime", num_workers, queue_capacity, "spawning worker pool");
         let limits = RuntimeLimits::from_config(&config);
+        let scope_cache = ScopeCache::new(http.clone(), cache_pool);
+        let rest = Arc::new(DiscordRest::new(
+            http,
+            scope_cache,
+            RestConfig {
+                max_wait: Duration::from_millis(config.rest_timeout_ms),
+                guild_concurrency: config.guild_concurrency.max(1),
+            },
+        ));
 
         let workers: Vec<Worker> = (0..num_workers)
             .map(|id| {
                 spawn_worker(
                     id,
-                    http.clone(),
+                    rest.clone(),
                     kv.clone(),
                     secrets.clone(),
                     limits,
@@ -68,10 +86,15 @@ impl BotRuntime {
         Self {
             workers,
             num_workers,
+            rest,
             secrets: Arc::new(secrets),
             guild_routes: Arc::new(parking_lot::Mutex::new(HashMap::new())),
             migration_queues: Arc::new(Mutex::new(HashMap::new())),
         }
+    }
+
+    pub fn discord_rest(&self) -> Arc<DiscordRest> {
+        self.rest.clone()
     }
 
     /// Initialize all workers (creates default runtimes).

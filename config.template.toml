@@ -119,6 +119,22 @@
 # Default value: 3
 # dispatch_timeout_secs = 3
 
+# Timeout in milliseconds for Discord REST requests.
+# Default: 8000
+#
+# Can also be specified via environment variable `RUNTIME_REST_TIMEOUT_MS`.
+#
+# Default value: 8000
+# rest_timeout_ms = 8000
+
+# Maximum number of concurrent Discord REST requests per guild.
+# Default: 4
+#
+# Can also be specified via environment variable `RUNTIME_GUILD_CONCURRENCY`.
+#
+# Default value: 4
+# guild_concurrency = 4
+
 # Max script size in bytes (SDK + deployment). Default: 8MB.
 #
 # Can also be specified via environment variable `RUNTIME_MAX_SCRIPT_BYTES`.

@@ -1,5 +1,4 @@
-use crate::services::kv::KvService;
-use serenity::http::Http;
+use crate::services::{discord_rest::DiscordRest, kv::KvService};
 use std::sync::Arc;
 
 mod authz;
@@ -7,6 +6,7 @@ pub mod channels;
 pub mod commands;
 pub mod components;
 pub mod cron;
+pub mod errors;
 pub mod guilds;
 pub mod interaction;
 pub mod kv;
@@ -15,6 +15,7 @@ pub mod secrets;
 mod tls;
 pub mod webhooks;
 pub use cron::{CronRegistry, SharedCronRegistry};
+pub(crate) use errors::FloraError;
 
 deno_core::extension!(
     flora_ops,
@@ -79,21 +80,22 @@ deno_core::extension!(
         secrets::op_secret_placeholder,
     ],
     options = {
-        http: Arc<Http>,
+        rest: Arc<DiscordRest>,
         kv: KvService,
         cron_registry: SharedCronRegistry,
     },
     state = |state, options| {
-        state.put(options.http.clone());
+        state.put(options.rest.clone());
+        state.put(options.rest.http().clone());
         state.put(options.kv.clone());
         state.put(options.cron_registry.clone());
     }
 );
 
 pub fn extension(
-    http: Arc<Http>,
+    rest: Arc<DiscordRest>,
     kv: KvService,
     cron_registry: SharedCronRegistry,
 ) -> deno_core::Extension {
-    flora_ops::init(http, kv, cron_registry)
+    flora_ops::init(rest, kv, cron_registry)
 }

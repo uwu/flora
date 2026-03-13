@@ -5,9 +5,16 @@ use super::{
 };
 use crate::{
     ops::CronRegistry,
-    services::{deployments::Deployment, kv::KvService, secrets::SecretService},
+    services::{
+        deployments::Deployment,
+        discord_rest::{DiscordRest, RestConfig},
+        kv::KvService,
+        scope_cache::ScopeCache,
+        secrets::SecretService,
+    },
 };
 use chrono::Utc;
+use fred::prelude::Builder;
 use parking_lot::Mutex;
 use serde_json::json;
 use serenity::{http::Http, secrets::Token};
@@ -113,6 +120,16 @@ async fn test_kv_service(database_url: &str) -> KvService {
     KvService::new(pool, kv_path)
 }
 
+fn test_discord_rest(http: Arc<Http>) -> Arc<DiscordRest> {
+    let cache_config =
+        fred::types::config::Config::from_url("redis://localhost:5434").expect("parse cache url");
+    let cache_pool = Builder::from_config(cache_config)
+        .build_pool(1)
+        .expect("create cache pool");
+    let scope_cache = ScopeCache::new(http.clone(), cache_pool);
+    Arc::new(DiscordRest::new(http, scope_cache, RestConfig::default()))
+}
+
 fn make_deployment(iteration: usize) -> Deployment {
     let bundle = format!(
         "globalThis.__floraDispatch = (event, payload) => {{ globalThis.__last = payload; return payload; }};\n// iteration {iteration}"
@@ -149,6 +166,7 @@ async fn stress_redeploys_reuse_isolates_without_crash() {
         let http = Arc::new(Http::new(
             Token::try_from("Bot stress.test.token").expect("token"),
         ));
+        let rest = test_discord_rest(http);
         let kv = test_kv_service(&database_url).await;
         let secrets = SecretService::new_for_tests(&database_url).await;
         let limits = test_limits();
@@ -159,7 +177,7 @@ async fn stress_redeploys_reuse_isolates_without_crash() {
             let deployment = make_deployment(iteration);
             deploy_guild_to_worker(
                 &mut guild_runtimes,
-                &http,
+                &rest,
                 &kv,
                 &secrets,
                 deployment,

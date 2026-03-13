@@ -1944,6 +1944,7 @@ dependencies = [
  "confique",
  "cookie",
  "croner",
+ "dashmap 6.1.0",
  "deno_core",
  "deno_error",
  "deno_fetch",
@@ -5961,9 +5962,9 @@ dependencies = [
 
 [[package]]
 name = "t0x"
-version = "0.1.5"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15f72b60a804d4743182bdb2c8d7cc5de3995dc70efd22a42247b10263639e84"
+checksum = "0219c290cd9aecba1b62fe67ef283be5be8bb4f1c35dc3d84c0bd9ff56ba7a74"
 dependencies = [
  "oxc_allocator",
  "oxc_ast",
@@ -5975,9 +5976,9 @@ dependencies = [
 
 [[package]]
 name = "t0x-macros"
-version = "0.1.5"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca1afde24e33cf369eff79f6e3885d9424cb1b35366eb1a2169a77896c3399e6"
+checksum = "7962d9177208f27a427667a8b865118c2d90ad456a342f5d3069ab752352b026"
 dependencies = [
  "proc-macro2",
  "quote",

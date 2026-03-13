@@ -1,47 +1,40 @@
 use deno_core::OpState;
-use deno_error::JsErrorBox;
-use serenity::{
-    http::Http,
-    model::{
-        channel::Channel,
-        id::{ChannelId, GuildId, ThreadId, WebhookId},
-    },
-};
+use serenity::model::id::{ChannelId, GuildId, ThreadId, WebhookId};
 
-pub fn ensure_guild_scope(state: &OpState, guild_id: GuildId) -> Result<(), JsErrorBox> {
+use crate::services::scope_cache::ScopeCache;
+
+use super::FloraError;
+
+pub fn ensure_guild_scope(state: &OpState, guild_id: GuildId) -> Result<(), FloraError> {
     let runtime_guild_id = runtime_guild_id_from_state(state)?;
     if runtime_guild_id != guild_id {
-        return Err(JsErrorBox::generic(
-            "Forbidden: guild is outside runtime scope",
+        return Err(FloraError::scope_forbidden(
+            "guild is outside runtime scope",
         ));
     }
 
     Ok(())
 }
 
-pub fn runtime_guild_id_from_state(state: &OpState) -> Result<GuildId, JsErrorBox> {
+pub fn runtime_guild_id_from_state(state: &OpState) -> Result<GuildId, FloraError> {
     runtime_guild_id(state)
 }
 
 pub async fn ensure_channel_scope(
     runtime_guild_id: GuildId,
-    http: &Http,
+    scope_cache: &ScopeCache,
     channel_id: ChannelId,
-) -> Result<(), JsErrorBox> {
-    let channel = http
-        .get_channel(channel_id.widen())
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
-
-    let Some(channel_guild_id) = channel_guild_id(channel) else {
-        return Err(JsErrorBox::generic(
-            "Forbidden: channel is not a guild channel",
+) -> Result<(), FloraError> {
+    let channel_guild_id = scope_cache.resolve_channel(channel_id).await?;
+    let Some(channel_guild_id) = channel_guild_id else {
+        return Err(FloraError::scope_forbidden(
+            "channel is not a guild channel",
         ));
     };
 
     if channel_guild_id != runtime_guild_id {
-        return Err(JsErrorBox::generic(
-            "Forbidden: channel is outside runtime scope",
+        return Err(FloraError::scope_forbidden(
+            "channel is outside runtime scope",
         ));
     }
 
@@ -50,47 +43,44 @@ pub async fn ensure_channel_scope(
 
 pub async fn ensure_thread_scope(
     runtime_guild_id: GuildId,
-    http: &Http,
+    scope_cache: &ScopeCache,
     thread_id: ThreadId,
-) -> Result<(), JsErrorBox> {
-    ensure_channel_scope(runtime_guild_id, http, ChannelId::new(thread_id.get())).await
+) -> Result<(), FloraError> {
+    ensure_channel_scope(
+        runtime_guild_id,
+        scope_cache,
+        ChannelId::new(thread_id.get()),
+    )
+    .await
 }
 
 pub async fn ensure_webhook_scope(
     runtime_guild_id: GuildId,
-    http: &Http,
+    scope_cache: &ScopeCache,
     webhook_id: WebhookId,
-) -> Result<(), JsErrorBox> {
-    let webhook = http
-        .get_webhook(webhook_id)
-        .await
-        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
-
-    let Some(webhook_guild_id) = webhook.guild_id else {
-        return Err(JsErrorBox::generic(
-            "Forbidden: webhook is not owned by a guild",
+) -> Result<(), FloraError> {
+    let webhook_guild_id = scope_cache.resolve_webhook(webhook_id).await?;
+    let Some(webhook_guild_id) = webhook_guild_id else {
+        return Err(FloraError::scope_forbidden(
+            "webhook is not owned by a guild",
         ));
     };
 
     if webhook_guild_id != runtime_guild_id {
-        return Err(JsErrorBox::generic(
-            "Forbidden: webhook is outside runtime scope",
+        return Err(FloraError::scope_forbidden(
+            "webhook is outside runtime scope",
         ));
     }
 
     Ok(())
 }
 
-fn runtime_guild_id(state: &OpState) -> Result<GuildId, JsErrorBox> {
+fn runtime_guild_id(state: &OpState) -> Result<GuildId, FloraError> {
     let runtime_guild_id = state
         .try_borrow::<String>()
-        .ok_or_else(|| JsErrorBox::generic("guild context not available"))?;
-    runtime_guild_id
-        .parse::<u64>()
-        .map(GuildId::new)
-        .map_err(|_| JsErrorBox::generic("invalid runtime guild id"))
-}
-
-fn channel_guild_id(channel: Channel) -> Option<GuildId> {
-    channel.guild_id()
+        .ok_or_else(|| FloraError::scope_forbidden("guild context not available"))?;
+    let Ok(runtime_guild_id) = runtime_guild_id.parse::<u64>() else {
+        return Err(FloraError::scope_forbidden("invalid runtime guild id"));
+    };
+    Ok(GuildId::new(runtime_guild_id))
 }
