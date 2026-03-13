@@ -12,12 +12,12 @@
   },
   "devDependencies": {
     "@uwu/flora-cli": "workspace:*",
-    "@voidzero-dev/vite-plus-core": "0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab",
+    "@voidzero-dev/vite-plus-core": "0.1.11",
     "dprint": "0.51.1",
     "lefthook": "^2.0.15",
     "typescript": "^5.7.2",
-    "vite-plus": "0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@0.0.0-833c515fa25cef20905a7f9affb156dfa6f151ab",
+    "vite-plus": "0.1.11",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@0.1.11",
     "vue-tsc": "3.2.4"
   },
   "packageManager": "pnpm@10.28.0"
