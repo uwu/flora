@@ -10,6 +10,7 @@ packages:
   - 'packages/*'
 
 catalog:
+  '@typescript/native-preview': ^7.0.0-dev.20260105.1
   vitest: npm:@voidzero-dev/vite-plus-test@latest
 
 overrides:

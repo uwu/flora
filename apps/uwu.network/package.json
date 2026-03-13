@@ -6,11 +6,12 @@
     "dayjs": "^1.11.18"
   },
   "devDependencies": {
+    "@typescript/native-preview": "catalog:",
     "@uwu/flora-cli": "workspace:*",
     "@uwu/flora-sdk": "workspace:*",
     "typescript": "^5.0.0"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo --noEmit"
   }
 }
