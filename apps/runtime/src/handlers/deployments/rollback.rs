@@ -132,7 +132,7 @@ pub async fn rollback_deployment_handler(
 
     deploy_result.map_err(|err| {
         error!(target: "flora:api", guild_id, ?err, "failed to deploy rollback revision");
-        ApiError::internal(err)
+        ApiError::bad_request(format!("rollback failed: {err}"))
     })?;
 
     state

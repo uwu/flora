@@ -24,6 +24,19 @@ export async function bundleProject(
 
   onLog(`Bundling ${entryRel}`)
   const minifyEnabled = isBundleMinifyEnabled()
+  const minifyOption = minifyEnabled
+    ? {
+      compress: {
+        keepNames: {
+          function: true,
+          class: true
+        }
+      },
+      mangle: {
+        keepNames: true
+      }
+    }
+    : false
 
   const result = await build({
     cwd: workspaceDir,
@@ -33,7 +46,8 @@ export async function bundleProject(
       format: 'esm',
       sourcemap: true,
       exports: 'named',
-      minify: minifyEnabled
+      minify: minifyOption,
+      keepNames: minifyEnabled
     },
     checks: {
       eval: false

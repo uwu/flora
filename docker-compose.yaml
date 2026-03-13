@@ -10,6 +10,7 @@ services:
       BUILD_SERVICE_SECRET: ${BUILD_SERVICE_SECRET?set BUILD_SERVICE_SECRET}
       BUILD_SERVICE_HOST: 0.0.0.0
       BUILD_SERVICE_PORT: 3001
+      BUILD_SERVICE_DISABLE_MINIFY: 'true'
       BUILD_SERVICE_WORKSPACE_DIR: /app/build-workspace
     volumes:
       - build_service_workspace:/app/build-workspace

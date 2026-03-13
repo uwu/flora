@@ -48,6 +48,7 @@ fn test_limits() -> RuntimeLimits {
         migration_timeout: None,
         max_script_bytes: 512 * 1024,
         max_cron_jobs: 4,
+        show_internal_stack_frames: false,
     }
 }
 

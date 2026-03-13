@@ -1,7 +1,7 @@
 use super::{
     constants::{RUNTIME_PRELUDE, SDK_BUNDLE_PATH},
     js::{
-        extract_dispatch_fn_no_enter_impl, load_script_from_path, load_script_source,
+        extract_dispatch_fn_no_enter_impl, load_es_module_source, load_script_from_path,
         new_js_runtime, run_event_loop_with_timeout, terminate_runtime, with_timeout,
     },
     limits::RuntimeLimits,
@@ -12,6 +12,7 @@ use super::{
     },
 };
 use crate::{
+    log_sink::log_sink,
     metrics::metrics,
     ops::{CronRegistry, SharedCronRegistry},
     services::{
@@ -22,7 +23,7 @@ use crate::{
     },
 };
 use deno_core::{
-    ModuleName, PollEventLoopOptions,
+    ModuleSpecifier, PollEventLoopOptions,
     error::AnyError,
     serde_v8,
     v8::{self, Global},
@@ -153,9 +154,10 @@ fn worker_thread(
                         }
 
                         WorkerCommand::DeployGuild { deployment, respond_to } => {
+                            let guild_id = deployment.guild_id.clone();
                             {
                                 let mut reg = cron_registry.lock();
-                                reg.clear_guild(&deployment.guild_id);
+                                reg.clear_guild(&guild_id);
                             }
                             let result = deploy_guild_to_worker(
                                 &mut guild_runtimes,
@@ -169,12 +171,14 @@ fn worker_thread(
                             )
                             .await;
                             if let Err(ref err) = result {
-                                error!(target: "flora:runtime", worker_id, ?err, "failed to deploy guild");
+                                emit_runtime_error(Some(guild_id.as_str()), "deploy", err, &limits);
+                                error!(target: "flora:runtime", worker_id, guild_id, ?err, "failed to deploy guild");
                             }
                             let _ = respond_to.send(result);
                         }
 
                         WorkerCommand::DispatchEvent { guild_id, event, payload, respond_to } => {
+                            let guild_id_for_log = guild_id.clone();
                             let result = dispatch_to_worker(
                                 &mut guild_runtimes,
                                 &mut default_runtime,
@@ -186,6 +190,7 @@ fn worker_thread(
                             )
                             .await;
                             if let Err(ref err) = result {
+                                emit_runtime_error(guild_id_for_log.as_deref(), "dispatch", err, &limits);
                                 error!(target: "flora:runtime", worker_id, ?err, "dispatch failed");
                             }
                             let _ = respond_to.send(result);
@@ -328,6 +333,7 @@ async fn run_cron_tick(
         mark_cron_not_running(cron_registry, &guild_id, &cron_name);
 
         if let Err(ref err) = result {
+            emit_runtime_error(guild_id.as_deref(), "cron", err, limits);
             error!(target: "flora:runtime", worker_id, ?guild_id, cron_name, ?err, "cron dispatch failed");
         }
     }
@@ -540,14 +546,15 @@ pub(super) async fn deploy_guild_to_worker(
         )
         .await?;
 
-        let module_name = ModuleName::from(deployment.module_name());
-        let script_name = module_name.as_str().to_string();
+        let module_specifier = ModuleSpecifier::parse(&deployment.module_specifier())
+            .map_err(|err| AnyError::msg(format!("invalid deployment module specifier: {err}")))?;
+        let script_name = module_specifier.as_str().to_string();
         info!(target: "flora:runtime", worker_id, guild_id, script = script_name, "Loading guild script");
-        load_script_source(
+        load_es_module_source(
             runtime.runtime_mut(),
-            module_name,
+            module_specifier,
             deployment.bundle.clone(),
-            script_name,
+            deployment.source_map.as_ref().map(|source_map| source_map.contents.as_str()),
             worker_id,
             limits,
         )
@@ -589,7 +596,8 @@ pub(super) async fn deploy_guild_to_worker(
                 let mut reg = cron_registry.lock();
                 reg.jobs.insert(Some(guild_id.clone()), crons);
             }
-            Err(err)
+            let message = user_visible_error_message(&err, limits.show_internal_stack_frames);
+            Err(AnyError::msg(message))
         }
     }
 }
@@ -760,6 +768,7 @@ async fn broadcast_to_worker(
         && let Err(err) =
             dispatch_into_runtime(runtime, event.clone(), payload.clone(), worker_id, limits).await
     {
+        emit_runtime_error(None, "broadcast", &err, limits);
         error!(target: "flora:runtime", worker_id, ?err, "Broadcast to default runtime failed");
     }
 
@@ -767,6 +776,7 @@ async fn broadcast_to_worker(
         if let Err(err) =
             dispatch_into_runtime(runtime, event.clone(), payload.clone(), worker_id, limits).await
         {
+            emit_runtime_error(Some(guild_id.as_str()), "broadcast", &err, limits);
             error!(target: "flora:runtime", worker_id, guild_id, ?err, "Broadcast dispatch failed");
         }
     }
@@ -843,4 +853,107 @@ fn is_oom_error(err: &AnyError) -> bool {
     err.to_string()
         .to_ascii_lowercase()
         .contains("out of memory")
+}
+
+fn emit_runtime_error(guild_id: Option<&str>, stage: &str, err: &AnyError, limits: &RuntimeLimits) {
+    let message = user_visible_error_message(err, limits.show_internal_stack_frames);
+    log_sink().log(
+        tracing::Level::ERROR,
+        "flora:runtime",
+        guild_id.map(ToOwned::to_owned),
+        format!("{stage} failed: {message}"),
+    );
+}
+
+fn user_visible_error_message(err: &AnyError, show_internal_stack_frames: bool) -> String {
+    let text = err.to_string();
+    if show_internal_stack_frames {
+        return text;
+    }
+
+    let mut hidden_frames = 0usize;
+    let mut lines = Vec::new();
+    for (index, line) in text.lines().enumerate() {
+        if index == 0 {
+            lines.push(line.to_string());
+            continue;
+        }
+
+        if is_internal_stack_frame(line) {
+            hidden_frames += 1;
+            continue;
+        }
+
+        lines.push(line.to_string());
+    }
+
+    if hidden_frames > 0 {
+        lines.push(format!(
+            "    ... {hidden_frames} internal frame(s) hidden (set RUNTIME_SHOW_INTERNAL_STACK_FRAMES=true to show)"
+        ));
+    }
+
+    lines.join("\n")
+}
+
+fn is_internal_stack_frame(line: &str) -> bool {
+    let line = line.trim().to_ascii_lowercase();
+    if line.is_empty() {
+        return false;
+    }
+
+    [
+        "runtime-dist/",
+        "runtime_sdk_bundle.js",
+        "runtime_prelude.js",
+        "runtime_bootstrap.js",
+        "runtime_module_resolution.js",
+        "flora:bootstrap",
+        "flora:guild_context",
+        "ext:",
+    ]
+    .iter()
+    .any(|pattern| line.contains(pattern))
+}
+
+#[cfg(test)]
+mod tests {
+    use deno_core::error::AnyError;
+
+    use super::{is_internal_stack_frame, user_visible_error_message};
+
+    #[test]
+    fn user_visible_error_message_hides_internal_frames_by_default() {
+        let raw = "Error: boom\n    at handler (file:///guild/123/src/main.ts:4:3)\n    at op_dispatch (ext:core/ops.js:12:3)\n    at bootstrap (file:///runtime-dist/runtime_bootstrap.js:8:9)";
+        let err = AnyError::msg(raw);
+
+        let message = user_visible_error_message(&err, false);
+
+        assert!(message.contains("Error: boom"));
+        assert!(message.contains("file:///guild/123/src/main.ts"));
+        assert!(!message.contains("ext:core/ops.js"));
+        assert!(!message.contains("runtime-dist/runtime_bootstrap.js"));
+        assert!(message.contains("2 internal frame(s) hidden"));
+    }
+
+    #[test]
+    fn user_visible_error_message_keeps_internal_frames_when_enabled() {
+        let raw = "Error: boom\n    at op_dispatch (ext:core/ops.js:12:3)";
+        let err = AnyError::msg(raw);
+
+        assert_eq!(user_visible_error_message(&err, true), raw);
+    }
+
+    #[test]
+    fn is_internal_stack_frame_matches_runtime_and_ext_frames() {
+        assert!(is_internal_stack_frame(
+            "    at op_dispatch (ext:core/ops.js:12:3)"
+        ));
+        assert!(is_internal_stack_frame(
+            "    at bootstrap (file:///runtime-dist/runtime_prelude.js:1:1)",
+        ));
+        assert!(!is_internal_stack_frame(
+            "    at handler (file:///guild/123/src/main.ts:4:3)",
+        ));
+    }
 }

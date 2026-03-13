@@ -177,6 +177,13 @@
 # Default value: 500
 # migration_timeout_ms = 500
 
+# Show internal runtime stack frames in user-facing error messages.
+#
+# Can also be specified via environment variable `RUNTIME_SHOW_INTERNAL_STACK_FRAMES`.
+#
+# Default value: false
+# show_internal_stack_frames = false
+
 # API server config.
 [api]
 # Port to listen on.

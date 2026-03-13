@@ -140,7 +140,13 @@ export function EditorPage() {
           body: {
             entry: buildResult.build.entry,
             files: deployFiles,
-            bundle: buildResult.build.artifact.bundle
+            bundle: buildResult.build.artifact.bundle,
+            source_map: buildResult.build.artifact.source_map
+              ? {
+                path: 'bundle.js.map',
+                contents: buildResult.build.artifact.source_map
+              }
+              : undefined
           }
         })
 

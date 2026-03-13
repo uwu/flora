@@ -104,7 +104,13 @@ export async function deploy(
     body: JSON.stringify({
       entry: build.entry,
       files,
-      bundle: build.artifact.bundle
+      bundle: build.artifact.bundle,
+      source_map: build.artifact.source_map
+        ? {
+          path: 'bundle.js.map',
+          contents: build.artifact.source_map
+        }
+        : undefined
     })
   })
 

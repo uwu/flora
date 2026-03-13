@@ -612,6 +612,10 @@ impl Deployment {
     pub fn module_name(&self) -> String {
         format!("guild:{}.bundle.js", self.guild_id)
     }
+
+    pub fn module_specifier(&self) -> String {
+        format!("file:///guild/{}/bundle.js", self.guild_id)
+    }
 }
 
 #[cfg(test)]

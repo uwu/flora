@@ -356,7 +356,7 @@ pub async fn upsert_deployment_handler(
 
     deploy_result.map_err(|err| {
         error!(target: "flora:api", guild_id, ?err, "failed to deploy guild script");
-        ApiError::internal(err)
+        ApiError::bad_request(format!("deployment failed: {err}"))
     })?;
 
     let deployment = state

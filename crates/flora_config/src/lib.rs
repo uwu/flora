@@ -123,6 +123,9 @@ pub struct RuntimeConfig {
     /// Timeout in milliseconds for migration quiesce (0 disables).
     #[config(env = "RUNTIME_MIGRATION_TIMEOUT_MS", default = 500)]
     pub migration_timeout_ms: u64,
+    /// Show internal runtime stack frames in user-facing error messages.
+    #[config(env = "RUNTIME_SHOW_INTERNAL_STACK_FRAMES", default = false)]
+    pub show_internal_stack_frames: bool,
 }
 
 /// API server configuration.
