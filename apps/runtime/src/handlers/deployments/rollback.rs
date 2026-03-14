@@ -73,7 +73,7 @@ pub async fn rollback_deployment_handler(
         DeploymentSource::Unknown => DeploymentSource::Api,
         _ => source,
     };
-    let actor = actor_from_identity(&identity);
+    let actor = actor_from_identity(&state, &identity, &guild_id).await;
 
     let previous_success = state
         .deployments

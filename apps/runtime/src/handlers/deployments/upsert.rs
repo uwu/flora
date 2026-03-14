@@ -20,7 +20,7 @@ use axum::{
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use tracing::error;
+use tracing::{error, warn};
 use utoipa::ToSchema;
 
 pub const DEPLOY_SOURCE_HEADER: HeaderName = HeaderName::from_static("x-flora-deploy-source");
@@ -185,11 +185,16 @@ pub fn parse_deploy_source(headers: &HeaderMap) -> Result<DeploymentSource, ApiE
     })
 }
 
-pub fn actor_from_identity(identity: &IdentityContext) -> DeploymentActor {
+pub async fn actor_from_identity(
+    state: &AppState,
+    identity: &IdentityContext,
+    guild_id: &str,
+) -> DeploymentActor {
     let Some(session) = identity.session.as_ref() else {
+        let username = resolve_token_username(state, guild_id, &identity.user_id).await;
         return DeploymentActor {
             user_id: Some(identity.user_id.clone()),
-            username: None,
+            username,
             actor_type: DeploymentActorType::Token,
         };
     };
@@ -198,6 +203,36 @@ pub fn actor_from_identity(identity: &IdentityContext) -> DeploymentActor {
         user_id: Some(identity.user_id.clone()),
         username: Some(session.user.username.clone()),
         actor_type: DeploymentActorType::Session,
+    }
+}
+
+async fn resolve_token_username(state: &AppState, guild_id: &str, user_id: &str) -> Option<String> {
+    let Ok(guild_id_num) = guild_id.parse::<u64>() else {
+        warn!(target: "flora:api", guild_id, "invalid guild id for deployment actor lookup");
+        return None;
+    };
+
+    let Ok(user_id_num) = user_id.parse::<u64>() else {
+        warn!(target: "flora:api", user_id, "invalid user id for deployment actor lookup");
+        return None;
+    };
+
+    match state
+        .http
+        .get_member(guild_id_num.into(), user_id_num.into())
+        .await
+    {
+        Ok(member) => Some(member.user.name.to_string()),
+        Err(err) => {
+            warn!(
+                target: "flora:api",
+                guild_id,
+                user_id,
+                ?err,
+                "failed to fetch deployment actor username"
+            );
+            None
+        }
     }
 }
 
@@ -275,7 +310,7 @@ pub async fn upsert_deployment_handler(
     validate_request(&request)?;
 
     let deploy_source = parse_deploy_source(&headers)?;
-    let actor = actor_from_identity(&identity);
+    let actor = actor_from_identity(&state, &identity, &guild_id).await;
 
     let files = request.files;
     let (bundle, source_map) = if let Some(bundle) = request.bundle {
