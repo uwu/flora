@@ -16,6 +16,10 @@ const app = new H3({ debug: process.env.NODE_ENV !== 'production' })
 const requestLogger = logger.withTag(colors.cyan('http'))
 
 app.use(async (event, next) => {
+  if (event.url.pathname === '/health') {
+    return next()
+  }
+
   const startedAt = Date.now()
   const method = event.req.method
   const path = `${event.url.pathname}${event.url.search}`
