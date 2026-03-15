@@ -15,20 +15,22 @@ function getGuildInitials(name: string) {
 }
 
 export function Dashboard() {
-  const { guilds, setSelectedGuild, setView } = useApp()
+  const { guilds, session, setSelectedGuild, setView } = useApp()
   const { recentGuildIds } = useRecentGuilds()
   const [, setLocation] = useLocation()
+  const recentGuildLimit = 4
 
   const recentGuilds = useMemo(() => {
     const all = guilds.data ?? []
     const fromRecent = recentGuildIds.map((id) => all.find((guild) => guild.id === id)).filter((
       guild
     ): guild is NonNullable<typeof guild> => Boolean(guild))
-    if (fromRecent.length >= 2) return fromRecent.slice(0, 2)
+    if (fromRecent.length >= recentGuildLimit) return fromRecent.slice(0, recentGuildLimit)
     const rest = all.filter((guild) => !fromRecent.some((recent) => recent.id === guild.id))
-    return [...fromRecent, ...rest].slice(0, 2)
-  }, [guilds.data, recentGuildIds])
+    return [...fromRecent, ...rest].slice(0, recentGuildLimit)
+  }, [guilds.data, recentGuildIds, recentGuildLimit])
 
+  const welcomeUsername = session?.username
   const recentGuildsContent = match(recentGuilds.length)
     .with(
       0,
@@ -39,12 +41,12 @@ export function Dashboard() {
       )
     )
     .otherwise(() => (
-      <div className='grid gap-4 md:grid-cols-2'>
+      <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
         {recentGuilds.map((guild) => (
           <button
             key={guild.id}
             type='button'
-            className='group cursor-pointer rounded-2xl border bg-card p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md'
+            className='group flex h-full cursor-pointer flex-col rounded-2xl border bg-card p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md'
             onClick={() => {
               setSelectedGuild(guild.id)
               setView('overview')
@@ -60,12 +62,7 @@ export function Dashboard() {
                 />
                 <AvatarFallback>{getGuildInitials(guild.name)}</AvatarFallback>
               </Avatar>
-              <div>
-                <div className='font-medium'>{guild.name}</div>
-                <div className='text-xs text-muted-foreground'>
-                  Guild ID: {guild.id}
-                </div>
-              </div>
+              <div className='font-medium'>{guild.name}</div>
             </div>
             <div className='inline-flex items-center gap-2 text-sm text-muted-foreground group-hover:text-foreground'>
               <Clock4 className='h-4 w-4' />Continue managing guild
@@ -93,6 +90,11 @@ export function Dashboard() {
               <div className='mx-auto flex w-full max-w-6xl flex-col gap-12 pb-8'>
                 <section className='space-y-4'>
                   <div className='space-y-1'>
+                    {welcomeUsername && (
+                      <p className='text-sm font-medium text-muted-foreground'>
+                        Welcome back, @{welcomeUsername}
+                      </p>
+                    )}
                     <h2 className='text-2xl font-semibold tracking-tight'>Jump back in</h2>
                     <p className='text-sm text-muted-foreground'>
                       Your most recently used servers.

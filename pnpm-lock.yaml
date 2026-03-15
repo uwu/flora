@@ -179,7 +179,7 @@ importers:
       '@codingame/monaco-vscode-workbench-service-override':
         specifier: 28.0.1
         version: 28.0.1
-      '@fontsource-variable/inter':
+      '@fontsource-variable/geist':
         specifier: 5.2.8
         version: 5.2.8
       '@pierre/diffs':
@@ -1192,8 +1192,8 @@ packages:
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
-  '@fontsource-variable/inter@5.2.8':
-    resolution: {integrity: sha512-kOfP2D+ykbcX/P3IFnokOhVRNoTozo5/JxhAIVYLpea/UBmCQ/YWPBfWIDuBImXX/15KH+eKh4xpEUyS2sQQGQ==}
+  '@fontsource-variable/geist@5.2.8':
+    resolution: {integrity: sha512-cJ6m9e+8MQ5dCYJsLylfZrgBh6KkG4bOLckB35Tr9J/EqdkEM6QllH5PxqP1dhTvFup+HtMRPuz9xOjxXJggxw==}
 
   '@hono/node-server@1.19.11':
     resolution: {integrity: sha512-dr8/3zEaB+p0D2n/IUrlPF1HZm586qgJNXK1a9fhg/PzdtkK7Ksd5l312tJX2yBuALqDYBlG20QEbayqPyxn+g==}
@@ -6544,7 +6544,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
-  '@fontsource-variable/inter@5.2.8': {}
+  '@fontsource-variable/geist@5.2.8': {}
 
   '@hono/node-server@1.19.11(hono@4.12.7)':
     dependencies:
@@ -10816,7 +10816,7 @@ snapshots:
       '@oxc-project/runtime': 0.115.0
       lightningcss: 1.31.1
       picomatch: 4.0.3
-      postcss: 8.5.6
+      postcss: 8.5.8
       rolldown: 1.0.0-rc.6
       tinyglobby: 0.2.15
     optionalDependencies:
@@ -10832,7 +10832,7 @@ snapshots:
       '@oxc-project/runtime': 0.115.0
       lightningcss: 1.31.1
       picomatch: 4.0.3
-      postcss: 8.5.6
+      postcss: 8.5.8
       rolldown: 1.0.0-rc.6
       tinyglobby: 0.2.15
     optionalDependencies:
