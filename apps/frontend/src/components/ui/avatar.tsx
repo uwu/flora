@@ -48,9 +48,15 @@ function Avatar({
 
 type AvatarImageProps = React.ComponentProps<'img'>
 
-function AvatarImage(
-  { className, src, onLoad, onError, loading, decoding, ...props }: AvatarImageProps
-) {
+function AvatarImage({
+  className,
+  src,
+  onLoad,
+  onError,
+  loading,
+  decoding,
+  ...props
+}: AvatarImageProps) {
   const { setStatus } = useAvatarContext()
   const cached = Boolean(src && loadedAvatarImages.has(src))
   const [isLoaded, setIsLoaded] = React.useState(cached)
@@ -114,11 +120,7 @@ type AvatarFallbackProps = React.ComponentProps<'span'> & {
   delay?: number
 }
 
-function AvatarFallback({
-  className,
-  delay = 150,
-  ...props
-}: AvatarFallbackProps) {
+function AvatarFallback({ className, delay = 150, ...props }: AvatarFallbackProps) {
   const { status } = useAvatarContext()
   const [delayPassed, setDelayPassed] = React.useState(delay === undefined)
 
@@ -183,10 +185,7 @@ function AvatarGroup({ className, ...props }: React.ComponentProps<'div'>) {
   )
 }
 
-function AvatarGroupCount({
-  className,
-  ...props
-}: React.ComponentProps<'div'>) {
+function AvatarGroupCount({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot='avatar-group-count'

@@ -34,10 +34,15 @@ Cron jobs are **ephemeral** — they exist only in memory for the lifetime of th
 **Duplicate execution on crash:** If the runtime crashes while a cron job is executing, the `is_running` flag is lost. On restart, the job may run again if it's due. Use `skipIfRunning: true` and design handlers to be idempotent where possible.
 
 ```ts
-cron('daily-cleanup', '0 0 * * *', async () => {
-  // This handler should be safe to run twice
-  await cleanupOldMessages()
-}, { skipIfRunning: true })
+cron(
+  'daily-cleanup',
+  '0 0 * * *',
+  async () => {
+    // This handler should be safe to run twice
+    await cleanupOldMessages()
+  },
+  { skipIfRunning: true }
+)
 ```
 
 **Schedule drift:** If the runtime is down for an extended period, jobs won't "catch up" on missed executions. A job scheduled for midnight won't run at 2 AM if the bot was down at midnight — it will wait for the next midnight.

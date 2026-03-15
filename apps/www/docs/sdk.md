@@ -80,9 +80,7 @@ createBot({
 const echo = slash({
   name: 'echo',
   description: 'Echo your input',
-  options: [
-    { name: 'text', description: 'Text to echo', type: 'string', required: true }
-  ],
+  options: [{ name: 'text', description: 'Text to echo', type: 'string', required: true }],
   run: async (ctx) => {
     const text = ctx.options.text as string
     await ctx.reply({ content: text, ephemeral: true })
@@ -242,9 +240,14 @@ The cron context provides:
 
 ```ts
 // Skip execution if previous run is still active
-cron('long-task', '*/5 * * * *', async (ctx) => {
-  await someLongRunningTask()
-}, { skipIfRunning: true })
+cron(
+  'long-task',
+  '*/5 * * * *',
+  async (ctx) => {
+    await someLongRunningTask()
+  },
+  { skipIfRunning: true }
+)
 ```
 
 - `skipIfRunning`: If `true`, the job won't start a new execution if the previous one is still running. Default: `false`.

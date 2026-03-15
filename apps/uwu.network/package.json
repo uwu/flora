@@ -1,7 +1,11 @@
 {
   "name": "@flora-internal/uwu.network",
-  "type": "module",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsgo --noEmit",
+    "typecheck": "tsgo --noEmit"
+  },
   "dependencies": {
     "dayjs": "^1.11.18"
   },
@@ -9,9 +13,6 @@
     "@typescript/native-preview": "catalog:",
     "@uwu/flora-cli": "workspace:*",
     "@uwu/flora-sdk": "workspace:*",
-    "typescript": "^5.0.0"
-  },
-  "scripts": {
-    "typecheck": "tsgo --noEmit"
+    "typescript": "catalog:"
   }
 }

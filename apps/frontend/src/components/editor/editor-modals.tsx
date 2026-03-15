@@ -15,8 +15,8 @@ export function TextActionModal({ state, onChangeValue, onClose, onSubmit }: Tex
           {state.mode === 'create_file'
             ? 'Create File'
             : state.mode === 'create_folder'
-            ? 'Create Folder'
-            : 'Rename'}
+              ? 'Create Folder'
+              : 'Rename'}
         </div>
         <textarea
           rows={2}
@@ -66,9 +66,7 @@ export function DeleteConfirmModal({ target, onClose, onConfirm }: DeleteConfirm
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4'>
       <div className='w-full max-w-sm rounded-xl border bg-popover p-4 shadow-2xl'>
         <div className='mb-2 text-sm font-semibold'>Delete {target.kind}?</div>
-        <div className='mb-4 rounded border bg-muted/40 p-2 font-mono text-xs'>
-          {target.path}
-        </div>
+        <div className='mb-4 rounded border bg-muted/40 p-2 font-mono text-xs'>{target.path}</div>
         <div className='flex justify-end gap-2'>
           <button
             type='button'

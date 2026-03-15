@@ -4,6 +4,6 @@
   "account_id": "e145778ed3aad11a3ecd703f78d797a4",
   "compatibility_date": "2026-01-11",
   "assets": {
-    "directory": ".vitepress/dist",
-  },
+    "directory": ".vitepress/dist"
+  }
 }

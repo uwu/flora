@@ -157,15 +157,12 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
         Select a revision to inspect metadata and source diffs.
       </div>
     ))
-    .with(
-      { hasRevision: true, shouldLoadDiffs: true, isLoading: true },
-      () => (
-        <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-          <Loader2 className='size-4 animate-spin' />
-          Loading Revision Details…
-        </div>
-      )
-    )
+    .with({ hasRevision: true, shouldLoadDiffs: true, isLoading: true }, () => (
+      <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+        <Loader2 className='size-4 animate-spin' />
+        Loading Revision Details…
+      </div>
+    ))
     .with({ hasRevision: true, isError: true }, () => (
       <div className='text-sm text-destructive'>
         Failed to load revision: {toErrorMessage(selectedRevisionQuery.error)}
@@ -191,41 +188,35 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
                 {formatDateTime(selectedRevision.deployed_at)}
               </div>
             </div>
-            {!isLatestRevision
-              ? (
-                <Button
-                  size='sm'
-                  variant='outline'
-                  disabled={rollbackMutation.isPending || selectedRevision.status !== 'success'}
-                  onClick={() => {
-                    if (selectedRevision.id) rollbackMutation.mutate(selectedRevision.id)
-                  }}
-                >
-                  {rollbackMutation.isPending
-                    ? (
-                      <>
-                        <Loader2 className='mr-1 size-4 animate-spin' />
-                        Rolling back…
-                      </>
-                    )
-                    : (
-                      <>
-                        <RotateCcw className='mr-1 size-4' />
-                        Rollback to this
-                      </>
-                    )}
-                </Button>
-              )
-              : null}
+            {!isLatestRevision ? (
+              <Button
+                size='sm'
+                variant='outline'
+                disabled={rollbackMutation.isPending || selectedRevision.status !== 'success'}
+                onClick={() => {
+                  if (selectedRevision.id) rollbackMutation.mutate(selectedRevision.id)
+                }}
+              >
+                {rollbackMutation.isPending ? (
+                  <>
+                    <Loader2 className='mr-1 size-4 animate-spin' />
+                    Rolling back…
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className='mr-1 size-4' />
+                    Rollback to this
+                  </>
+                )}
+              </Button>
+            ) : null}
           </div>
 
-          {rollbackMutation.isError
-            ? (
-              <div className='text-xs text-destructive'>
-                Rollback failed: {toErrorMessage(rollbackMutation.error)}
-              </div>
-            )
-            : null}
+          {rollbackMutation.isError ? (
+            <div className='text-xs text-destructive'>
+              Rollback failed: {toErrorMessage(rollbackMutation.error)}
+            </div>
+          ) : null}
 
           <div className='grid gap-3 md:grid-cols-2'>
             <div className='rounded-md border p-2'>
@@ -234,9 +225,7 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
             </div>
             <div className='rounded-md border p-2'>
               <div className='text-[11px] text-muted-foreground'>Actor</div>
-              <div className='mt-1 text-sm font-medium'>
-                {formatActor(selectedRevision.actor)}
-              </div>
+              <div className='mt-1 text-sm font-medium'>{formatActor(selectedRevision.actor)}</div>
             </div>
           </div>
 
@@ -259,13 +248,11 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
             </div>
           </div>
 
-          {selectedRevision.error_message
-            ? (
-              <pre className='overflow-x-auto rounded border bg-muted/30 p-2 text-xs text-destructive'>
-                {selectedRevision.error_message}
-              </pre>
-            )
-            : null}
+          {selectedRevision.error_message ? (
+            <pre className='overflow-x-auto rounded border bg-muted/30 p-2 text-xs text-destructive'>
+              {selectedRevision.error_message}
+            </pre>
+          ) : null}
         </div>
       )
     })
@@ -279,27 +266,23 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
     hasDiffFiles: diffFiles.length > 0,
     diffOpen
   })
-    .with(
-      { shouldLoadDiffs: true, isRevisionLoading: true },
-      () => <div className='text-sm text-muted-foreground'>Loading revision files…</div>
-    )
-    .with(
-      { hasBaseRevision: true, isBaseLoading: true },
-      () => <div className='text-sm text-muted-foreground'>Loading base revision…</div>
-    )
+    .with({ shouldLoadDiffs: true, isRevisionLoading: true }, () => (
+      <div className='text-sm text-muted-foreground'>Loading revision files…</div>
+    ))
+    .with({ hasBaseRevision: true, isBaseLoading: true }, () => (
+      <div className='text-sm text-muted-foreground'>Loading base revision…</div>
+    ))
     .with({ isBaseError: true }, () => (
       <div className='text-sm text-destructive'>
         Failed to load base revision: {toErrorMessage(baseRevisionQuery.error)}
       </div>
     ))
-    .with(
-      { hasBaseRevision: false },
-      () => <div className='text-sm text-muted-foreground'>No base revision for this entry.</div>
-    )
-    .with(
-      { hasDiffFiles: false },
-      () => <div className='text-sm text-muted-foreground'>No diffable source-file changes.</div>
-    )
+    .with({ hasBaseRevision: false }, () => (
+      <div className='text-sm text-muted-foreground'>No base revision for this entry.</div>
+    ))
+    .with({ hasDiffFiles: false }, () => (
+      <div className='text-sm text-muted-foreground'>No diffable source-file changes.</div>
+    ))
     .with({ diffOpen: false }, () => null)
     .otherwise(() => (
       <div className='max-h-[42dvh] space-y-3 overflow-auto'>
@@ -333,31 +316,22 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
     isError: historyQuery.isError,
     hasEntries: Boolean(historyQuery.data?.length)
   })
-    .with(
-      { isLoading: true },
-      () => (
-        <div className='flex h-full items-center justify-center gap-2 text-sm text-muted-foreground'>
-          <Loader2 className='size-4 animate-spin' />
-          Loading Deployment History…
-        </div>
-      )
-    )
-    .with(
-      { isError: true },
-      () => (
-        <div className='flex h-full items-center justify-center text-sm text-destructive'>
-          Failed to load history: {toErrorMessage(historyQuery.error)}
-        </div>
-      )
-    )
-    .with(
-      { hasEntries: false },
-      () => (
-        <div className='flex h-full items-center justify-center text-sm text-muted-foreground'>
-          No deployments yet for this guild.
-        </div>
-      )
-    )
+    .with({ isLoading: true }, () => (
+      <div className='flex h-full items-center justify-center gap-2 text-sm text-muted-foreground'>
+        <Loader2 className='size-4 animate-spin' />
+        Loading Deployment History…
+      </div>
+    ))
+    .with({ isError: true }, () => (
+      <div className='flex h-full items-center justify-center text-sm text-destructive'>
+        Failed to load history: {toErrorMessage(historyQuery.error)}
+      </div>
+    ))
+    .with({ hasEntries: false }, () => (
+      <div className='flex h-full items-center justify-center text-sm text-muted-foreground'>
+        No deployments yet for this guild.
+      </div>
+    ))
     .otherwise(() => (
       <div className='h-full overflow-auto'>
         <Table>
@@ -403,22 +377,20 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
                   <TableCell className='font-mono text-xs'>{row.entry}</TableCell>
                   <TableCell className='font-mono text-xs'>{row.build_id ?? '—'}</TableCell>
                   <TableCell className='max-w-60 text-xs'>
-                    {row.error_message
-                      ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <span className='block truncate text-destructive'>
-                                {row.error_message}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent className='max-w-lg'>
+                    {row.error_message ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <span className='block truncate text-destructive'>
                               {row.error_message}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )
-                      : '—'}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className='max-w-lg'>{row.error_message}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      '—'
+                    )}
                   </TableCell>
                 </TableRow>
               )
@@ -430,9 +402,7 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
 
   return (
     <div className='flex h-full min-h-0 flex-col gap-4'>
-      <div className='rounded-lg border bg-card p-4'>
-        {revisionSummary}
-      </div>
+      <div className='rounded-lg border bg-card p-4'>{revisionSummary}</div>
 
       <Collapsible open={diffOpen} onOpenChange={setDiffOpen} className='rounded-lg border bg-card'>
         <CollapsibleTrigger className='flex w-full items-center justify-between px-4 py-3 text-left'>
@@ -442,9 +412,7 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
           </div>
           <ChevronDown className={cn('size-4 transition-transform', diffOpen && 'rotate-180')} />
         </CollapsibleTrigger>
-        <CollapsibleContent className='border-t p-3'>
-          {diffContent}
-        </CollapsibleContent>
+        <CollapsibleContent className='border-t p-3'>{diffContent}</CollapsibleContent>
       </Collapsible>
 
       <div className='min-h-0 flex-1 overflow-hidden rounded-lg border bg-card'>

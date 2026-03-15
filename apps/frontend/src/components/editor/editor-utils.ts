@@ -42,12 +42,18 @@ export function toMonacoUri(path: string) {
 export function getLanguageFromPath(path: string): string {
   if (path.endsWith('.json')) return 'json'
   if (
-    path.endsWith('.ts') || path.endsWith('.tsx') || path.endsWith('.cts') || path.endsWith('.mts')
+    path.endsWith('.ts') ||
+    path.endsWith('.tsx') ||
+    path.endsWith('.cts') ||
+    path.endsWith('.mts')
   ) {
     return 'typescript'
   }
   if (
-    path.endsWith('.js') || path.endsWith('.jsx') || path.endsWith('.cjs') || path.endsWith('.mjs')
+    path.endsWith('.js') ||
+    path.endsWith('.jsx') ||
+    path.endsWith('.cjs') ||
+    path.endsWith('.mjs')
   ) {
     return 'javascript'
   }
@@ -141,8 +147,8 @@ export function createZipFromFiles(files: DeploymentFileRecord) {
     if (!normalized) continue
     const fileName = normalized.split('/').pop() ?? normalized
     if (BUILD_LOCKFILES.has(fileName)) continue
-    const shouldIncludeInBuild = normalized.startsWith('src/') ||
-      BUILD_TOP_LEVEL_FILES.has(normalized)
+    const shouldIncludeInBuild =
+      normalized.startsWith('src/') || BUILD_TOP_LEVEL_FILES.has(normalized)
     if (!shouldIncludeInBuild) continue
     if (normalized === 'package.json') hasPackageJson = true
     entries[normalized] = textEncoder.encode(contents)
@@ -183,8 +189,9 @@ export function parseSourceMapFromBundle(
   if (commaIndex === -1) return null
 
   const endIndex = bundle.indexOf('\n', commaIndex)
-  const encoded =
-    (endIndex === -1 ? bundle.slice(commaIndex + 1) : bundle.slice(commaIndex + 1, endIndex)).trim()
+  const encoded = (
+    endIndex === -1 ? bundle.slice(commaIndex + 1) : bundle.slice(commaIndex + 1, endIndex)
+  ).trim()
   if (!encoded) return null
 
   try {

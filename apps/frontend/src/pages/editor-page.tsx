@@ -76,9 +76,9 @@ export function EditorPage() {
   useEffect(() => {
     const root = logsAreaRef.current
     if (!root) return
-    const viewport = root.querySelector('[data-radix-scroll-area-viewport]') as
-      | HTMLDivElement
-      | null
+    const viewport = root.querySelector(
+      '[data-radix-scroll-area-viewport]'
+    ) as HTMLDivElement | null
     if (!viewport) return
 
     const onScroll = () => {
@@ -96,9 +96,9 @@ export function EditorPage() {
     if (!tailLogs || !logsSectionOpen) return
     const root = logsAreaRef.current
     if (!root) return
-    const viewport = root.querySelector('[data-radix-scroll-area-viewport]') as
-      | HTMLDivElement
-      | null
+    const viewport = root.querySelector(
+      '[data-radix-scroll-area-viewport]'
+    ) as HTMLDivElement | null
     if (!viewport) return
     viewport.scrollTop = viewport.scrollHeight
   }, [logsQuery.data, tailLogs, logsSectionOpen])
@@ -143,9 +143,9 @@ export function EditorPage() {
             bundle: buildResult.build.artifact.bundle,
             source_map: buildResult.build.artifact.source_map
               ? {
-                path: 'bundle.js.map',
-                contents: buildResult.build.artifact.source_map
-              }
+                  path: 'bundle.js.map',
+                  contents: buildResult.build.artifact.source_map
+                }
               : undefined
           }
         })
@@ -180,13 +180,14 @@ export function EditorPage() {
     window.setTimeout(() => setCopyState('idle'), 1200)
   }
 
-  const deployLabel = deployState === 'deploying'
-    ? 'Deploying...'
-    : deployState === 'success'
-    ? 'Deployed'
-    : deployState === 'error'
-    ? 'Deploy Failed'
-    : 'Deploy'
+  const deployLabel =
+    deployState === 'deploying'
+      ? 'Deploying...'
+      : deployState === 'success'
+        ? 'Deployed'
+        : deployState === 'error'
+          ? 'Deploy Failed'
+          : 'Deploy'
   const deployButtonClass = cn(
     'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-all duration-300 disabled:opacity-50',
     deployState === 'deploying' &&

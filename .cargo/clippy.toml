@@ -1,8 +1,5 @@
 # Be strict but not masochistic
-warn = [
-  "clippy::all",
-  "clippy::pedantic",
-]
+warn = ["clippy::all", "clippy::pedantic"]
 
 # Allow a few pedantic lints that are mostly noise in real code
 allow = [
@@ -12,14 +9,14 @@ allow = [
   "clippy::must_use_candidate",
   "clippy::similar_names",
   "clippy::too_many_lines",
-  "clippy::struct_excessive_bools",
+  "clippy::struct_excessive_bools"
 ]
 
 # Performance matters
 deny = [
   "clippy::inefficient_to_string",
   "clippy::unnecessary_collect",
-  "clippy::large_enum_variant",
+  "clippy::large_enum_variant"
 ]
 
 # Style and readability tuning
@@ -39,11 +36,4 @@ allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 
 # Docs
-doc-valid-idents = [
-  "GitHub",
-  "GitLab",
-  "PostgreSQL",
-  "TypeScript",
-  "JavaScript",
-  "WebAssembly",
-]
+doc-valid-idents = ["GitHub", "GitLab", "PostgreSQL", "TypeScript", "JavaScript", "WebAssembly"]

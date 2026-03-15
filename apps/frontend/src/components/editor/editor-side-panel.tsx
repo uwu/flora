@@ -76,10 +76,7 @@ export function EditorSidePanel({
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <button
-              type='button'
-              className={deployButtonClass}
-            >
+            <button type='button' className={deployButtonClass}>
               <Upload className='h-3 w-3' />
               {deployLabel}
             </button>
@@ -150,9 +147,7 @@ export function EditorSidePanel({
     <div className='h-full w-72 border-l bg-muted/10'>
       <div className='flex h-12 items-center justify-between px-3'>
         <div className='text-sm font-medium'>Deploy</div>
-        <div className='flex items-center gap-1'>
-          {deployAction}
-        </div>
+        <div className='flex items-center gap-1'>{deployAction}</div>
       </div>
       <Separator />
       <div className='h-[calc(100%-3.05rem)]'>

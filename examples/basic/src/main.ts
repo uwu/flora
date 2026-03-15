@@ -49,7 +49,7 @@ const counter = slash({
       description: 'Increment the counter',
       run: async (ctx) => {
         const store = kv.store('counters')
-        const current = parseInt(await store.get('main') || '0', 10)
+        const current = parseInt((await store.get('main')) || '0', 10)
         const newCount = current + 1
         await store.set('main', String(newCount))
         await ctx.reply(`Count is now: ${newCount}`)

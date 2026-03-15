@@ -48,10 +48,7 @@ export function LoginPage() {
   )
 }
 
-export function LoginForm({
-  className,
-  ...props
-}: React.ComponentProps<'div'>) {
+export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) {
   const redirectToLogin = useLoginRedirect()
 
   return (
@@ -87,13 +84,12 @@ export function LoginForm({
         </form>
         <div className='mt-6 space-y-3'>
           <FieldDescription className='text-pretty text-center text-xs text-muted-foreground'>
-            flora is currently in{' '}
-            <strong>alpha</strong>. Things are subject to change. Please report any bugs, issues, or
-            security vulnerabilities to <a href='https://uwu.network/~tasky'>tasky</a>.
+            flora is currently in <strong>alpha</strong>. Things are subject to change. Please
+            report any bugs, issues, or security vulnerabilities to{' '}
+            <a href='https://uwu.network/~tasky'>tasky</a>.
           </FieldDescription>
           <FieldDescription className='text-pretty text-center text-xs text-muted-foreground'>
-            By clicking continue, you agree to our <a href='/terms-of-service'>Terms of Service</a>
-            {' '}
+            By clicking continue, you agree to our <a href='/terms-of-service'>Terms of Service</a>{' '}
             and <a href='/privacy-policy'>Privacy Policy</a>.
           </FieldDescription>
         </div>

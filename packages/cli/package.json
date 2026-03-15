@@ -1,0 +1,46 @@
+{
+  "name": "@uwu/flora-cli",
+  "version": "0.0.0",
+  "private": false,
+  "description": "flora command line interface",
+  "bin": {
+    "flora": "./dist/index.mjs"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test",
+    "typecheck": "tsgo --noEmit",
+    "release": "bumpp",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.0.1",
+    "@uwu/flora-api-client": "workspace:*",
+    "c12": "^3.3.2",
+    "citty": "^0.2.1",
+    "conf": "^15.1.0",
+    "consola": "^3.4.2",
+    "fflate": "^0.8.2",
+    "ignore": "^7.0.5",
+    "rolldown": "^0.15.1",
+    "tinyglobby": "^0.2.15"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "bumpp": "^11.0.0",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}

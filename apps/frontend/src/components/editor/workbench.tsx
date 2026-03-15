@@ -35,7 +35,7 @@ import getWorkbenchServiceOverride from '@codingame/monaco-vscode-workbench-serv
 import * as monaco from 'monaco-editor'
 import { useEffect, useRef, useState } from 'react'
 
-import floraSdkGlobalTypes from '../../../../../sdk/global-types.d.ts?raw'
+import floraSdkGlobalTypes from '../../../../../packages/sdk/global-types.d.ts?raw'
 import { getParentFolder, normalizePath } from './editor-utils'
 
 const WORKSPACE_ROOT = '/workspace'
@@ -226,14 +226,14 @@ async function createController(
     },
     defaultLayout: entryFile
       ? {
-        editors: [
-          {
-            uri: toWorkspaceUri(entryFile),
-            viewColumn: 1
-          }
-        ],
-        force: true
-      }
+          editors: [
+            {
+              uri: toWorkspaceUri(entryFile),
+              viewColumn: 1
+            }
+          ],
+          force: true
+        }
       : undefined
   }
 

@@ -34,13 +34,16 @@ export function useRecentGuilds(limit = 5) {
     }
   }, [])
 
-  const pushRecentGuild = useCallback((guildId: string) => {
-    const current = readRecentGuildIds()
-    const next = [guildId, ...current.filter((id) => id !== guildId)].slice(0, limit)
-    window.localStorage.setItem(RECENT_GUILDS_KEY, JSON.stringify(next))
-    emitRecentGuildsChanged()
-    setRecentGuildIds(next)
-  }, [limit])
+  const pushRecentGuild = useCallback(
+    (guildId: string) => {
+      const current = readRecentGuildIds()
+      const next = [guildId, ...current.filter((id) => id !== guildId)].slice(0, limit)
+      window.localStorage.setItem(RECENT_GUILDS_KEY, JSON.stringify(next))
+      emitRecentGuildsChanged()
+      setRecentGuildIds(next)
+    },
+    [limit]
+  )
 
   const clearRecentGuilds = useCallback(() => {
     window.localStorage.removeItem(RECENT_GUILDS_KEY)

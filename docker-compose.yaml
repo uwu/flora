@@ -17,12 +17,13 @@ services:
     networks:
       - flora
     healthcheck:
-      test: [
-        'CMD',
-        'node',
-        '-e',
-        "fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
-      ]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
       interval: 30s
       timeout: 5s
       retries: 5

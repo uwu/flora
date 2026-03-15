@@ -54,24 +54,29 @@ export async function pnpmInstall(
 
 function runPnpm(cwd: string, args: string[], onLog: (line: string) => void): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = execFile('pnpm', args, {
-      cwd,
-      timeout: PNPM_INSTALL_TIMEOUT,
-      env: {
-        ...process.env,
-        CI: 'true',
-        FORCE_COLOR: '1',
-        npm_config_color: 'always',
-        npm_config_ignore_scripts: 'true'
+    const child = execFile(
+      'pnpm',
+      args,
+      {
+        cwd,
+        timeout: PNPM_INSTALL_TIMEOUT,
+        env: {
+          ...process.env,
+          CI: 'true',
+          FORCE_COLOR: '1',
+          npm_config_color: 'always',
+          npm_config_ignore_scripts: 'true'
+        }
+      },
+      (error, stdout, stderr) => {
+        if (error) {
+          emitBufferedLines(stderr, onLog)
+          reject(new Error(`pnpm ${args.join(' ')} failed: ${error.message}`))
+          return
+        }
+        resolve()
       }
-    }, (error, stdout, stderr) => {
-      if (error) {
-        emitBufferedLines(stderr, onLog)
-        reject(new Error(`pnpm ${args.join(' ')} failed: ${error.message}`))
-        return
-      }
-      resolve()
-    })
+    )
 
     streamLines(child.stdout, onLog)
     streamLines(child.stderr, onLog)

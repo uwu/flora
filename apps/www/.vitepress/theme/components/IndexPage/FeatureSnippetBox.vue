@@ -7,8 +7,7 @@ const props = defineProps<{
   feature: IndexFeature
 }>()
 
-const cliSnippetHtml =
-  `<span class="t-prompt">λ</span> <span class="t-cmd">pnpm flora deploy --guild 847291053618249801</span>
+const cliSnippetHtml = `<span class="t-prompt">λ</span> <span class="t-cmd">pnpm flora deploy --guild 847291053618249801</span>
 <span class="t-info">ℹ</span> <span class="t-text">Uploading project...</span>
 <span class="t-ok">✔</span> <span class="t-text">Upload complete (3 files, 1kb)</span>
 <span class="t-info">ℹ</span> <span class="t-text">Building... (a3f1c82d-91e7-4b3a-b052-7e8d4a19f603)</span>
@@ -19,7 +18,7 @@ const cliSnippetHtml =
 <span class="t-ok">✔</span> <span class="t-text">Deployed guild 847291053618249801</span>`
 
 const snippetHtml = computed(() =>
-  props.feature.id === 'cli' ? cliSnippetHtml : props.feature.snippetHtml ?? ''
+  props.feature.id === 'cli' ? cliSnippetHtml : (props.feature.snippetHtml ?? '')
 )
 </script>
 
@@ -33,23 +32,25 @@ const snippetHtml = computed(() =>
 
 <style scoped>
 .feature-codebox {
-  --uno: "absolute rounded-2.5 border overflow-hidden";
+  --uno: 'absolute rounded-2.5 border overflow-hidden';
   border-color: var(--gb-border);
   top: 34px;
   right: 34px;
   z-index: 6;
   width: min(760px, 74vw);
   background: color-mix(in srgb, var(--background) 82%, #282828);
-  box-shadow: 0 10px 28px oklch(0% 0 0 / 0.35), 0 2px 10px oklch(0% 0 0 / 0.22);
+  box-shadow:
+    0 10px 28px oklch(0% 0 0 / 0.35),
+    0 2px 10px oklch(0% 0 0 / 0.22);
 }
 
 .terminal-body {
-  --uno: "p-5 px-6 overflow-x-auto";
+  --uno: 'p-5 px-6 overflow-x-auto';
   min-height: 300px;
 }
 
 .terminal-body pre {
-  --uno: "m-0 font-mono";
+  --uno: 'm-0 font-mono';
   color: var(--gb-fg-soft);
   font-size: 14px;
   line-height: 1.7;
@@ -126,7 +127,7 @@ const snippetHtml = computed(() =>
   }
 
   .terminal-body {
-    --uno: "p-4 px-5 overflow-x-auto";
+    --uno: 'p-4 px-5 overflow-x-auto';
     min-height: 320px;
   }
 }

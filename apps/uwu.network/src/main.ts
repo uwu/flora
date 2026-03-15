@@ -110,10 +110,9 @@ on('messageCreate', async (ctx) => {
         url = json.html_url
       }
 
-      const req = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/issues/${issue}`,
-        { headers }
-      )
+      const req = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${issue}`, {
+        headers
+      })
       if (!req.ok) continue
       const json = (await req.json()) as any
 
@@ -171,9 +170,8 @@ on('messageCreate', async (ctx) => {
 
   if (embeds.length > 0) {
     const limited = embeds.slice(0, 10)
-    const content = embeds.length > 10
-      ? `Showing ${limited.length} of ${embeds.length} GitHub links.`
-      : undefined
+    const content =
+      embeds.length > 10 ? `Showing ${limited.length} of ${embeds.length} GitHub links.` : undefined
     await ctx.reply({ embeds: limited, content })
     await ctx.edit({ flags: MessageFlags.SUPPRESS_EMBEDS })
   }

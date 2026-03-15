@@ -27,11 +27,12 @@ export async function runEditorBuildFlow(args: {
   const { guildId, fileContents, preferredEntry, fallbackEntry, onBuildLog } = args
   const { zip, fileNames } = createZipFromFiles(fileContents)
 
-  const entry = fileContents[preferredEntry] != null
-    ? preferredEntry
-    : fileContents['src/main.ts'] != null
-    ? 'src/main.ts'
-    : fallbackEntry
+  const entry =
+    fileContents[preferredEntry] != null
+      ? preferredEntry
+      : fileContents['src/main.ts'] != null
+        ? 'src/main.ts'
+        : fallbackEntry
 
   const formData = new FormData()
   formData.append('guild_id', guildId)

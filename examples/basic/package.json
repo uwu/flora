@@ -1,8 +1,8 @@
 {
   "name": "@uwu/flora-example-basic",
-  "type": "module",
   "private": true,
+  "type": "module",
   "devDependencies": {
-    "@uwu/flora-sdk": "latest"
+    "@uwu/flora-sdk": "workspace:"
   }
 }

@@ -24,12 +24,12 @@
 
 <style scoped>
 .purpose {
-  --uno: "px-8 py-18";
+  --uno: 'px-8 py-18';
   background: #0e0f10;
 }
 
 .purpose-inner {
-  --uno: "max-w-5xl mx-auto grid gap-8 items-center";
+  --uno: 'max-w-5xl mx-auto grid gap-8 items-center';
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
@@ -38,7 +38,7 @@
 }
 
 .purpose-art {
-  --uno: "self-end";
+  --uno: 'self-end';
 }
 
 .purpose-art img {
@@ -53,7 +53,7 @@
 }
 
 .purpose-title {
-  --uno: "m-0 mb-5 font-600";
+  --uno: 'm-0 mb-5 font-600';
   color: var(--gb-fg);
   font-size: clamp(30px, 4vw, 44px);
   line-height: 1.08;
@@ -69,7 +69,7 @@
 }
 
 .purpose-copy {
-  --uno: "m-0 text-base";
+  --uno: 'm-0 text-base';
   color: var(--gb-fg-soft);
   max-width: 860px;
   line-height: 1.75;
@@ -91,7 +91,7 @@
 
 @media (max-width: 600px) {
   .purpose {
-    --uno: "px-5 py-14";
+    --uno: 'px-5 py-14';
   }
 
   .purpose-heading {

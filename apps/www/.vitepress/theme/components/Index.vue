@@ -83,17 +83,8 @@ import PurposeSection from './IndexPage/PurposeSection.vue'
   z-index: 1;
   pointer-events: none;
   background:
-    radial-gradient(
-      130% 80% at 50% 10%,
-      rgb(0 0 0 / 0%) 38%,
-      rgb(0 0 0 / 52%) 100%
-    ),
-    linear-gradient(
-    to bottom,
-    rgb(29 32 33 / 24%) 0%,
-    rgb(29 32 33 / 70%) 74%,
-    var(--gb-bg) 100%
-  );
+    radial-gradient(130% 80% at 50% 10%, rgb(0 0 0 / 0%) 38%, rgb(0 0 0 / 52%) 100%),
+    linear-gradient(to bottom, rgb(29 32 33 / 24%) 0%, rgb(29 32 33 / 70%) 74%, var(--gb-bg) 100%);
 }
 
 @keyframes hero-bg-in {
@@ -106,16 +97,16 @@ import PurposeSection from './IndexPage/PurposeSection.vue'
 }
 
 .page-footer {
-  --uno: "px-6 py-7";
+  --uno: 'px-6 py-7';
   background: #0e0f10;
 }
 
 .page-footer-inner {
-  --uno: "max-w-5xl mx-auto flex items-center justify-between gap-4";
+  --uno: 'max-w-5xl mx-auto flex items-center justify-between gap-4';
 }
 
 .page-footer-copy {
-  --uno: "m-0 text-sm";
+  --uno: 'm-0 text-sm';
   color: var(--gb-fg-soft);
 }
 
@@ -134,21 +125,21 @@ import PurposeSection from './IndexPage/PurposeSection.vue'
 }
 
 .page-footer-sep {
-  --uno: "mx-2";
+  --uno: 'mx-2';
   color: var(--gb-muted);
 }
 
 @media (max-width: 600px) {
   .page-footer {
-    --uno: "px-5 py-6";
+    --uno: 'px-5 py-6';
   }
 
   .page-footer-inner {
-    --uno: "flex-col items-start gap-3";
+    --uno: 'flex-col items-start gap-3';
   }
 
   .page-footer-copy {
-    --uno: "text-xs";
+    --uno: 'text-xs';
     line-height: 1.6;
   }
 }

@@ -11,7 +11,12 @@ import { match } from 'ts-pattern'
 import { useLocation } from 'wouter'
 
 function getGuildInitials(name: string) {
-  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('')
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('')
 }
 
 export function Dashboard() {
@@ -22,9 +27,9 @@ export function Dashboard() {
 
   const recentGuilds = useMemo(() => {
     const all = guilds.data ?? []
-    const fromRecent = recentGuildIds.map((id) => all.find((guild) => guild.id === id)).filter((
-      guild
-    ): guild is NonNullable<typeof guild> => Boolean(guild))
+    const fromRecent = recentGuildIds
+      .map((id) => all.find((guild) => guild.id === id))
+      .filter((guild): guild is NonNullable<typeof guild> => Boolean(guild))
     if (fromRecent.length >= recentGuildLimit) return fromRecent.slice(0, recentGuildLimit)
     const rest = all.filter((guild) => !fromRecent.some((recent) => recent.id === guild.id))
     return [...fromRecent, ...rest].slice(0, recentGuildLimit)
@@ -32,14 +37,11 @@ export function Dashboard() {
 
   const welcomeUsername = session?.username
   const recentGuildsContent = match(recentGuilds.length)
-    .with(
-      0,
-      () => (
-        <div className='rounded-xl border border-dashed p-8 text-sm text-muted-foreground'>
-          Pick a server from the sidebar to create your recent list.
-        </div>
-      )
-    )
+    .with(0, () => (
+      <div className='rounded-xl border border-dashed p-8 text-sm text-muted-foreground'>
+        Pick a server from the sidebar to create your recent list.
+      </div>
+    ))
     .otherwise(() => (
       <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
         {recentGuilds.map((guild) => (
@@ -56,16 +58,19 @@ export function Dashboard() {
             <div className='mb-4 flex items-center gap-3'>
               <Avatar className='h-10 w-10'>
                 <AvatarImage
-                  src={guild.icon
-                    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`
-                    : undefined}
+                  src={
+                    guild.icon
+                      ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`
+                      : undefined
+                  }
                 />
                 <AvatarFallback>{getGuildInitials(guild.name)}</AvatarFallback>
               </Avatar>
               <div className='font-medium'>{guild.name}</div>
             </div>
             <div className='inline-flex items-center gap-2 text-sm text-muted-foreground group-hover:text-foreground'>
-              <Clock4 className='h-4 w-4' />Continue managing guild
+              <Clock4 className='h-4 w-4' />
+              Continue managing guild
             </div>
           </button>
         ))}

@@ -4,11 +4,9 @@ export const features: IndexFeature[] = [
   {
     id: 'sdk',
     title: 'TypeScript SDK',
-    desc:
-      'Write bots with a rich, typed SDK. Slash commands, prefix commands, embeds — all first-class.',
+    desc: 'Write bots with a rich, typed SDK. Slash commands, prefix commands, embeds — all first-class.',
     bg: '/monet02.jpg',
-    snippetHtml:
-      `<span class="ts-key">const</span> <span class="ts-var">ping</span> <span class="ts-op">=</span> <span class="ts-fn">slash</span><span class="ts-punc">(</span><span class="ts-punc">{</span>
+    snippetHtml: `<span class="ts-key">const</span> <span class="ts-var">ping</span> <span class="ts-op">=</span> <span class="ts-fn">slash</span><span class="ts-punc">(</span><span class="ts-punc">{</span>
   <span class="ts-prop">name</span><span class="ts-punc">:</span> <span class="ts-str">'ping'</span><span class="ts-punc">,</span>
   <span class="ts-prop">description</span><span class="ts-punc">:</span> <span class="ts-str">'Pong'</span><span class="ts-punc">,</span>
   <span class="ts-prop">handler</span><span class="ts-punc">:</span> <span class="ts-key">async</span> <span class="ts-punc">(</span><span class="ts-var">i</span><span class="ts-punc">)</span> <span class="ts-op">=&gt;</span> <span class="ts-var">i</span><span class="ts-punc">.</span><span class="ts-fn">reply</span><span class="ts-punc">(</span><span class="ts-punc">{</span> <span class="ts-prop">content</span><span class="ts-punc">:</span> <span class="ts-str">'Pong!'</span> <span class="ts-punc">}</span><span class="ts-punc">)</span>
@@ -25,15 +23,13 @@ export const features: IndexFeature[] = [
   {
     id: 'cli',
     title: 'CLI Deploy',
-    desc:
-      'One command to bundle and deploy your bot to any guild. No infra to manage, no containers to run.',
+    desc: 'One command to bundle and deploy your bot to any guild. No infra to manage, no containers to run.',
     bg: '/monet01.jpg'
   },
   {
     id: 'runtime',
     title: 'Batteries Included',
-    desc:
-      'Key-value storage, secrets management, sandboxing, and more — all built in, with more to come.',
+    desc: 'Key-value storage, secrets management, sandboxing, and more — all built in, with more to come.',
     bg: '/monet04.jpg',
     snippetHtml: `<span class="ts-cmt">// kv</span>
 <span class="ts-key">const</span> <span class="ts-var">guildKv</span> <span class="ts-op">=</span> <span class="ts-var">storage</span><span class="ts-punc">.</span><span class="ts-fn">kv</span><span class="ts-punc">(</span><span class="ts-str">'guild:847291053618249801'</span><span class="ts-punc">)</span>

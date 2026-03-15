@@ -2,7 +2,7 @@
   "recommendations": [
     "rust-lang.rust-analyzer",
     "fill-labs.dependi",
-    "gplane.dprint2",
+    "VoidZero.vite-plus-extension-pack",
     "vue.volar"
   ]
 }

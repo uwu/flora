@@ -102,9 +102,11 @@ export function NavUser({ user, onSettingsClick, onLogoutClick }: NavUserProps) 
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={toggleTheme} className='cursor-pointer'>
-              {theme === 'dark'
-                ? <Sun className='mr-2 h-4 w-4' />
-                : <Moon className='mr-2 h-4 w-4' />}
+              {theme === 'dark' ? (
+                <Sun className='mr-2 h-4 w-4' />
+              ) : (
+                <Moon className='mr-2 h-4 w-4' />
+              )}
               {theme === 'dark' ? 'Light mode' : 'Dark mode'}
             </DropdownMenuItem>
             <DropdownMenuSeparator />

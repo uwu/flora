@@ -1,8 +1,4 @@
 {
-  "editor.formatOnSave": true,
-  "[typescript,javascript,typescriptreact,javascriptreact,json,jsonc,toml]": {
-    "editor.defaultFormatter": "gplane.dprint2"
-  },
   "rust-analyzer.files.exclude": [
     "trash",
     "**/trash",
@@ -17,5 +13,11 @@
     "**/target/**": true,
     "**/node_modules/**": true,
     "**/trash/**": true
+  },
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "file",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "explicit"
   }
 }

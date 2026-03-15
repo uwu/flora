@@ -50,48 +50,51 @@ export function DashboardSidebar() {
     if (isMobile) setOpenMobile(false)
   }
 
-  const routes: Route[] = guilds.data?.map((guild) => ({
-    id: guild.id,
-    title: guild.name,
-    icon: (
-      <Avatar className='h-6 w-6 text-[10px]'>
-        <AvatarImage
-          src={guild.icon
-            ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`
-            : undefined}
-        />
-        <AvatarFallback>{getGuildInitials(guild.name)}</AvatarFallback>
-      </Avatar>
-    ),
-    isActive: selectedGuild === guild.id,
-    onClick: () => handleGuildClick(guild.id),
-    subs: [
-      {
-        title: 'Overview',
-        onClick: () => setLocation(`/${guild.id}`),
-        isActive: view === 'overview' && selectedGuild === guild.id,
-        icon: <BookText className='h-4 w-4' />
-      },
-      {
-        title: 'Editor',
-        onClick: () => setLocation(`/${guild.id}/editor`),
-        isActive: view === 'editor' && selectedGuild === guild.id,
-        icon: <FileCode2 className='h-4 w-4' />
-      },
-      {
-        title: 'Deployments',
-        onClick: () => setLocation(`/${guild.id}/deployments`),
-        isActive: view === 'deployments' && selectedGuild === guild.id,
-        icon: <ListChecks className='h-4 w-4' />
-      },
-      {
-        title: 'KV',
-        onClick: () => setLocation(`/${guild.id}/kv`),
-        isActive: view === 'kv' && selectedGuild === guild.id,
-        icon: <Database className='h-4 w-4' />
-      }
-    ]
-  })) || []
+  const routes: Route[] =
+    guilds.data?.map((guild) => ({
+      id: guild.id,
+      title: guild.name,
+      icon: (
+        <Avatar className='h-6 w-6 text-[10px]'>
+          <AvatarImage
+            src={
+              guild.icon
+                ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`
+                : undefined
+            }
+          />
+          <AvatarFallback>{getGuildInitials(guild.name)}</AvatarFallback>
+        </Avatar>
+      ),
+      isActive: selectedGuild === guild.id,
+      onClick: () => handleGuildClick(guild.id),
+      subs: [
+        {
+          title: 'Overview',
+          onClick: () => setLocation(`/${guild.id}`),
+          isActive: view === 'overview' && selectedGuild === guild.id,
+          icon: <BookText className='h-4 w-4' />
+        },
+        {
+          title: 'Editor',
+          onClick: () => setLocation(`/${guild.id}/editor`),
+          isActive: view === 'editor' && selectedGuild === guild.id,
+          icon: <FileCode2 className='h-4 w-4' />
+        },
+        {
+          title: 'Deployments',
+          onClick: () => setLocation(`/${guild.id}/deployments`),
+          isActive: view === 'deployments' && selectedGuild === guild.id,
+          icon: <ListChecks className='h-4 w-4' />
+        },
+        {
+          title: 'KV',
+          onClick: () => setLocation(`/${guild.id}/kv`),
+          isActive: view === 'kv' && selectedGuild === guild.id,
+          icon: <Database className='h-4 w-4' />
+        }
+      ]
+    })) || []
 
   const guildsContent = match({ isLoading: guilds.loading, hasRoutes: routes.length > 0 })
     .with({ isLoading: true }, () => (
@@ -133,11 +136,7 @@ export function DashboardSidebar() {
           }}
         >
           <img src='/logo.svg' alt='flora logo' className='h-8 w-8' />
-          {!isCollapsed && (
-            <span className='font-semibold text-black dark:text-white'>
-              flora
-            </span>
-          )}
+          {!isCollapsed && <span className='font-semibold text-black dark:text-white'>flora</span>}
         </button>
 
         <LazyMotion features={domAnimation}>

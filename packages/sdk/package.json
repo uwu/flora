@@ -1,0 +1,33 @@
+{
+  "name": "@uwu/flora-sdk",
+  "version": "0.0.0",
+  "private": false,
+  "files": [
+    "global-types.d.ts",
+    "src",
+    "tsconfig.json",
+    "README.md"
+  ],
+  "type": "module",
+  "types": "./global-types.d.ts",
+  "exports": {
+    ".": {
+      "types": "./global-types.d.ts"
+    },
+    "./tsconfig": "./tsconfig.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "build": "rolldown -c ./rolldown.config.ts",
+    "test": "vite test"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "rolldown": "^1.0.0-beta.53",
+    "typescript": "catalog:"
+  }
+}

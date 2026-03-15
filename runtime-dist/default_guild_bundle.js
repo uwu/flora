@@ -6,7 +6,7 @@ function buildPong(args) {
 const ping = prefix({
   name: 'ping',
   description: 'Respond with pong',
-  run: async ctx => {
+  run: async (ctx) => {
     await ctx.reply(buildPong(ctx.args))
   }
 })
@@ -22,7 +22,7 @@ const hello = slash({
       required: false
     }
   ],
-  run: async ctx => {
+  run: async (ctx) => {
     const name = ctx.options.name || 'world'
     await ctx.reply({
       content: `Hello, ${name}!`,
@@ -38,7 +38,7 @@ const counter = slash({
     {
       name: 'get',
       description: 'Get current count',
-      run: async ctx => {
+      run: async (ctx) => {
         const store = kv.store('counters')
         const count = await store.get('main')
         await ctx.reply(`Current count: ${count || 0}`)
@@ -47,7 +47,7 @@ const counter = slash({
     {
       name: 'increment',
       description: 'Increment the counter',
-      run: async ctx => {
+      run: async (ctx) => {
         const store = kv.store('counters')
         const current = parseInt((await store.get('main')) || '0', 10)
         const newCount = current + 1
@@ -58,7 +58,7 @@ const counter = slash({
     {
       name: 'reset',
       description: 'Reset the counter',
-      run: async ctx => {
+      run: async (ctx) => {
         const store = kv.store('counters')
         await store.set('main', '0')
         await ctx.reply('Counter reset to 0')

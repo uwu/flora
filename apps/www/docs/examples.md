@@ -42,9 +42,7 @@ createBot({ prefix: '!', commands: [math] })
 const echo = slash({
   name: 'echo',
   description: 'Echo text',
-  options: [
-    { name: 'text', description: 'Text to echo', type: 'string', required: true }
-  ],
+  options: [{ name: 'text', description: 'Text to echo', type: 'string', required: true }],
   run: async (ctx) => {
     const text = ctx.options.text as string
     await ctx.reply({ content: text, ephemeral: true })

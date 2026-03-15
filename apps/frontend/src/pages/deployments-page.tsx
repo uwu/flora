@@ -33,9 +33,11 @@ export function DeploymentsPage() {
               <div className='ml-auto' />
             </header>
             <div className='flex-1 overflow-y-auto p-4 md:p-6 lg:p-8'>
-              {!guildId
-                ? <div className='text-sm text-destructive'>Missing guild id</div>
-                : <DeploymentHistory guildId={guildId} />}
+              {!guildId ? (
+                <div className='text-sm text-destructive'>Missing guild id</div>
+              ) : (
+                <DeploymentHistory guildId={guildId} />
+              )}
             </div>
           </SidebarInset>
         </div>

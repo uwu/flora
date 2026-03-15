@@ -115,9 +115,11 @@ export function WorkspaceSidebar({
             )}
             style={{ paddingLeft: `${8 + depth * 14}px` }}
           >
-            {isOpen
-              ? <FolderOpen className='h-3.5 w-3.5 shrink-0' />
-              : <Folder className='h-3.5 w-3.5 shrink-0' />}
+            {isOpen ? (
+              <FolderOpen className='h-3.5 w-3.5 shrink-0' />
+            ) : (
+              <Folder className='h-3.5 w-3.5 shrink-0' />
+            )}
             <span className='truncate'>{node.name}</span>
           </button>
           {isOpen && node.children?.map((child) => renderTreeNode(child, depth + 1))}
@@ -140,11 +142,13 @@ export function WorkspaceSidebar({
         )}
         style={{ paddingLeft: `${8 + depth * 14}px` }}
       >
-        {language === 'json'
-          ? <FileJson2 className='h-3.5 w-3.5 shrink-0' />
-          : language === 'plaintext'
-          ? <FileText className='h-3.5 w-3.5 shrink-0' />
-          : <FileCode2 className='h-3.5 w-3.5 shrink-0' />}
+        {language === 'json' ? (
+          <FileJson2 className='h-3.5 w-3.5 shrink-0' />
+        ) : language === 'plaintext' ? (
+          <FileText className='h-3.5 w-3.5 shrink-0' />
+        ) : (
+          <FileCode2 className='h-3.5 w-3.5 shrink-0' />
+        )}
         <span className='truncate'>{node.name}</span>
       </button>
     )
@@ -163,10 +167,7 @@ export function WorkspaceSidebar({
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <button
-              type='button'
-              className={deployButtonClass}
-            >
+            <button type='button' className={deployButtonClass}>
               <Upload className='h-3 w-3' />
               {deployLabel}
             </button>
@@ -277,9 +278,11 @@ export function WorkspaceSidebar({
                   type='button'
                   className='flex h-8 w-full items-center gap-1 px-2 text-[11px] font-semibold tracking-wide text-muted-foreground hover:text-foreground'
                 >
-                  {filesSectionOpen
-                    ? <ChevronDown className='h-3.5 w-3.5 shrink-0' />
-                    : <ChevronRight className='h-3.5 w-3.5 shrink-0' />}
+                  {filesSectionOpen ? (
+                    <ChevronDown className='h-3.5 w-3.5 shrink-0' />
+                  ) : (
+                    <ChevronRight className='h-3.5 w-3.5 shrink-0' />
+                  )}
                   FILES
                 </button>
               }
@@ -289,9 +292,7 @@ export function WorkspaceSidebar({
                 className='h-full px-2 py-1'
                 onContextMenu={(event) => onOpenContextMenu(event, null)}
               >
-                <div className='space-y-0.5'>
-                  {fileTree.map((node) => renderTreeNode(node, 0))}
-                </div>
+                <div className='space-y-0.5'>{fileTree.map((node) => renderTreeNode(node, 0))}</div>
               </ScrollArea>
             </CollapsibleContent>
           </Collapsible>
@@ -310,9 +311,11 @@ export function WorkspaceSidebar({
                     type='button'
                     className='flex h-8 items-center gap-1 text-[11px] font-semibold tracking-wide text-muted-foreground hover:text-foreground'
                   >
-                    {logsSectionOpen
-                      ? <ChevronDown className='h-3.5 w-3.5 shrink-0' />
-                      : <ChevronRight className='h-3.5 w-3.5 shrink-0' />}
+                    {logsSectionOpen ? (
+                      <ChevronDown className='h-3.5 w-3.5 shrink-0' />
+                    ) : (
+                      <ChevronRight className='h-3.5 w-3.5 shrink-0' />
+                    )}
                     LOGS
                   </button>
                   <button

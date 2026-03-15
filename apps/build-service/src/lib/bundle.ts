@@ -26,16 +26,16 @@ export async function bundleProject(
   const minifyEnabled = isBundleMinifyEnabled()
   const minifyOption = minifyEnabled
     ? {
-      compress: {
-        keepNames: {
-          function: true,
-          class: true
+        compress: {
+          keepNames: {
+            function: true,
+            class: true
+          }
+        },
+        mangle: {
+          keepNames: true
         }
-      },
-      mangle: {
-        keepNames: true
       }
-    }
     : false
 
   const result = await build({

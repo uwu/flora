@@ -1,16 +1,15 @@
 {
-  "name": "frontend",
-  "private": true,
+  "name": "@flora-internal/frontend",
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
     "typecheck": "tsgo -b",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "lint:fix": "oxlint --fix",
-    "preview": "vite preview",
-    "generate:api": "openapi-typescript http://localhost:3000/api-docs/openapi.json -o src/lib/openapi-schema.ts"
+    "dev": "vp dev",
+    "build": "tsgo -b && vp build",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "preview": "vp preview"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
@@ -59,19 +58,19 @@
     "wouter": "^3.9.0"
   },
   "devDependencies": {
+    "@babel/core": "catalog:",
     "@react-grab/mcp": "0.1.25",
-    "@types/node": "^25.0.1",
+    "@rolldown/plugin-babel": "catalog:",
+    "@types/babel__core": "catalog:",
+    "@types/node": "catalog:",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@typescript/native-preview": "catalog:",
-    "@vitejs/plugin-react": "^5.1.1",
+    "@vitejs/plugin-react": "^6.0.1",
     "babel-plugin-react-compiler": "1.0.0",
-    "openapi-typescript": "^7.10.1",
-    "oxlint": "1.51.0",
-    "oxlint-tsgolint": "0.16.0",
     "react-scan": "0.5.3",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.46.4",
-    "vite": "8.0.0-beta.18"
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   }
 }

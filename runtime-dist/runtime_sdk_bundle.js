@@ -1,4 +1,4 @@
-var flora = (function(exports) {
+var flora = (function (exports) {
   Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
   // #region src/sdk/commands.ts
   function prefix(command) {
@@ -158,7 +158,7 @@ var flora = (function(exports) {
   // #endregion
   // #region src/sdk/components.ts
   const isBuilder = (value) => typeof value?.toJSON === 'function'
-  const resolveComponent = (value) => isBuilder(value) ? value.toJSON() : value
+  const resolveComponent = (value) => (isBuilder(value) ? value.toJSON() : value)
   var ActionRowBuilder = class {
     #components = []
     addComponents(...components) {
@@ -281,10 +281,13 @@ var flora = (function(exports) {
     }
     addDefaultValue(id, type) {
       const current = this.data.default_values ?? []
-      this.data.default_values = [...current, {
-        id,
-        type
-      }]
+      this.data.default_values = [
+        ...current,
+        {
+          id,
+          type
+        }
+      ]
       return this
     }
     toJSON() {
@@ -657,11 +660,11 @@ var flora = (function(exports) {
         value,
         inline
       }
-      this.#embed.fields = [...this.#embed.fields ?? [], field]
+      this.#embed.fields = [...(this.#embed.fields ?? []), field]
       return this
     }
     addFields(fields) {
-      this.#embed.fields = [...this.#embed.fields ?? [], ...fields]
+      this.#embed.fields = [...(this.#embed.fields ?? []), ...fields]
       return this
     }
     setFields(fields) {
@@ -762,11 +765,14 @@ var flora = (function(exports) {
      * @returns Paginated result with keys, list_complete flag, and cursor for next page
      */
     async list(options) {
-      return await Deno.core.ops.op_kv_list_keys({
-        prefix: options?.prefix ?? void 0,
-        limit: options?.limit ?? void 0,
-        cursor: options?.cursor ?? void 0
-      }, this.#storeName)
+      return await Deno.core.ops.op_kv_list_keys(
+        {
+          prefix: options?.prefix ?? void 0,
+          limit: options?.limit ?? void 0,
+          cursor: options?.cursor ?? void 0
+        },
+        this.#storeName
+      )
     }
   }
   function store(name) {
@@ -889,7 +895,7 @@ var flora = (function(exports) {
   exports.userSelect = userSelect
   return exports
 })({})
-;(function(global) {
+;(function (global) {
   if (!global.flora) return
   global.actionRow = global.flora.actionRow
   global.ActionRowBuilder = global.flora.ActionRowBuilder

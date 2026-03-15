@@ -49,15 +49,10 @@ app.get('/health', () => ({ status: 'ok' }))
 
 serve(app, { port, hostname: getHost() })
 
-function formatRequestLog(
-  method: string,
-  path: string,
-  status: number,
-  elapsedMs: number
-): string {
-  return `${colorMethod(method)} ${colors.white(path)} -> ${colorStatus(status)} ${
-    colors.gray(`(${elapsedMs}ms)`)
-  }`
+function formatRequestLog(method: string, path: string, status: number, elapsedMs: number): string {
+  return `${colorMethod(method)} ${colors.white(path)} -> ${colorStatus(status)} ${colors.gray(
+    `(${elapsedMs}ms)`
+  )}`
 }
 
 function colorMethod(method: string): string {

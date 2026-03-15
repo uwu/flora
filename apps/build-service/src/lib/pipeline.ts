@@ -45,16 +45,12 @@ export async function runBuildPipeline(
     // 1. extract zip
     log('Extracting project...')
     const extracted = await extractZip(zipData, tmpDir)
-    log(
-      `Extracted ${extracted.fileCount} files (${formatBytes(extracted.totalSize)})`
-    )
+    log(`Extracted ${extracted.fileCount} files (${formatBytes(extracted.totalSize)})`)
 
     // 2. validate & sanitize package.json
     log('Validating package.json...')
     const pkg = await validateAndSanitizePackageJson(tmpDir)
-    const depCount = pkg.dependencies
-      ? Object.keys(pkg.dependencies).length
-      : 0
+    const depCount = pkg.dependencies ? Object.keys(pkg.dependencies).length : 0
     log(`Found ${depCount} dependencies`)
 
     // 3. install dependencies (only if there are any)

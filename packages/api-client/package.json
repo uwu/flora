@@ -2,20 +2,36 @@
   "name": "@uwu/flora-api-client",
   "version": "0.0.0",
   "private": false,
+  "description": "Flora OpenAPI API client.",
+  "homepage": "https://github.com/uwu/flora/#readme",
+  "bugs": {
+    "url": "https://github.com/uwu/flora/issues"
+  },
+  "license": "MIT",
+  "author": "taskylizard",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uwu/flora.git"
+  },
+  "files": [
+    "dist",
+    "package.json"
+  ],
   "type": "module",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
   },
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist",
-    "package.json"
-  ],
   "scripts": {
-    "build": "tsdown",
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test",
+    "typecheck": "tsgo --noEmit",
+    "release": "bumpp",
+    "prepublishOnly": "pnpm run build",
     "generate:api": "openapi-typescript http://localhost:3000/api-docs/openapi.json -o src/generated/openapi-schema.ts"
   },
   "dependencies": {
@@ -23,8 +39,10 @@
   },
   "devDependencies": {
     "@typescript/native-preview": "catalog:",
+    "bumpp": "^11.0.0",
     "openapi-typescript": "^7.13.0",
-    "tsdown": "^0.20.3",
-    "typescript": "^5.9.3"
+    "typescript": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
   }
 }

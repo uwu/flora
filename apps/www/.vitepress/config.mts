@@ -31,9 +31,7 @@ export default defineConfig({
       }
     ],
 
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/uwu/flora' }
-    ]
+    socialLinks: [{ icon: 'github', link: 'https://github.com/uwu/flora' }]
   },
   vite: {
     // @ts-expect-error: some weird types error again wow

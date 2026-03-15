@@ -58,9 +58,7 @@ export async function validateAndSanitizePackageJson(
 
     for (const [name, specifier] of entries) {
       if (typeof specifier !== 'string') {
-        throw new Error(
-          `Invalid specifier for dependency "${name}": must be a string`
-        )
+        throw new Error(`Invalid specifier for dependency "${name}": must be a string`)
       }
 
       for (const prefix of DISALLOWED_SPECIFIER_PREFIXES) {
@@ -71,22 +69,14 @@ export async function validateAndSanitizePackageJson(
         }
       }
 
-      if (
-        specifier.startsWith('/') ||
-        specifier.startsWith('./') ||
-        specifier.startsWith('../')
-      ) {
-        throw new Error(
-          `Disallowed local path specifier for dependency "${name}": "${specifier}"`
-        )
+      if (specifier.startsWith('/') || specifier.startsWith('./') || specifier.startsWith('../')) {
+        throw new Error(`Disallowed local path specifier for dependency "${name}": "${specifier}"`)
       }
 
       // Block bare GitHub shorthands like "user/repo" or "user/repo#ref"
       // Scoped packages like "@org/pkg" are safe — they start with "@"
       if (!specifier.startsWith('@') && BARE_GIT_SHORTHAND_RE.test(specifier)) {
-        throw new Error(
-          `Disallowed bare Git shorthand for dependency "${name}": "${specifier}"`
-        )
+        throw new Error(`Disallowed bare Git shorthand for dependency "${name}": "${specifier}"`)
       }
 
       validDeps[name] = specifier

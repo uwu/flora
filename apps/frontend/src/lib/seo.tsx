@@ -38,9 +38,13 @@ function toAbsoluteImageUrl(imagePath?: string) {
   return `${getSiteOrigin()}${path}`
 }
 
-export function Seo(
-  { title, description = DEFAULT_DESCRIPTION, path, imagePath, noindex = false }: SeoProps
-) {
+export function Seo({
+  title,
+  description = DEFAULT_DESCRIPTION,
+  path,
+  imagePath,
+  noindex = false
+}: SeoProps) {
   const pageTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME
   const canonical = toCanonicalUrl(path)
   const imageUrl = toAbsoluteImageUrl(imagePath)

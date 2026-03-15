@@ -32,9 +32,7 @@ export async function extractZip(zipData: Uint8Array, destDir: string): Promise<
 
     const data = entries[name]!
     if (data.byteLength > MAX_INDIVIDUAL_FILE_SIZE) {
-      throw new Error(
-        `File ${name} exceeds maximum size of ${MAX_INDIVIDUAL_FILE_SIZE} bytes`
-      )
+      throw new Error(`File ${name} exceeds maximum size of ${MAX_INDIVIDUAL_FILE_SIZE} bytes`)
     }
 
     totalSize += data.byteLength
@@ -58,7 +56,7 @@ export async function extractZip(zipData: Uint8Array, destDir: string): Promise<
   }
 
   return {
-    fileCount: entryNames.filter(n => !n.endsWith('/')).length,
+    fileCount: entryNames.filter((n) => !n.endsWith('/')).length,
     totalSize
   }
 }

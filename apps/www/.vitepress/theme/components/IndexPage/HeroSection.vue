@@ -13,12 +13,7 @@
         class="btn-common btn-primary ring-offset-background focus-visible:ring-ring inline-flex items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 select-none border border-transparent rounded-md px-3 py-1.5 text-lg [&_svg]:size-5 [&_svg]:stroke-[1.5px] font-sans w-fit rail-tick-start"
       >
         Dashboard
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 3h7v7H3zM14 3h7v5h-7zM14 10h7v11h-7zM3 14h7v7H3z" />
         </svg>
       </a>
@@ -42,12 +37,7 @@
         class="btn-common btn-secondary ring-offset-background focus-visible:ring-ring inline-flex items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 select-none border rounded-md px-3 py-1.5 text-lg [&_svg]:size-5 [&_svg]:stroke-[1.5px] font-sans w-fit rail-tick-start"
       >
         View on GitHub
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M7 17L17 7M17 7H7M17 7v10" />
         </svg>
       </a>
@@ -57,14 +47,14 @@
 
 <style scoped>
 .hero {
-  --uno: "max-w-5xl mx-auto flex flex-col items-start text-left";
+  --uno: 'max-w-5xl mx-auto flex flex-col items-start text-left';
   position: relative;
   z-index: 2;
   padding: 140px 32px 80px;
 }
 
 .hero-description {
-  --uno: "mb-8";
+  --uno: 'mb-8';
   color: var(--gb-fg-soft);
   max-width: 640px;
   font-size: 22px;
@@ -74,18 +64,21 @@
 }
 
 .hero-actions {
-  --uno: "flex gap-3 items-center";
+  --uno: 'flex gap-3 items-center';
 }
 
 .btn-common {
-  --uno: "no-underline";
+  --uno: 'no-underline';
   transform: translateY(0);
 }
 
 .btn-primary {
   color: var(--primary-foreground);
   background-color: #d3dbd2;
-  transition: background-color 150ms ease, color 150ms ease, transform 100ms ease;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    transform 100ms ease;
 }
 
 .btn-primary:hover {
@@ -128,7 +121,7 @@
   }
 
   .hero-actions {
-    --uno: "flex-col";
+    --uno: 'flex-col';
     width: min(100%, 360px);
   }
 

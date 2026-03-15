@@ -455,10 +455,7 @@ export function KvManager({ guildId }: { guildId: string }) {
               />
 
               <div className='flex flex-wrap gap-2'>
-                <Button
-                  onClick={handleSaveKey}
-                  disabled={!activeStore || setKeyMutation.isPending}
-                >
+                <Button onClick={handleSaveKey} disabled={!activeStore || setKeyMutation.isPending}>
                   Save key
                 </Button>
                 <Button variant='outline' onClick={handleClearEditor} disabled={!activeStore}>

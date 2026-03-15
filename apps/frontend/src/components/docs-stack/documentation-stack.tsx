@@ -85,7 +85,10 @@ export function DocumentationStack() {
               scale = 1
             } else {
               const rowWidth = (STACK_CARDS.length - 1) * COLLAPSED_ROW.spacing
-              x = COLLAPSED_ROW.offsetX + index * COLLAPSED_ROW.spacing - rowWidth / 2 +
+              x =
+                COLLAPSED_ROW.offsetX +
+                index * COLLAPSED_ROW.spacing -
+                rowWidth / 2 +
                 collapsed.offsetX
               y = COLLAPSED_ROW.offsetY + collapsed.offsetY
               rotate = collapsed.rotation
@@ -95,11 +98,11 @@ export function DocumentationStack() {
             const titleTop = isSelected
               ? metrics.padding + metrics.graphicH + 16
               : metrics.cardH - metrics.padding - metrics.titleLineH * card.titleLines
-            const introY = y - metrics.cardH / 2 + Math.max(25, 50 * Math.abs(index - 2)) +
-              48 * index
+            const introY =
+              y - metrics.cardH / 2 + Math.max(25, 50 * Math.abs(index - 2)) + 48 * index
             const delay = 0.5 + 0.016 * index
-            const descriptionTop = expanded.padding + expanded.graphicH + 16 +
-              expanded.titleLineH * card.titleLines + 12
+            const descriptionTop =
+              expanded.padding + expanded.graphicH + 16 + expanded.titleLineH * card.titleLines + 12
             const descriptionWidth = expanded.cardW - 2 * expanded.padding
 
             return (
@@ -113,9 +116,9 @@ export function DocumentationStack() {
                 initial={{ x: x - metrics.cardW / 2 + (2 - index) * 50, y: introY, scale, rotate }}
                 style={{ left: '50%', top: '50%', zIndex: index + 1 }}
                 animate={{ x: x - metrics.cardW / 2, y: y - metrics.cardH / 2, scale, rotate }}
-                whileHover={selectedCardId
-                  ? {}
-                  : { scale: 1.03 * scale, y: y - metrics.cardH / 2 - 8 }}
+                whileHover={
+                  selectedCardId ? {} : { scale: 1.03 * scale, y: y - metrics.cardH / 2 - 8 }
+                }
                 transition={{
                   ...STACK_ANIMATION.card,
                   ...(animationsReady ? {} : { delay }),

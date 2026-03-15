@@ -18,7 +18,9 @@ confique = { version = "0.4.0", features = ["toml"] }
 cookie = "0.18"
 croner = "3.0"
 dashmap = "6.1.0"
-deno_core = { git = "file:///home/tasky/flora/submodules/deno_core", branch = "flora-locker-compat", default-features = false, features = ["v8_use_custom_libcxx"] }
+deno_core = { git = "file:///home/tasky/flora/submodules/deno_core", branch = "flora-locker-compat", default-features = false, features = [
+  "v8_use_custom_libcxx"
+] }
 deno_error = "0.7.1"
 deno_fetch = "0.249.0"
 deno_net = "0.217.0"
@@ -37,7 +39,12 @@ hmac = "0.12"
 http = "1"
 num_cpus = "1.16"
 openssl = { version = "0.10.75", features = ["vendored"] }
-oxc = { version = "0.101.0", features = ["full", "oxc_regular_expression", "semantic", "transformer"] }
+oxc = { version = "0.101.0", features = [
+  "full",
+  "oxc_regular_expression",
+  "semantic",
+  "transformer"
+] }
 oxc_sourcemap = "6.0.2"
 parking_lot = "0.12"
 proc-macro2 = "1.0.106"
@@ -46,10 +53,22 @@ rand = "0.8"
 reqwest = { version = "0.12.25", features = ["json", "multipart", "stream"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.149"
-serenity = { git = "https://github.com/serenity-rs/serenity", default-features = false, branch = "next", features = ["typesize", "temp_cache", "tokio_task_builder", "transport_compression_zstd", "rustls_backend"] }
+serenity = { git = "https://github.com/serenity-rs/serenity", default-features = false, branch = "next", features = [
+  "typesize",
+  "temp_cache",
+  "tokio_task_builder",
+  "transport_compression_zstd",
+  "rustls_backend"
+] }
 sha2 = "0.10"
 sled = "0.34"
-sqlx = { version = "0.8.6", features = ["chrono", "macros", "postgres", "runtime-tokio-rustls", "uuid"] }
+sqlx = { version = "0.8.6", features = [
+  "chrono",
+  "macros",
+  "postgres",
+  "runtime-tokio-rustls",
+  "uuid"
+] }
 syn = { version = "2.0.117", features = ["full", "extra-traits", "parsing"] }
 sys_traits = { version = "0.1.17", features = ["libc", "real"] }
 t0x = { version = "0.1.8", features = ["serde-json-impl"] }
@@ -66,7 +85,15 @@ tracing-error = "0.2.1"
 tracing-subscriber = { version = "0.3.22", features = ["chrono", "env-filter", "serde", "time"] }
 url = "2.5.8"
 urlencoding = "2.1"
-utoipa = { version = "5.4.0", features = ["auto_into_responses", "axum_extras", "chrono", "config", "debug", "url", "uuid"] }
+utoipa = { version = "5.4.0", features = [
+  "auto_into_responses",
+  "axum_extras",
+  "chrono",
+  "config",
+  "debug",
+  "url",
+  "uuid"
+] }
 utoipa-scalar = { version = "0.3.0", features = ["axum"] }
 uuid = { version = "1.21.0", features = ["v4"] }
 

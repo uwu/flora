@@ -11,17 +11,25 @@ function rng(seed: number) {
 
 function withAlpha(hex: string, alpha: number) {
   const base = hex.replace('#', '')
-  const pairs = base.length === 3
-    ? base.split('').map((v) => v + v)
-    : [base.slice(0, 2), base.slice(2, 4), base.slice(4, 6)]
-  return `rgba(${parseInt(pairs[0], 16)}, ${parseInt(pairs[1], 16)}, ${
-    parseInt(pairs[2], 16)
-  }, ${alpha})`
+  const pairs =
+    base.length === 3
+      ? base.split('').map((v) => v + v)
+      : [base.slice(0, 2), base.slice(2, 4), base.slice(4, 6)]
+  return `rgba(${parseInt(pairs[0], 16)}, ${parseInt(pairs[1], 16)}, ${parseInt(
+    pairs[2],
+    16
+  )}, ${alpha})`
 }
 
-export function StackCardGraphic(
-  { type, seed, foreground }: { type: GraphicType; seed: number; foreground: string }
-) {
+export function StackCardGraphic({
+  type,
+  seed,
+  foreground
+}: {
+  type: GraphicType
+  seed: number
+  foreground: string
+}) {
   const ref = useRef<HTMLCanvasElement | null>(null)
 
   useEffect(() => {
