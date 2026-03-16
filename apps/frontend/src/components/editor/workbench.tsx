@@ -2,6 +2,7 @@ import '@codingame/monaco-vscode-javascript-default-extension'
 import '@codingame/monaco-vscode-json-default-extension'
 import '@codingame/monaco-vscode-theme-defaults-default-extension'
 import '@codingame/monaco-vscode-typescript-basics-default-extension'
+import '@codingame/monaco-vscode-typescript-language-features-default-extension'
 import 'vscode/localExtensionHost'
 
 import type { IWorkbenchConstructionOptions } from '@codingame/monaco-vscode-api'
@@ -39,9 +40,35 @@ import floraSdkGlobalTypes from '../../../../../packages/sdk/global-types.d.ts?r
 import { getParentFolder, normalizePath } from './editor-utils'
 
 const WORKSPACE_ROOT = '/workspace'
-const SUPPORT_FILES: Record<string, string> = {
-  'node_modules/@uwu/flora-sdk/global-types.d.ts': floraSdkGlobalTypes,
-  'node_modules/@uwu/flora-sdk/index.d.ts': `declare module '@uwu/flora-sdk' {
+const DEFAULT_TSCONFIG = JSON.stringify(
+  {
+    compilerOptions: {
+      target: 'ES2020',
+      module: 'ESNext',
+      lib: ['ES2021', 'DOM'],
+      jsx: 'react-jsx',
+      moduleResolution: 'Bundler',
+      types: ['@uwu/flora-sdk'],
+      allowJs: true,
+      skipLibCheck: true
+    },
+    include: ['**/*']
+  },
+  null,
+  2
+)
+const FLORA_SDK_PACKAGE_JSON = JSON.stringify(
+  {
+    name: '@uwu/flora-sdk',
+    version: '0.0.0',
+    types: 'index.d.ts'
+  },
+  null,
+  2
+)
+const FLORA_SDK_INDEX_TYPES = `/// <reference path="./global-types.d.ts" />
+
+declare module '@uwu/flora-sdk' {
   export const on: typeof globalThis.on
   export const cron: typeof globalThis.cron
   export const secrets: typeof globalThis.secrets
@@ -54,6 +81,11 @@ const SUPPORT_FILES: Record<string, string> = {
   export const StringSelectMenuBuilder: typeof globalThis.StringSelectMenuBuilder
 }
 `
+const SUPPORT_FILES: Record<string, string> = {
+  'tsconfig.json': DEFAULT_TSCONFIG,
+  'node_modules/@uwu/flora-sdk/package.json': FLORA_SDK_PACKAGE_JSON,
+  'node_modules/@uwu/flora-sdk/global-types.d.ts': floraSdkGlobalTypes,
+  'node_modules/@uwu/flora-sdk/index.d.ts': FLORA_SDK_INDEX_TYPES
 }
 const SUPPORT_PATHS = new Set(Object.keys(SUPPORT_FILES))
 
@@ -202,7 +234,9 @@ async function createController(
     'workbench.colorTheme': 'Default Dark+',
     'editor.fontSize': 14,
     'editor.minimap.enabled': false,
-    'files.autoSave': 'off'
+    'files.autoSave': 'off',
+    'typescript.tsserver.web.enableProjectWideIntellisense': true,
+    'workbench.iconTheme': 'vs-minimal'
   }
 
   await Promise.all([
@@ -248,7 +282,7 @@ async function createController(
       ...getFilesServiceOverride(),
       ...getStorageServiceOverride(),
       ...getExtensionServiceOverride({
-        enableWorkerExtensionHost: false
+        enableWorkerExtensionHost: true
       }),
       ...getExplorerServiceOverride(),
       ...getWorkbenchServiceOverride()

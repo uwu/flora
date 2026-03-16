@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        shiki: path.resolve(__dirname, './src/lib/shiki-lite'),
         'modern-monaco/core': path.resolve(__dirname, 'node_modules/modern-monaco/dist/core.mjs'),
         'monaco-themes/themes/themelist.json': path.resolve(
           __dirname,
@@ -27,6 +28,11 @@ export default defineConfig(({ mode }) => {
     ...(mode === 'development' && {
       server: {
         allowedHosts: true,
+        headers: {
+          'Cross-Origin-Embedder-Policy': 'credentialless',
+          'Cross-Origin-Opener-Policy': 'same-origin',
+          'Cross-Origin-Resource-Policy': 'cross-origin'
+        },
         proxy: {
           '/api': {
             target: API_HOST,

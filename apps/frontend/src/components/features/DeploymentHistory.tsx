@@ -34,6 +34,34 @@ const DIFFABLE_FILENAMES = new Set([
   'tsconfig.json'
 ])
 
+type DiffLanguage = 'text' | 'json' | 'typescript' | 'tsx' | 'javascript' | 'jsx'
+
+const DIFF_LANG_OVERRIDES: Record<string, DiffLanguage> = {
+  'package.json': 'json',
+  'package-lock.json': 'json',
+  'pnpm-lock.yaml': 'text',
+  'yarn.lock': 'text',
+  'bun.lockb': 'text',
+  'tsconfig.json': 'json'
+}
+
+function getDiffLanguage(path: string): DiffLanguage {
+  const lowerPath = path.toLowerCase()
+  const fileName = lowerPath.split('/').at(-1) ?? lowerPath
+  const override = DIFF_LANG_OVERRIDES[fileName]
+  if (override) return override
+  if (lowerPath.endsWith('.tsx')) return 'tsx'
+  if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.cts') || lowerPath.endsWith('.mts')) {
+    return 'typescript'
+  }
+  if (lowerPath.endsWith('.jsx')) return 'jsx'
+  if (lowerPath.endsWith('.js') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
+    return 'javascript'
+  }
+  if (lowerPath.endsWith('.json')) return 'json'
+  return 'text'
+}
+
 function formatTimeAgo(value?: string | null) {
   if (!value) return 'never'
   return formatDistanceToNow(new Date(value), { addSuffix: true })
@@ -139,6 +167,7 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
       .filter(isDiffableFile)
       .map((path) => ({
         path,
+        lang: getDiffLanguage(path),
         oldContents: base.get(path) ?? '',
         newContents: current.get(path) ?? ''
       }))
@@ -297,8 +326,8 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
               }
             >
               <LazyMultiFileDiff
-                oldFile={{ name: file.path, contents: file.oldContents }}
-                newFile={{ name: file.path, contents: file.newContents }}
+                oldFile={{ name: file.path, contents: file.oldContents, lang: file.lang }}
+                newFile={{ name: file.path, contents: file.newContents, lang: file.lang }}
                 options={{
                   diffStyle: 'split',
                   overflow: 'wrap',

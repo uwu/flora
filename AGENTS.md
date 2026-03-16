@@ -9,6 +9,7 @@ This guide is for AI agents working in the flora codebase.
 - Be extremely concise in conversations; sacrifice grammar for the sake of concision.
 - At the end of each plan, give me a list of unresolved questions to answer, if any. Make the questions extremely concise.
 - Prefer runtime workflows via `./x` commands.
+- After changes: run `vp install` (repo root) and `vp build` (target app).
 
 ## OpenAPI Writing + Naming
 

@@ -6,6 +6,9 @@ packages:
 catalog:
   '@babel/core': 7.29.0
   '@rolldown/plugin-babel': 0.2.1
+  '@shikijs/core': 4.0.2
+  '@shikijs/engine-javascript': 4.0.2
+  '@shikijs/langs': 4.0.2
   '@types/babel__core': 7.20.5
   '@types/node': ^24
   '@typescript/native-preview': ^7.0.0-dev.20260105.1
