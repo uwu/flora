@@ -1,4 +1,4 @@
-use sled::Db;
+use rocksdb::DB;
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
@@ -7,7 +7,7 @@ use std::{
 pub(crate) const MAX_DB_CACHE_SIZE: usize = 64;
 
 pub(crate) struct BoundedCache {
-    map: HashMap<String, Arc<Db>>,
+    map: HashMap<String, Arc<DB>>,
     order: VecDeque<String>,
     capacity: usize,
 }
@@ -21,11 +21,11 @@ impl BoundedCache {
         }
     }
 
-    pub(crate) fn get(&self, key: &str) -> Option<&Arc<Db>> {
+    pub(crate) fn get(&self, key: &str) -> Option<&Arc<DB>> {
         self.map.get(key)
     }
 
-    pub(crate) fn insert(&mut self, key: String, db: Arc<Db>) {
+    pub(crate) fn insert(&mut self, key: String, db: Arc<DB>) {
         if self.map.len() >= self.capacity
             && let Some(oldest) = self.order.pop_back()
         {
