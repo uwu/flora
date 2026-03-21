@@ -27,7 +27,7 @@ pub struct ExportGuildResponse {
 
 /// Export all KV stores for a guild
 ///
-/// Creates a backup of all stores using the sled database export format.
+/// Creates a backup of all stores using RocksDB data files.
 /// Returns a backup ID for later retrieval.
 #[utoipa::path(
     post,

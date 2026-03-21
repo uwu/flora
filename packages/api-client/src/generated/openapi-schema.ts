@@ -196,7 +196,7 @@ export interface paths {
     put?: never
     /**
      * Export all KV stores for a guild
-     * @description Creates a backup of all stores using the sled database export format.
+     * @description Creates a backup of all stores using RocksDB data files.
      *     Returns a backup ID for later retrieval.
      */
     post: operations['export_guild_handler']

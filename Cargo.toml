@@ -61,7 +61,7 @@ serenity = { git = "https://github.com/serenity-rs/serenity", default-features =
   "rustls_backend"
 ] }
 sha2 = "0.10"
-sled = "0.34"
+rocksdb = { version = "0.24", default-features = false, features = ["bindgen-runtime"] }
 sqlx = { version = "0.8.6", features = [
   "chrono",
   "macros",

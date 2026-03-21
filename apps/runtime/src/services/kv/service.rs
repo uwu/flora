@@ -1,6 +1,9 @@
 use chrono::Utc;
 use color_eyre::eyre::{Result, eyre};
-use sled::Db;
+use rocksdb::{
+    ColumnFamily, ColumnFamilyDescriptor, DB, DEFAULT_COLUMN_FAMILY_NAME, Direction, IteratorMode,
+    Options,
+};
 use sqlx::{Pool, Postgres};
 use std::{
     path::PathBuf,
@@ -18,7 +21,7 @@ use super::{
     },
 };
 
-const METADATA_TREE_NAME: &str = "__metadata";
+const METADATA_CF_NAME: &str = "__metadata";
 
 #[derive(Clone)]
 pub struct KvService {
@@ -78,10 +81,11 @@ impl KvService {
         }
 
         let db_path = self.db_path(guild_id, store_name);
-        if db_path.exists()
-            && let Err(err) = std::fs::remove_dir_all(&db_path)
-        {
-            warn!(target: "flora:kv", guild_id, store_name, ?err, "failed to remove sled files");
+        if db_path.exists() {
+            let options = Options::default();
+            if let Err(err) = DB::destroy(&options, &db_path) {
+                warn!(target: "flora:kv", guild_id, store_name, ?err, "failed to destroy rocksdb files");
+            }
         }
 
         info!(target: "flora:kv", guild_id, store_name, "deleted kv store");
@@ -154,18 +158,18 @@ impl KvService {
         }
 
         let db = self.get_or_open_db(guild_id, store_name)?;
-        db.insert(key.as_bytes(), value.as_bytes())?;
+        db.put(key.as_bytes(), value.as_bytes())?;
 
+        let metadata_cf = self.get_metadata_cf(&db)?;
         if expiration.is_some() || metadata.is_some() {
             let key_metadata = RawKvKeyMetadata {
                 expiration,
                 metadata,
             };
             let metadata_bytes = serde_json::to_vec(&key_metadata)?;
-            self.get_metadata_tree(&db)?
-                .insert(key.as_bytes(), metadata_bytes)?;
+            db.put_cf(metadata_cf, key.as_bytes(), metadata_bytes)?;
         } else {
-            self.get_metadata_tree(&db)?.remove(key.as_bytes())?;
+            db.delete_cf(metadata_cf, key.as_bytes())?;
         }
 
         Ok(())
@@ -185,6 +189,7 @@ impl KvService {
 
         let existing = self.get_metadata(&db, key)?;
         let new_expiration = existing.and_then(|m| m.expiration);
+        let metadata_cf = self.get_metadata_cf(&db)?;
 
         if metadata.is_some() || new_expiration.is_some() {
             let key_metadata = RawKvKeyMetadata {
@@ -192,10 +197,9 @@ impl KvService {
                 metadata,
             };
             let metadata_bytes = serde_json::to_vec(&key_metadata)?;
-            self.get_metadata_tree(&db)?
-                .insert(key.as_bytes(), metadata_bytes)?;
+            db.put_cf(metadata_cf, key.as_bytes(), metadata_bytes)?;
         } else {
-            self.get_metadata_tree(&db)?.remove(key.as_bytes())?;
+            db.delete_cf(metadata_cf, key.as_bytes())?;
         }
 
         Ok(())
@@ -206,8 +210,9 @@ impl KvService {
         self.verify_store_exists(guild_id, store_name).await?;
 
         let db = self.get_or_open_db(guild_id, store_name)?;
-        db.remove(key.as_bytes())?;
-        self.get_metadata_tree(&db)?.remove(key.as_bytes())?;
+        db.delete(key.as_bytes())?;
+        let metadata_cf = self.get_metadata_cf(&db)?;
+        db.delete_cf(metadata_cf, key.as_bytes())?;
         Ok(())
     }
 
@@ -231,15 +236,12 @@ impl KvService {
         let limit = limit.unwrap_or(DEFAULT_LIST_LIMIT).min(MAX_LIST_LIMIT);
         let mut keys = Vec::with_capacity(limit as usize);
 
-        let start_key = match (cursor, prefix) {
-            (Some(c), Some(p)) => format!("{}{}", p, c),
-            (Some(c), None) => c.to_string(),
-            (None, Some(p)) => p.to_string(),
-            (None, None) => String::new(),
+        let start_key = match cursor {
+            Some(c) => c.to_string(),
+            None => prefix.unwrap_or_default().to_string(),
         };
 
-        let start_bytes = start_key.as_bytes();
-        let iter = db.range(start_bytes..);
+        let iter = db.iterator(IteratorMode::From(start_key.as_bytes(), Direction::Forward));
 
         for item in iter {
             let (key_bytes, _) = item?;
@@ -248,15 +250,16 @@ impl KvService {
                 Err(_) => continue,
             };
 
-            if let Some(p) = prefix {
-                if !key.starts_with(p) {
-                    break;
-                }
-                if let Some(c) = cursor
-                    && key == format!("{}{}", p, c)
-                {
-                    continue;
-                }
+            if let Some(p) = prefix
+                && !key.starts_with(p)
+            {
+                break;
+            }
+
+            if let Some(c) = cursor
+                && key == c
+            {
+                continue;
             }
 
             let metadata = self.get_metadata(&db, &key)?;
@@ -318,7 +321,7 @@ impl KvService {
         Ok(backup_id)
     }
 
-    fn get_or_open_db(&self, guild_id: &str, store_name: &str) -> Result<Arc<Db>> {
+    fn get_or_open_db(&self, guild_id: &str, store_name: &str) -> Result<Arc<DB>> {
         let key = db_key(guild_id, store_name);
 
         if let Ok(cache) = self.db_cache.read()
@@ -328,24 +331,38 @@ impl KvService {
         }
 
         let db_path = self.db_path(guild_id, store_name);
-        let db = sled::open(&db_path)?;
+        let db = self.open_db(&db_path)?;
         let db_arc = Arc::new(db);
 
         if let Ok(mut cache) = self.db_cache.write() {
             cache.insert(key, Arc::clone(&db_arc));
         }
 
-        info!(target: "flora:kv", guild_id, store_name, "opened sled instance");
+        info!(target: "flora:kv", guild_id, store_name, "opened rocksdb instance");
         Ok(db_arc)
     }
 
-    fn get_metadata_tree(&self, db: &Db) -> Result<sled::Tree> {
-        Ok(db.open_tree(METADATA_TREE_NAME)?)
+    fn open_db(&self, db_path: &PathBuf) -> Result<DB> {
+        let mut options = Options::default();
+        options.create_if_missing(true);
+        options.create_missing_column_families(true);
+
+        let column_families = vec![
+            ColumnFamilyDescriptor::new(DEFAULT_COLUMN_FAMILY_NAME, Options::default()),
+            ColumnFamilyDescriptor::new(METADATA_CF_NAME, Options::default()),
+        ];
+
+        Ok(DB::open_cf_descriptors(&options, db_path, column_families)?)
     }
 
-    fn get_metadata(&self, db: &Db, key: &str) -> Result<Option<RawKvKeyMetadata>> {
-        let tree = self.get_metadata_tree(db)?;
-        match tree.get(key.as_bytes())? {
+    fn get_metadata_cf<'a>(&self, db: &'a DB) -> Result<&'a ColumnFamily> {
+        db.cf_handle(METADATA_CF_NAME)
+            .ok_or_else(|| eyre!("metadata column family missing"))
+    }
+
+    fn get_metadata(&self, db: &DB, key: &str) -> Result<Option<RawKvKeyMetadata>> {
+        let metadata_cf = self.get_metadata_cf(db)?;
+        match db.get_cf(metadata_cf, key.as_bytes())? {
             Some(bytes) => {
                 let metadata: RawKvKeyMetadata = serde_json::from_slice(&bytes)?;
                 Ok(Some(metadata))
