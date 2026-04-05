@@ -25,7 +25,6 @@ resolve_root_dir() {
 ROOT_DIR="${ROOT_DIR:-$(resolve_root_dir)}"
 THIRD_PARTY_DIR="$ROOT_DIR/third-party/rust"
 REINDEER_CONFIG="$ROOT_DIR/third-party/reindeer.toml"
-RUSTY_V8_PATCH_OVERRIDE="patch.crates-io.v8.git=\"file://$ROOT_DIR/submodules/rusty_v8\""
 
 if ! command -v reindeer >/dev/null 2>&1; then
   echo "reindeer not found in PATH" >&2
@@ -44,13 +43,9 @@ if [[ ! -f "$REINDEER_CONFIG" ]]; then
 fi
 
 reindeer \
-  --cargo-options=--config \
-  --cargo-options="$RUSTY_V8_PATCH_OVERRIDE" \
   -c "$REINDEER_CONFIG" \
   vendor
 reindeer \
-  --cargo-options=--config \
-  --cargo-options="$RUSTY_V8_PATCH_OVERRIDE" \
   -c "$REINDEER_CONFIG" \
   buckify
 

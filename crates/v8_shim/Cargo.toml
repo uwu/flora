@@ -1,0 +1,18 @@
+[package]
+name = "v8"
+version = "142.2.0"
+description = "Shim crate forwarding v8 to flora_v8"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[features]
+default = ["use_custom_libcxx"]
+use_custom_libcxx = ["flora_v8_upstream/use_custom_libcxx"]
+v8_enable_pointer_compression = ["flora_v8_upstream/v8_enable_pointer_compression"]
+v8_enable_sandbox = ["flora_v8_upstream/v8_enable_sandbox"]
+v8_enable_v8_checks = ["flora_v8_upstream/v8_enable_v8_checks"]
+
+[dependencies]
+flora_v8_upstream = { package = "flora_v8", version = "142.2.0-flora.3", default-features = false }

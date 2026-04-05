@@ -6,14 +6,14 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: pass
     ports:
-      - '5433:5432'
+      - '127.0.0.1:5433:5432'
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
 
   valkey-dev:
     image: valkey/valkey:latest
     ports:
-      - '5434:6379'
+      - '127.0.0.1:5434:6379'
     volumes:
       - valkey_dev_data:/data
 
