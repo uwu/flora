@@ -70,7 +70,7 @@ jobs:
               pnpm --filter "$pkg" run "$build_cmd"
             fi
 
-            pnpm --filter "$pkg" exec npm publish --provenance --access public --tag "$TAG"
+            pnpm --filter "$pkg" exec npm publish --access public --tag "$TAG"
           }
 
           case "$PACKAGE" in
