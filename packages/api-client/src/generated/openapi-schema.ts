@@ -87,6 +87,22 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/deployments': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['list_deployments_handler']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/deployments/{guild_id}': {
     parameters: {
       query?: never
@@ -486,6 +502,12 @@ export interface components {
     DeploymentFile: {
       contents: string
       path: string
+    }
+    DeploymentListItem: {
+      created_at: string
+      entry: string
+      guild_id: string
+      updated_at: string
     }
     DeploymentRequest: {
       build_id?: string | null
@@ -1038,6 +1060,86 @@ export interface operations {
             started_at?: string | null
             status: string
           }
+        }
+      }
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Resource not found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            /** @description Human readable error message. */
+            message: string
+          }
+        }
+      }
+    }
+  }
+  list_deployments_handler: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DeploymentListItem'][]
         }
       }
       /** @description Bad request */

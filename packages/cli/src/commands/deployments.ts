@@ -200,10 +200,22 @@ export async function get(config: CliConfig, guildArg: string | undefined): Prom
   )
 }
 
-export async function list(_config: CliConfig): Promise<void> {
-  logger.warn(
-    '`flora deployments list` was removed; use `flora deployments get --guild <guild_id>`'
+export async function list(config: CliConfig): Promise<void> {
+  const client = createApiClient(config)
+  const deployments = await expectOk(
+    client.GET('/deployments', {
+      headers: authHeaders(config)
+    })
   )
+
+  if (deployments.length === 0) {
+    logger.info('No deployments found.')
+    return
+  }
+
+  for (const d of deployments) {
+    logger.log(`${colors.cyan(d.guild_id)}  entry: ${d.entry}  updated: ${d.updated_at}`)
+  }
 }
 
 export async function health(config: CliConfig): Promise<void> {

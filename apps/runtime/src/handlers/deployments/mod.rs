@@ -7,12 +7,14 @@ use utoipa::OpenApi;
 use crate::state::AppState;
 
 pub mod history;
+pub mod list;
 pub mod read;
 pub mod revision;
 pub mod rollback;
 pub mod upsert;
 
 pub use history::list_deployment_history_handler;
+pub use list::{DeploymentListItem, list_deployments_handler};
 pub use read::get_deployment_handler;
 pub use revision::get_deployment_revision_handler;
 pub use rollback::rollback_deployment_handler;
@@ -24,6 +26,7 @@ pub use upsert::{
 #[derive(OpenApi)]
 #[openapi(
     paths(
+        list::list_deployments_handler,
         read::get_deployment_handler,
         upsert::upsert_deployment_handler,
         history::list_deployment_history_handler,
@@ -32,6 +35,7 @@ pub use upsert::{
     ),
     components(
         schemas(
+            DeploymentListItem,
             DeploymentRequest,
             DeploymentResponse,
             DeploymentRevisionResponse,
@@ -45,6 +49,7 @@ pub struct DeploymentApi;
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        .route("/", get(list_deployments_handler))
         .route(
             "/{guild_id}",
             get(get_deployment_handler).post(upsert_deployment_handler),
