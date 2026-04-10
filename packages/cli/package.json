@@ -1,8 +1,13 @@
 {
   "name": "@uwu/flora-cli",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": false,
   "description": "flora command line interface",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/uwu/flora",
+    "directory": "packages/cli"
+  },
   "bin": {
     "flora": "./dist/index.mjs"
   },
