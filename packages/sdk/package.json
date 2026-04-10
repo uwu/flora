@@ -2,6 +2,11 @@
   "name": "@uwu/flora-sdk",
   "version": "0.0.0",
   "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/uwu/flora",
+    "directory": "packages/sdk"
+  },
   "files": [
     "global-types.d.ts",
     "src",

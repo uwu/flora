@@ -10,4 +10,4 @@ export type DeployProjectConfig = {
 
 export type DeploySourceMapMode = 'none' | 'inline' | 'external'
 
-export const DEFAULT_API_URL = 'http://localhost:3000/api'
+export const DEFAULT_API_URL = 'https://app.flora.uwu.network/api'
