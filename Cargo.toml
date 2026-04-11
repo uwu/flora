@@ -95,6 +95,7 @@ utoipa = { version = "5.4.0", features = [
   "uuid"
 ] }
 utoipa-scalar = { version = "0.3.0", features = ["axum"] }
+static-serve = { version = "0.6", features = [] }
 uuid = { version = "1.21.0", features = ["v4"] }
 
 [patch.crates-io]

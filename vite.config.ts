@@ -49,8 +49,7 @@ export default defineConfig({
     }
   },
   staged: {
-    '*': 'vp check --fix',
-    '*.rs': 'cargo fmt'
+    '*': 'vp check --fix'
   },
   fmt: {
     quoteProps: 'preserve',
