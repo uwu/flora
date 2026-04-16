@@ -1,0 +1,28 @@
+{
+  "name": "vite-template-solid",
+  "version": "0.0.0",
+  "description": "",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "vp dev",
+    "dev": "vp dev",
+    "build": "vp build",
+    "serve": "vp preview"
+  },
+  "dependencies": {
+    "@uwu/flora-api-client": "workspace:*",
+    "solid-js": "^1.9.9"
+  },
+  "devDependencies": {
+    "@oxc-solid-js/compiler": "1.1.4",
+    "@oxc-solid-js/vite": "0.1.0-alpha.15",
+    "@tailwindcss/vite": "^4.1.13",
+    "solid-devtools": "^0.34.3",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.9.2",
+    "vite": "catalog:",
+    "vite-plugin-solid": "^2.11.8",
+    "vite-plus": "catalog:"
+  }
+}
