@@ -1,0 +1,10 @@
+{
+  "name": "@uwu/flora-branding",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./logo.svg": "./logo.svg",
+    "./logo.png": "./logo.png"
+  }
+}

@@ -1,3 +1,4 @@
+import logoPng from '@uwu/flora-branding/logo.png'
 import { Helmet } from 'react-helmet-async'
 
 type SeoProps = {
@@ -32,7 +33,7 @@ function toCanonicalUrl(path?: string) {
 }
 
 function toAbsoluteImageUrl(imagePath?: string) {
-  if (!imagePath) return `${getSiteOrigin()}/logo.png`
+  if (!imagePath) return logoPng
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath
   const path = imagePath.startsWith('/') ? imagePath : `/${imagePath}`
   return `${getSiteOrigin()}${path}`

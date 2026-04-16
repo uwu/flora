@@ -166,6 +166,9 @@ importers:
       '@uwu/flora-api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@uwu/flora-branding':
+        specifier: workspace:*
+        version: link:../../packages/branding
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -325,6 +328,9 @@ importers:
 
   apps/www:
     dependencies:
+      '@uwu/flora-branding':
+        specifier: workspace:*
+        version: link:../../packages/branding
       '@vueuse/core':
         specifier: ^14.2.1
         version: 14.2.1(vue@3.5.30(typescript@5.9.3))
@@ -393,6 +399,8 @@ importers:
       vitest:
         specifier: npm:@voidzero-dev/vite-plus-test@0.1.16
         version: '@voidzero-dev/vite-plus-test@0.1.16(@types/node@25.1.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(vite@8.0.0-beta.16(@emnapi/core@1.8.1)(@emnapi/runtime@1.8.1)(@types/node@25.1.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(yaml@2.8.2))(yaml@2.8.2)'
+
+  packages/branding: {}
 
   packages/cli:
     dependencies:

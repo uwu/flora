@@ -7,6 +7,7 @@
     "preview": "vitepress preview"
   },
   "dependencies": {
+    "@uwu/flora-branding": "workspace:*",
     "@vueuse/core": "^14.2.1",
     "motion-v": "2.0.0",
     "pasito": "0.1.3",

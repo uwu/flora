@@ -1,8 +1,12 @@
+<script setup>
+import logoSvg from '@uwu/flora-branding/logo.svg'
+</script>
+
 <template>
   <nav class="nav">
     <div class="nav-inner">
       <div class="nav-left">
-        <img src="/logo.svg" alt="flora" class="nav-logo" />
+        <img :src="logoSvg" alt="flora" class="nav-logo" />
         <span class="nav-brand">flora</span>
       </div>
       <div class="nav-links">

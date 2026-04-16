@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useApp } from '@/contexts/AppContext'
 import { useRecentGuilds } from '@/hooks/use-recent-guilds'
 import { cn } from '@/lib/utils'
+import logoSvg from '@uwu/flora-branding/logo.svg'
 import { BookText, Database, FileCode2, ListChecks, Shield } from 'lucide-react'
 import { domAnimation, LazyMotion, m, useReducedMotion } from 'motion/react'
 import { match } from 'ts-pattern'
@@ -135,7 +136,7 @@ export function DashboardSidebar() {
             setLocation('/')
           }}
         >
-          <img src='/logo.svg' alt='flora logo' className='h-8 w-8' />
+          <img src={logoSvg} alt='flora logo' className='h-8 w-8' />
           {!isCollapsed && <span className='font-semibold text-black dark:text-white'>flora</span>}
         </button>
 
