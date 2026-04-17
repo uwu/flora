@@ -1,7 +1,17 @@
-import { $api } from '@/lib/openapi-client'
+import { useMutation } from '@tanstack/react-query'
+import { createTokenHandlerMutation, deleteTokenHandlerMutation } from '@uwu/flora-api-client'
 
-export const useCreateTokenMutation = (options?: any) =>
-  $api.useMutation('post', '/tokens/', options as any)
+type CreateTokenMutationOptions = Omit<ReturnType<typeof createTokenHandlerMutation>, 'mutationFn'>
+type DeleteTokenMutationOptions = Omit<ReturnType<typeof deleteTokenHandlerMutation>, 'mutationFn'>
 
-export const useDeleteTokenMutation = (options?: any) =>
-  $api.useMutation('delete', '/tokens/{token_id}', options as any)
+export const useCreateTokenMutation = (options?: CreateTokenMutationOptions) =>
+  useMutation({
+    ...createTokenHandlerMutation(),
+    ...options
+  })
+
+export const useDeleteTokenMutation = (options?: DeleteTokenMutationOptions) =>
+  useMutation({
+    ...deleteTokenHandlerMutation(),
+    ...options
+  })

@@ -1,15 +1,22 @@
 import { useQuery } from '@tanstack/react-query'
+import {
+  getDeploymentRevisionHandlerOptions,
+  listDeploymentHistoryHandlerOptions
+} from '@uwu/flora-api-client'
 
-import { requestJson } from '@/data/api/request'
-import type { DeploymentRevision } from '@/data/deployments/types'
+const HISTORY_LIMIT = 100
 
 export const useDeploymentHistoryQuery = (guildId: string) =>
   useQuery({
-    queryKey: ['deployment-history', guildId],
-    queryFn: () =>
-      requestJson<DeploymentRevision[]>(
-        `/deployments/${encodeURIComponent(guildId)}/history?limit=100`
-      )
+    ...listDeploymentHistoryHandlerOptions({
+      path: {
+        guild_id: guildId
+      },
+      query: {
+        limit: HISTORY_LIMIT
+      }
+    }),
+    enabled: !!guildId
   })
 
 export const useDeploymentRevisionQuery = (
@@ -18,12 +25,14 @@ export const useDeploymentRevisionQuery = (
   enabled: boolean
 ) => {
   const resolvedRevisionId = revisionId ?? ''
+
   return useQuery({
-    queryKey: ['deployment-revision', guildId, revisionId],
-    enabled,
-    queryFn: () =>
-      requestJson<DeploymentRevision>(
-        `/deployments/${encodeURIComponent(guildId)}/revisions/${resolvedRevisionId}`
-      )
+    ...getDeploymentRevisionHandlerOptions({
+      path: {
+        guild_id: guildId,
+        revision_id: resolvedRevisionId
+      }
+    }),
+    enabled
   })
 }

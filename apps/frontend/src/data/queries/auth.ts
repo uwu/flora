@@ -1,3 +1,3 @@
-import { $api } from '@/lib/openapi-client'
+import { meHandlerOptions } from '@uwu/flora-api-client'
 
-export const authSessionQueryOptions = () => $api.queryOptions('get', '/auth/me', {})
+export const authSessionQueryOptions = () => meHandlerOptions()

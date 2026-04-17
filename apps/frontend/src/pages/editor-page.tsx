@@ -135,7 +135,7 @@ export function EditorPage() {
           .sort((a, b) => a.path.localeCompare(b.path))
 
         await deployMutation.mutateAsync({
-          params: { path: { guild_id: buildResult.build.guild_id } },
+          path: { guild_id: buildResult.build.guild_id },
           headers: { 'x-flora-deploy-source': 'webui' },
           body: {
             entry: buildResult.build.entry,

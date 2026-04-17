@@ -1,3 +1,3 @@
-import { $api } from '@/lib/openapi-client'
+import { listGuildsHandlerOptions } from '@uwu/flora-api-client'
 
-export const guildsQueryOptions = () => $api.queryOptions('get', '/guilds/', {})
+export const guildsQueryOptions = () => listGuildsHandlerOptions()

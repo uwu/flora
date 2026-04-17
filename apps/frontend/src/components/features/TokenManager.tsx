@@ -70,7 +70,7 @@ export function TokenManager() {
 
   const handleDeleteToken = (tokenId: string) => {
     setError(null)
-    return deleteTokenMutation.mutateAsync({ params: { path: { token_id: tokenId } } })
+    return deleteTokenMutation.mutateAsync({ path: { token_id: tokenId } })
   }
 
   return (

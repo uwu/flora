@@ -18,12 +18,9 @@ import {
 } from '@/data/mutations'
 import { useKvKeysQuery, useKvStoresQuery, useKvValueQuery } from '@/data/queries'
 import { cn } from '@/lib/utils'
-import type { components } from '@uwu/flora-api-client'
+import type { KvStore, RawKvKeyInfo } from '@uwu/flora-api-client'
 import { Database, KeyRound, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-
-type KvStore = components['schemas']['KvStore']
-type RawKvKeyInfo = components['schemas']['RawKvKeyInfo']
 
 function formatExpiration(expiration?: number | null) {
   if (!expiration) return 'never'
@@ -168,7 +165,7 @@ export function KvManager({ guildId }: { guildId: string }) {
     setError(null)
     if (!confirm(`Delete store ${store.store_name}? This removes all keys.`)) return
     void deleteStoreMutation.mutateAsync({
-      params: { path: { guild_id: store.guild_id, store_name: store.store_name } }
+      path: { guild_id: store.guild_id, store_name: store.store_name }
     })
   }
 
@@ -217,12 +214,10 @@ export function KvManager({ guildId }: { guildId: string }) {
     }
 
     void setKeyMutation.mutateAsync({
-      params: {
-        path: {
-          guild_id: guildId,
-          store_name: activeStore,
-          key: name
-        }
+      path: {
+        guild_id: guildId,
+        store_name: activeStore,
+        key: name
       },
       body: {
         value: resolvedKeyValue,
@@ -237,12 +232,10 @@ export function KvManager({ guildId }: { guildId: string }) {
     if (!activeStore) return
     if (!confirm(`Delete key ${keyInfo.name}?`)) return
     void deleteKeyMutation.mutateAsync({
-      params: {
-        path: {
-          guild_id: guildId,
-          store_name: activeStore,
-          key: keyInfo.name
-        }
+      path: {
+        guild_id: guildId,
+        store_name: activeStore,
+        key: keyInfo.name
       }
     })
   }

@@ -1,3 +1,3 @@
-import { $api } from '@/lib/openapi-client'
+import { listTokensHandlerOptions } from '@uwu/flora-api-client'
 
-export const tokensQueryOptions = () => $api.queryOptions('get', '/tokens/', {})
+export const tokensQueryOptions = () => listTokensHandlerOptions()

@@ -1,12 +1,16 @@
 import { authSessionQueryOptions, guildsQueryOptions, tokensQueryOptions } from '@/data/queries'
 import { queryClient } from '@/lib/openapi-client'
-import type { components } from '@uwu/flora-api-client'
+import type {
+  AuthUser,
+  DeploymentResponse,
+  GuildResponse,
+  TokenResponse
+} from '@uwu/flora-api-client'
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react'
 
-type AuthUser = components['schemas']['AuthUser']
-type Deployment = components['schemas']['DeploymentResponse']
-type Guild = components['schemas']['GuildResponse']
-type Token = components['schemas']['TokenResponse']
+type Deployment = DeploymentResponse
+type Guild = GuildResponse
+type Token = TokenResponse
 
 type LoadState<T> = {
   data: T | null

@@ -32,16 +32,16 @@
     "test": "vp test",
     "typecheck": "tsgo --noEmit",
     "release": "bumpp",
-    "prepublishOnly": "pnpm run build",
-    "generate:api": "openapi-typescript http://localhost:3000/api-docs/openapi.json -o src/generated/openapi-schema.ts"
+    "prepublishOnly": "vp run build",
+    "generate": "openapi-ts"
   },
   "dependencies": {
-    "openapi-fetch": "^0.17.0"
+    "@tanstack/react-query": "catalog:"
   },
   "devDependencies": {
+    "@hey-api/openapi-ts": "catalog:",
     "@typescript/native-preview": "catalog:",
     "bumpp": "^11.0.0",
-    "openapi-typescript": "^7.13.0",
     "typescript": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"

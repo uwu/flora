@@ -1,17 +1,11 @@
-import createClient from 'openapi-fetch'
+import { client as generatedClient } from './generated/client.gen'
+import type { Config as OpenApiTsClientConfig } from './generated/client'
+export * from './generated/index'
+export * from './generated/@tanstack/react-query.gen'
+export type { OpenApiTsClientConfig }
 
-import type { paths } from './generated/openapi-schema'
+export const client = generatedClient
 
-export type { $defs, components, operations, paths, webhooks } from './generated/openapi-schema'
-
-export interface ApiClientConfig {
-  apiUrl: string
-  fetch?: typeof fetch
-}
-
-export function createApiClient(config: ApiClientConfig) {
-  return createClient<paths>({
-    baseUrl: config.apiUrl,
-    fetch: config.fetch
-  })
+export function configureOpenApiClient(config: OpenApiTsClientConfig) {
+  return client.setConfig(config)
 }

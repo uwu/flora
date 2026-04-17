@@ -223,7 +223,14 @@ export function DeploymentHistory({ guildId }: { guildId: string }) {
                 variant='outline'
                 disabled={rollbackMutation.isPending || selectedRevision.status !== 'success'}
                 onClick={() => {
-                  if (selectedRevision.id) rollbackMutation.mutate(selectedRevision.id)
+                  if (selectedRevision.id) {
+                    rollbackMutation.mutate({
+                      path: {
+                        guild_id: guildId,
+                        revision_id: selectedRevision.id
+                      }
+                    })
+                  }
                 }}
               >
                 {rollbackMutation.isPending ? (
