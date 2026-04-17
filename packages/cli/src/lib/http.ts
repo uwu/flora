@@ -1,8 +1,4 @@
-import { createApiClient } from '@uwu/flora-api-client'
-
 import type { CliConfig } from './types'
-
-export { createApiClient }
 
 export function authHeaders(config: CliConfig): Record<string, string> {
   if (!config.token) {
@@ -11,6 +7,13 @@ export function authHeaders(config: CliConfig): Record<string, string> {
 
   return {
     authorization: `Bearer ${config.token}`
+  }
+}
+
+export function authApiOptions(config: CliConfig) {
+  return {
+    baseUrl: config.apiUrl,
+    headers: authHeaders(config)
   }
 }
 

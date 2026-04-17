@@ -32,7 +32,7 @@
     "test": "vp test",
     "typecheck": "tsgo --noEmit",
     "release": "bumpp",
-    "prepublishOnly": "vp run build",
+    "prepublishOnly": "vp pack",
     "generate": "openapi-ts"
   },
   "dependencies": {

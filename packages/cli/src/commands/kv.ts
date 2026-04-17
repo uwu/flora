@@ -1,5 +1,17 @@
-import type { components } from '@uwu/flora-api-client'
-import { authHeaders, createApiClient, expectOk } from '../lib/http'
+import {
+  createStoreHandler,
+  deleteKeyHandler,
+  deleteStoreHandler,
+  getValueHandler,
+  listKeysHandler,
+  listStoresHandler,
+  setValueHandler,
+  type CreateStoreResponse,
+  type GetValueResponse,
+  type KvStore,
+  type ListKeysHandlerResponse
+} from '@uwu/flora-api-client'
+import { authApiOptions, expectOk } from '../lib/http'
 import { logger } from '../lib/logger'
 import { promptIfMissing } from '../lib/prompts'
 import type { CliConfig } from '../lib/types'
@@ -12,10 +24,9 @@ export async function createStore(
   const guild = await promptIfMissing(guildArg, 'Guild ID')
   const name = await promptIfMissing(nameArg, 'Store name')
 
-  const client = createApiClient(config)
-  const response = await expectOk<components['schemas']['CreateStoreResponse']>(
-    client.POST('/kv/stores', {
-      headers: authHeaders(config),
+  const response = await expectOk<CreateStoreResponse>(
+    createStoreHandler({
+      ...authApiOptions(config),
       body: {
         guild_id: guild,
         store_name: name
@@ -29,11 +40,10 @@ export async function createStore(
 export async function listStores(config: CliConfig, guildArg?: string): Promise<void> {
   const guild = await promptIfMissing(guildArg, 'Guild ID')
 
-  const client = createApiClient(config)
-  const stores = await expectOk<components['schemas']['KvStore'][]>(
-    client.GET('/kv/stores', {
-      headers: authHeaders(config),
-      params: { query: { guild_id: guild } }
+  const stores = await expectOk<KvStore[]>(
+    listStoresHandler({
+      ...authApiOptions(config),
+      query: { guild_id: guild }
     })
   )
 
@@ -56,15 +66,12 @@ export async function deleteStore(
   const guild = await promptIfMissing(guildArg, 'Guild ID')
   const name = await promptIfMissing(nameArg, 'Store name')
 
-  const client = createApiClient(config)
   await expectOk(
-    client.DELETE('/kv/stores/{guild_id}/{store_name}', {
-      headers: authHeaders(config),
-      params: {
-        path: {
-          guild_id: guild,
-          store_name: name
-        }
+    deleteStoreHandler({
+      ...authApiOptions(config),
+      path: {
+        guild_id: guild,
+        store_name: name
       }
     })
   )
@@ -88,16 +95,13 @@ export async function setValue(
 
   const metadataValue = metadata ? JSON.parse(metadata) : undefined
 
-  const client = createApiClient(config)
   await expectOk(
-    client.PUT('/kv/{guild_id}/{store_name}/{key}', {
-      headers: authHeaders(config),
-      params: {
-        path: {
-          guild_id: guild,
-          store_name: store,
-          key
-        }
+    setValueHandler({
+      ...authApiOptions(config),
+      path: {
+        guild_id: guild,
+        store_name: store,
+        key
       },
       body: {
         value,
@@ -120,16 +124,13 @@ export async function getValue(
   const store = await promptIfMissing(storeArg, 'Store name')
   const key = await promptIfMissing(keyArg, 'Key')
 
-  const client = createApiClient(config)
-  const response = await expectOk<components['schemas']['GetValueResponse']>(
-    client.GET('/kv/{guild_id}/{store_name}/{key}', {
-      headers: authHeaders(config),
-      params: {
-        path: {
-          guild_id: guild,
-          store_name: store,
-          key
-        }
+  const response = await expectOk<GetValueResponse>(
+    getValueHandler({
+      ...authApiOptions(config),
+      path: {
+        guild_id: guild,
+        store_name: store,
+        key
       }
     })
   )
@@ -152,16 +153,13 @@ export async function deleteValue(
   const store = await promptIfMissing(storeArg, 'Store name')
   const key = await promptIfMissing(keyArg, 'Key')
 
-  const client = createApiClient(config)
   await expectOk(
-    client.DELETE('/kv/{guild_id}/{store_name}/{key}', {
-      headers: authHeaders(config),
-      params: {
-        path: {
-          guild_id: guild,
-          store_name: store,
-          key
-        }
+    deleteKeyHandler({
+      ...authApiOptions(config),
+      path: {
+        guild_id: guild,
+        store_name: store,
+        key
       }
     })
   )
@@ -180,20 +178,17 @@ export async function listKeys(
   const guild = await promptIfMissing(guildArg, 'Guild ID')
   const store = await promptIfMissing(storeArg, 'Store name')
 
-  const client = createApiClient(config)
-  const response = await expectOk(
-    client.GET('/kv/{guild_id}/{store_name}', {
-      headers: authHeaders(config),
-      params: {
-        path: {
-          guild_id: guild,
-          store_name: store
-        },
-        query: {
-          prefix,
-          limit,
-          cursor
-        }
+  const response = await expectOk<ListKeysHandlerResponse>(
+    listKeysHandler({
+      ...authApiOptions(config),
+      path: {
+        guild_id: guild,
+        store_name: store
+      },
+      query: {
+        prefix,
+        limit,
+        cursor
       }
     })
   )
@@ -210,8 +205,7 @@ export async function listKeys(
     logger.log(`  - ${key.name}${expires}${meta}`)
   }
 
-  const listComplete = 'list_complete' in response ? response.list_complete : response.listComplete
-  if (!listComplete && response.cursor) {
+  if (!response.listComplete && response.cursor) {
     logger.log(`More keys available. Use --cursor ${response.cursor}`)
   }
 }

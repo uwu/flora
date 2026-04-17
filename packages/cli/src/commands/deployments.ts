@@ -1,9 +1,16 @@
+import {
+  getDeploymentHandler,
+  healthCheck,
+  listDeploymentsHandler,
+  type DeploymentListItem,
+  type DeploymentResponse
+} from '@uwu/flora-api-client'
 import { colors } from 'consola/utils'
 
 import path from 'node:path'
 import { loadProjectConfig } from '../lib/config'
 import { collectFiles, toRelative } from '../lib/files'
-import { authHeaders, createApiClient, expectOk } from '../lib/http'
+import { authApiOptions, authHeaders, expectOk } from '../lib/http'
 import { logger } from '../lib/logger'
 import { promptIfMissing } from '../lib/prompts'
 import type { CliConfig } from '../lib/types'
@@ -187,11 +194,10 @@ function formatBytes(bytes: number): string {
 export async function get(config: CliConfig, guildArg: string | undefined): Promise<void> {
   const guild = await promptIfMissing(guildArg, 'Guild ID')
 
-  const client = createApiClient(config)
-  const deployment = await expectOk(
-    client.GET('/deployments/{guild_id}', {
-      params: { path: { guild_id: guild } },
-      headers: authHeaders(config)
+  const deployment = await expectOk<DeploymentResponse>(
+    getDeploymentHandler({
+      ...authApiOptions(config),
+      path: { guild_id: guild }
     })
   )
 
@@ -201,10 +207,9 @@ export async function get(config: CliConfig, guildArg: string | undefined): Prom
 }
 
 export async function list(config: CliConfig): Promise<void> {
-  const client = createApiClient(config)
-  const deployments = await expectOk(
-    client.GET('/deployments', {
-      headers: authHeaders(config)
+  const deployments = await expectOk<DeploymentListItem[]>(
+    listDeploymentsHandler({
+      ...authApiOptions(config)
     })
   )
 
@@ -219,10 +224,9 @@ export async function list(config: CliConfig): Promise<void> {
 }
 
 export async function health(config: CliConfig): Promise<void> {
-  const client = createApiClient(config)
   const response = await expectOk(
-    client.GET('/health/', {
-      headers: authHeaders(config),
+    healthCheck({
+      ...authApiOptions(config),
       parseAs: 'text'
     })
   )

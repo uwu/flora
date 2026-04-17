@@ -1,8 +1,4 @@
-use axum::{
-    Json, Router,
-    extract::DefaultBodyLimit,
-    routing::get,
-};
+use axum::{Json, Router, extract::DefaultBodyLimit, routing::get};
 use tower_http::compression::CompressionLayer;
 use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable as ScalarServable};
@@ -81,7 +77,12 @@ pub fn create_router() -> Router<AppState> {
     {
         use static_serve::{embed_asset, embed_assets};
 
-        embed_assets!("apps/frontend/dist", compress = true, cache_busted_paths = ["assets"], allow_unknown_extensions = true);
+        embed_assets!(
+            "apps/frontend/dist",
+            compress = true,
+            cache_busted_paths = ["assets"],
+            allow_unknown_extensions = true
+        );
         let index_handler = embed_asset!("apps/frontend/dist/index.html", compress = true);
 
         return router.merge(static_router()).fallback(index_handler);
