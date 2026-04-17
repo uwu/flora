@@ -5,7 +5,7 @@ description: Rust coding style guide. Apply automatically when writing or modify
 
 # Rust Coding Style
 
-Apply these rules when writing or modifying any Rust code.
+Apply these rules when writing or modifying any Rust code. See also `.cargo/clippy.toml` and `.cargo/rustfmt.toml`.
 
 ## Control Flow: Use `for` Loops, Not Iterator Chains
 
@@ -284,13 +284,3 @@ for entry in entries {
     map.insert(entry.key, entry.value);
 }
 ```
-
-## Code Navigation: Always Use rust-analyzer LSP
-
-When searching or navigating Rust code, always use the LSP tool with rust-analyzer operations:
-
-- `goToDefinition` - Find where a symbol is defined
-- `findReferences` - Find all references to a symbol
-- `hover` - Get type info and documentation
-- `documentSymbol` - Get all symbols in a file
-- `goToImplementation` - Find trait implementations
