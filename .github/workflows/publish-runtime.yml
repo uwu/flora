@@ -41,15 +41,26 @@ jobs:
 
       - name: Materialize submodule git dirs for Docker
         run: |
-          git submodule foreach --recursive '
-            if [ -f .git ]; then
-              gitdir=$(git rev-parse --git-dir)
-              rm .git
-              mkdir .git
-              cp -a "$gitdir"/. .git/
-              git --git-dir=.git config --unset core.worktree || true
+          mapfile -t submodule_entries < <(
+            git submodule foreach --recursive --quiet \
+              'printf "%s\t%s\n" "$displaypath" "$(git rev-parse --absolute-git-dir)"'
+          )
+
+          for submodule_entry in "${submodule_entries[@]}"; do
+            submodule_path="${submodule_entry%%$'\t'*}"
+            submodule_gitdir="${submodule_entry#*$'\t'}"
+            git_metadata_path="$submodule_path/.git"
+
+            if [ -f "$git_metadata_path" ]; then
+              rm "$git_metadata_path"
+              mkdir "$git_metadata_path"
+              cp -a "$submodule_gitdir"/. "$git_metadata_path/"
             fi
-          '
+
+            if [ -f "$git_metadata_path/config" ]; then
+              git config --file "$git_metadata_path/config" --unset core.worktree || true
+            fi
+          done
 
       - name: Build and push runtime image
         uses: docker/build-push-action@v6
