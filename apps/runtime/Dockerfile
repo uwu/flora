@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 # ---------------------------------------------------------------------------
 # Stage 1: Build the frontend
 # ---------------------------------------------------------------------------
@@ -66,9 +68,19 @@ COPY submodules/ submodules/
 COPY examples/basic/src/ examples/basic/src/
 COPY --from=frontend /app/apps/frontend/dist apps/frontend/dist
 
-# Fetch deps then build
-RUN cargo fetch --locked
-RUN cargo build --release --package flora
+# Fetch deps then build. Cache mounts keep Cargo registry/git state and compiled
+# dependencies warm across GitHub Actions runs.
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git/db,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git/checkouts,sharing=locked \
+    cargo fetch --locked
+
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git/db,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git/checkouts,sharing=locked \
+    --mount=type=cache,target=/tmp/flora-target,sharing=locked \
+    CARGO_TARGET_DIR=/tmp/flora-target cargo build --release --locked --package flora \
+    && cp /tmp/flora-target/release/flora /home/tasky/flora/flora
 
 # ---------------------------------------------------------------------------
 # Stage 3: Minimal runtime image
@@ -82,7 +94,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN groupadd --gid 1000 flora \
   && useradd --uid 1000 --gid flora --create-home flora
 
-COPY --from=builder /home/tasky/flora/target/release/flora /usr/local/bin/flora
+COPY --from=builder /home/tasky/flora/flora /usr/local/bin/flora
 
 USER flora
 WORKDIR /home/flora
