@@ -30,10 +30,7 @@ services:
     restart: unless-stopped
 
   runtime:
-    build:
-      context: .
-      dockerfile: apps/runtime/Dockerfile
-    image: flora-runtime:latest
+    image: ghcr.io/uwu/flora:0.1.0@sha256:52cd83ede99c825321ce8c2aa84a27023519a1d6951c388289bebd2fc2a52d8f
     ports:
       - '3000:3000'
     volumes:
