@@ -27,7 +27,6 @@ use serenity::http::Http;
 use std::{
     collections::{HashMap, hash_map::DefaultHasher},
     hash::{Hash, Hasher},
-    path::PathBuf,
     sync::{Arc, atomic::Ordering},
     time::Duration,
 };
@@ -109,13 +108,8 @@ impl BotRuntime {
     }
 
     /// Load the SDK bundle into all workers' default runtimes.
-    pub async fn load_sdk_bundle(&self, path: impl Into<PathBuf>) -> Result<(), AnyError> {
-        let path = path.into();
-        let futures: Vec<_> = self
-            .workers
-            .iter()
-            .map(|w| w.load_sdk_bundle(path.clone()))
-            .collect();
+    pub async fn load_sdk_bundle(&self) -> Result<(), AnyError> {
+        let futures: Vec<_> = self.workers.iter().map(Worker::load_sdk_bundle).collect();
         futures::future::try_join_all(futures).await?;
         Ok(())
     }

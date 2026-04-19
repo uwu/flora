@@ -1,14 +1,19 @@
-.git
+# Exclude root .git but keep submodule .git dirs (cargo needs them for file:// git deps)
+/.git
 node_modules
 **/node_modules
-dist
 **/dist
 build-workspace
 **/build-workspace
 buck-out
 **/buck-out
 target
+target-asan
 **/target
 .tmp
 **/.tmp
 .env
+testbotenv
+config.toml
+tmp
+trash

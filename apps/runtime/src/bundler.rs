@@ -19,7 +19,7 @@ use std::{
 };
 
 const RUNTIME_MODULE_RESOLVER: &str =
-    include_str!("../../../runtime-dist/runtime_module_resolution.js");
+    include_str!("../../../packages/runtime-dist/runtime_module_resolution.js");
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct DeploymentFile {
     pub path: String,

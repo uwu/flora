@@ -5,7 +5,9 @@ pub(super) const MAX_DROPPABLE_BACKLOG: usize = 2_000;
 pub(super) const DROPPABLE_EVENTS: [&str; 2] = ["messageCreate", "messageUpdate"];
 pub(super) const TERMINATION_GRACE_MS: u64 = 100;
 pub(super) const RUNTIME_PRELUDE: &str =
-    include_str!("../../../../runtime-dist/runtime_prelude.js");
+    include_str!("../../../../packages/runtime-dist/runtime_prelude.js");
+pub(super) const SDK_BUNDLE: &str =
+    include_str!("../../../../packages/runtime-dist/runtime_sdk_bundle.js");
 pub(super) const SDK_BUNDLE_PATH: &str = "runtime-dist/runtime_sdk_bundle.js";
 pub(super) const BOOTSTRAP_SPECIFIER: &str = "ext:flora_bootstrap/bootstrap.js";
 pub(super) const BOOTSTRAP_DEPS: &[&str] = &[
@@ -16,4 +18,4 @@ pub(super) const BOOTSTRAP_DEPS: &[&str] = &[
     "deno_telemetry",
 ];
 pub(super) const RUNTIME_BOOSTRAP: FastStaticString =
-    ascii_str_include!("../../../../runtime-dist/runtime_bootstrap.js");
+    ascii_str_include!("../../../../packages/runtime-dist/runtime_bootstrap.js");

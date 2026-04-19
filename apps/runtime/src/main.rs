@@ -140,10 +140,7 @@ async fn main() -> Result<()> {
     ));
     runtime.initialize().await.map_err(|err| eyre!(err))?;
 
-    if let Err(err) = runtime
-        .load_sdk_bundle("runtime-dist/runtime_sdk_bundle.js")
-        .await
-    {
+    if let Err(err) = runtime.load_sdk_bundle().await {
         error!("Failed to load SDK bundle: {:?}", err);
     }
 

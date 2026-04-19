@@ -1,7 +1,7 @@
 use super::{
-    constants::{RUNTIME_PRELUDE, SDK_BUNDLE_PATH},
+    constants::{RUNTIME_PRELUDE, SDK_BUNDLE, SDK_BUNDLE_PATH},
     js::{
-        extract_dispatch_fn_no_enter_impl, load_es_module_source, load_script_from_path,
+        extract_dispatch_fn_no_enter_impl, load_es_module_source, load_script_source,
         new_js_runtime, run_event_loop_with_timeout, terminate_runtime, with_timeout,
     },
     limits::RuntimeLimits,
@@ -31,7 +31,6 @@ use deno_core::{
 use serde_json::Value;
 use std::{
     collections::HashMap,
-    path::PathBuf,
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -142,9 +141,19 @@ fn worker_thread(
                             let _ = respond_to.send(result);
                         }
 
-                        WorkerCommand::LoadSdkBundle { path, respond_to } => {
+                        WorkerCommand::LoadSdkBundle { respond_to } => {
                             let result = match default_runtime.as_mut() {
-                                Some(rt) => load_script_from_path(rt, path, worker_id, &limits).await,
+                                Some(rt) => {
+                                    load_script_source(
+                                        rt.runtime_mut(),
+                                        SDK_BUNDLE_PATH.to_string().into(),
+                                        SDK_BUNDLE.to_string(),
+                                        SDK_BUNDLE_PATH.to_string(),
+                                        worker_id,
+                                        &limits,
+                                    )
+                                    .await
+                                }
                                 None => Err(AnyError::msg("default runtime not initialized")),
                             };
                             if let Err(ref err) = result {
@@ -538,9 +547,11 @@ pub(super) async fn deploy_guild_to_worker(
         }
 
         info!(target: "flora:runtime", worker_id, guild_id, path = SDK_BUNDLE_PATH, "Loading SDK bundle");
-        load_script_from_path(
-            &mut runtime,
-            PathBuf::from(SDK_BUNDLE_PATH),
+        load_script_source(
+            runtime.runtime_mut(),
+            SDK_BUNDLE_PATH.to_string().into(),
+            SDK_BUNDLE.to_string(),
+            SDK_BUNDLE_PATH.to_string(),
             worker_id,
             limits,
         )

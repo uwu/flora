@@ -1,4 +1,5 @@
 use crate::{
+    bundler::{BundleLimits, DeploymentFile, SourceMapMode, bundle_files_with_sourcemap_mode},
     runtime::BotRuntime,
     services::deployments::{
         CreateDeploymentRevisionInput, Deployment, DeploymentActorType, DeploymentRevisionStatus,
@@ -12,7 +13,7 @@ use serenity::all::{
     GuildId, Interaction, Message, MessageUpdateEvent, ModalInteraction, Reaction, Ready,
     async_trait,
 };
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use t0x::T0x;
 use tracing::{error, info};
 
@@ -827,12 +828,14 @@ impl DiscordHandler {
             return Ok(());
         }
 
+        let assets = default_guild_assets()?;
+
         let deployment = Deployment {
             guild_id: guild_str.clone(),
             entry: DEFAULT_GUILD_ENTRY.to_string(),
             files: None,
-            source_map: Some(default_guild_source_map()),
-            bundle: DEFAULT_GUILD_BUNDLE.to_string(),
+            source_map: Some(assets.source_map.clone()),
+            bundle: assets.bundle.clone(),
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         };
@@ -906,13 +909,58 @@ impl From<&Ready> for EventReady {
 
 // Ship a minimal starter bot to new guilds without deployments.
 const DEFAULT_GUILD_ENTRY: &str = "src/main.ts";
-const DEFAULT_GUILD_BUNDLE: &str = include_str!("../../../runtime-dist/default_guild_bundle.js");
-const DEFAULT_GUILD_SOURCE_MAP_CONTENTS: &str =
-    include_str!("../../../runtime-dist/default_guild_bundle.js.map");
+const DEFAULT_GUILD_SOURCE_FILES: [(&str, &str); 2] = [
+    (
+        "src/main.ts",
+        include_str!("../../../examples/basic/src/main.ts"),
+    ),
+    (
+        "src/utils/reply.ts",
+        include_str!("../../../examples/basic/src/utils/reply.ts"),
+    ),
+];
 
-fn default_guild_source_map() -> DeploymentSourceMapFile {
-    DeploymentSourceMapFile {
-        path: "default_guild_bundle.js.map".to_string(),
-        contents: DEFAULT_GUILD_SOURCE_MAP_CONTENTS.to_string(),
+static DEFAULT_GUILD_ASSETS: OnceLock<Result<DefaultGuildAssets, String>> = OnceLock::new();
+
+struct DefaultGuildAssets {
+    bundle: String,
+    source_map: DeploymentSourceMapFile,
+}
+
+fn default_guild_assets() -> Result<&'static DefaultGuildAssets, Report> {
+    let assets = DEFAULT_GUILD_ASSETS.get_or_init(|| {
+        let mut files = Vec::with_capacity(DEFAULT_GUILD_SOURCE_FILES.len());
+        for (path, contents) in DEFAULT_GUILD_SOURCE_FILES {
+            files.push(DeploymentFile {
+                path: path.to_string(),
+                contents: contents.to_string(),
+            });
+        }
+
+        let bundled = bundle_files_with_sourcemap_mode(
+            "default_guild_bundle.js",
+            DEFAULT_GUILD_ENTRY,
+            &files,
+            BundleLimits::default(),
+            SourceMapMode::External,
+        )
+        .map_err(|err| err.to_string())?;
+
+        let Some(source_map) = bundled.source_map_file else {
+            return Err("default guild bundle did not produce a source map".to_string());
+        };
+
+        Ok(DefaultGuildAssets {
+            bundle: bundled.code,
+            source_map: DeploymentSourceMapFile {
+                path: source_map.path,
+                contents: source_map.contents,
+            },
+        })
+    });
+
+    match assets {
+        Ok(assets) => Ok(assets),
+        Err(err) => Err(eyre!(err.clone())),
     }
 }

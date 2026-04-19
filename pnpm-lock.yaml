@@ -12,9 +12,6 @@ catalogs:
     '@hey-api/openapi-ts':
       specifier: 0.96.0
       version: 0.96.0
-    '@hey-api/vite-plugin':
-      specifier: 0.3.0
-      version: 0.3.0
     '@rolldown/plugin-babel':
       specifier: 0.2.1
       version: 0.2.1
@@ -390,9 +387,6 @@ importers:
       '@hey-api/openapi-ts':
         specifier: 'catalog:'
         version: 0.96.0(typescript@5.9.3)
-      '@hey-api/vite-plugin':
-        specifier: 'catalog:'
-        version: 0.3.0(@hey-api/openapi-ts@0.96.0(typescript@5.9.3))
       '@typescript/native-preview':
         specifier: 'catalog:'
         version: 7.0.0-dev.20260313.1
@@ -1336,11 +1330,6 @@ packages:
 
   '@hey-api/types@0.1.4':
     resolution: {integrity: sha512-thWfawrDIP7wSI9ioT13I5soaaqB5vAPIiZmgD8PbeEVKNrkonc0N/Sjj97ezl7oQgusZmaNphGdMKipPO6IBg==}
-
-  '@hey-api/vite-plugin@0.3.0':
-    resolution: {integrity: sha512-mJr7jGq80/172AZCHfvmj80MKFXURikOtCot1z6xsLrfmuzyD4zhQLQozy7Mv00MPkE1FIndphxk3GlsHpWmUQ==}
-    peerDependencies:
-      '@hey-api/openapi-ts': <2
 
   '@hono/node-server@1.19.11':
     resolution: {integrity: sha512-dr8/3zEaB+p0D2n/IUrlPF1HZm586qgJNXK1a9fhg/PzdtkK7Ksd5l312tJX2yBuALqDYBlG20QEbayqPyxn+g==}
@@ -6997,10 +6986,6 @@ snapshots:
       '@hey-api/types': 0.1.4
 
   '@hey-api/types@0.1.4': {}
-
-  '@hey-api/vite-plugin@0.3.0(@hey-api/openapi-ts@0.96.0(typescript@5.9.3))':
-    dependencies:
-      '@hey-api/openapi-ts': 0.96.0(typescript@5.9.3)
 
   '@hono/node-server@1.19.11(hono@4.12.7)':
     dependencies:

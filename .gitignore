@@ -15,4 +15,6 @@ config.toml
 /third-party/rust/.cargo
 /third-party/rust/vendor
 **/pnpm-store
-**/build-workspace
+**/build-workspaceconfig.docker.toml
+/.tmp
+/config.docker.toml

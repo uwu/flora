@@ -10,7 +10,6 @@ use deno_core::{
 };
 use serde_json::Value;
 use std::{
-    path::PathBuf,
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -27,7 +26,6 @@ pub(super) enum WorkerCommand {
     },
     /// Load the SDK bundle into the default runtime.
     LoadSdkBundle {
-        path: PathBuf,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
     /// Deploy a guild's script (creates/replaces guild isolate).
@@ -106,12 +104,9 @@ impl Worker {
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 
-    pub(super) async fn load_sdk_bundle(&self, path: PathBuf) -> Result<(), AnyError> {
+    pub(super) async fn load_sdk_bundle(&self) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
-        self.send_cmd(WorkerCommand::LoadSdkBundle {
-            path,
-            respond_to: tx,
-        })?;
+        self.send_cmd(WorkerCommand::LoadSdkBundle { respond_to: tx })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 

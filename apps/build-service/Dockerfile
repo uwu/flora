@@ -1,24 +1,24 @@
-FROM node:20-slim AS base
+FROM node:22-slim AS base
 
 WORKDIR /app
 ENV NODE_ENV=production
+RUN corepack enable
 
 FROM base AS build
-RUN corepack enable
-COPY pnpm-workspace.yaml ./
-COPY tsconfig.json /tsconfig.json
-COPY apps/build-service/package.json apps/build-service/pnpm-lock.yaml ./
-COPY apps/build-service/tsconfig.json apps/build-service/tsdown.config.ts ./
-RUN pnpm install --frozen-lockfile
-COPY apps/build-service/src ./src
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/build-service/package.json apps/build-service/
+COPY apps/build-service/tsconfig.json apps/build-service/vite.config.ts apps/build-service/
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter @flora-internal/build-service...
+COPY apps/build-service/src apps/build-service/src
+WORKDIR /app/apps/build-service
 RUN pnpm run build
 
 FROM base AS runtime
-RUN corepack enable
-COPY pnpm-workspace.yaml ./
-COPY apps/build-service/package.json apps/build-service/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
-COPY --from=build /app/dist ./dist
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/build-service/package.json apps/build-service/
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts --filter @flora-internal/build-service...
+COPY --from=build /app/apps/build-service/dist /app/apps/build-service/dist
+WORKDIR /app/apps/build-service
 RUN mkdir -p /app/build-workspace \
   && chown -R node:node /app
 USER node

@@ -20,39 +20,11 @@ use deno_core::{
 use deno_permissions::{
     Permissions, PermissionsContainer, PermissionsOptions, RuntimePermissionDescriptorParser,
 };
-use std::{borrow::Cow, future::Future, path::PathBuf, rc::Rc, sync::Arc, time::Duration};
+use std::{borrow::Cow, future::Future, rc::Rc, sync::Arc, time::Duration};
 use sys_traits::impls::RealSys;
 use tokio::time::timeout;
 use tracing::{error, info};
 use url::Url;
-
-pub(super) async fn load_script_from_path(
-    js_state: &mut JsRuntimeState,
-    path: PathBuf,
-    worker_id: usize,
-    limits: &RuntimeLimits,
-) -> Result<(), AnyError> {
-    let metadata = tokio::fs::metadata(&path).await?;
-    let size = metadata.len() as usize;
-    if size > limits.max_script_bytes {
-        return Err(AnyError::msg(format!(
-            "script exceeds size limit (max {} bytes)",
-            limits.max_script_bytes
-        )));
-    }
-    let source = tokio::fs::read_to_string(&path).await?;
-    let name = path.to_string_lossy().to_string();
-
-    load_script_source(
-        js_state.runtime_mut(),
-        ModuleName::from(name.clone()),
-        source,
-        name,
-        worker_id,
-        limits,
-    )
-    .await
-}
 
 pub(super) async fn load_script_source(
     js_runtime: &mut JsRuntime,

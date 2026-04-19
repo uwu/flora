@@ -1,4 +1,54 @@
 services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: flora
+      POSTGRES_USER: flora
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flora}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - flora
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U flora']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  valkey:
+    image: valkey/valkey:latest
+    volumes:
+      - valkey_data:/data
+    networks:
+      - flora
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  runtime:
+    build:
+      context: .
+      dockerfile: apps/runtime/Dockerfile
+    image: flora-runtime:latest
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./config.docker.toml:/home/flora/config.toml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      build-service:
+        condition: service_healthy
+    networks:
+      - flora
+    restart: unless-stopped
+
   build-service:
     build:
       context: .
@@ -30,6 +80,8 @@ services:
     restart: unless-stopped
 
 volumes:
+  postgres_data:
+  valkey_data:
   build_service_workspace:
 
 networks:
