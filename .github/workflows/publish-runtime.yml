@@ -39,6 +39,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Materialize submodule git dirs for Docker
+        run: |
+          git submodule foreach --recursive '
+            if [ -f .git ]; then
+              gitdir=$(git rev-parse --git-dir)
+              rm .git
+              mkdir .git
+              cp -a "$gitdir"/. .git/
+              git --git-dir=.git config --unset core.worktree || true
+            fi
+          '
+
       - name: Build and push runtime image
         uses: docker/build-push-action@v6
         with:
