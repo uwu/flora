@@ -3,7 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsgo --noEmit",
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
