@@ -47,10 +47,7 @@ services:
     restart: unless-stopped
 
   build-service:
-    build:
-      context: .
-      dockerfile: apps/build-service/Dockerfile
-    image: flora-build-service:latest
+    image: ghcr.io/uwu/flora-build-service:0.1.0@sha256:701a75c647f0cb8beacc6de9de9df30b8db77dad4cb2a006e70f650153d5c5ed
     ports:
       - '3001:3001'
     environment:
