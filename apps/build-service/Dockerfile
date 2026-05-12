@@ -21,6 +21,5 @@ COPY --from=build /app/apps/build-service/dist /app/apps/build-service/dist
 WORKDIR /app/apps/build-service
 RUN mkdir -p /app/build-workspace \
   && chown -R node:node /app
-USER node
 EXPOSE 3001
 CMD ["node", "dist/index.mjs"]
