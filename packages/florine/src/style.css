@@ -35,6 +35,34 @@
   height: 100%;
 }
 
+.florine__dock {
+  --dv-paneview-active-outline-color: #3a3a3a;
+  --dv-drag-over-background-color: rgba(55, 55, 61, 0.55);
+  --dv-drag-over-border-color: #3a3a3a;
+  --dv-tabs-container-scrollbar-color: #6a6a6a;
+  --dv-icon-hover-background-color: rgba(255, 255, 255, 0.08);
+  --dv-floating-box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --dv-group-view-background-color: #1e1e1e;
+  --dv-tabs-and-actions-container-background-color: #181818;
+  --dv-activegroup-visiblepanel-tab-background-color: #1e1e1e;
+  --dv-activegroup-hiddenpanel-tab-background-color: #252526;
+  --dv-inactivegroup-visiblepanel-tab-background-color: #1e1e1e;
+  --dv-inactivegroup-hiddenpanel-tab-background-color: #252526;
+  --dv-tab-divider-color: #181818;
+  --dv-activegroup-visiblepanel-tab-color: #f0f0f0;
+  --dv-activegroup-hiddenpanel-tab-color: #a8a8a8;
+  --dv-inactivegroup-visiblepanel-tab-color: #a8a8a8;
+  --dv-inactivegroup-hiddenpanel-tab-color: #7a7a7a;
+  --dv-separator-border: #2d2d2d;
+  --dv-paneview-header-border-color: #2d2d2d;
+  --dv-scrollbar-background-color: rgba(255, 255, 255, 0.18);
+}
+
+.florine__dock .dv-groupview,
+.florine__dock .dv-grid-view {
+  background-color: #1e1e1e;
+}
+
 .florine__tree {
   --trees-fg-override: #cccccc;
   --trees-bg-override: #181818;
