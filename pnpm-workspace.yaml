@@ -2,6 +2,7 @@ packages:
   - 'examples/*'
   - 'apps/*'
   - 'packages/*'
+  - 'packages/florine/example'
 
 catalog:
   '@babel/core': 7.29.0

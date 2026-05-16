@@ -1,0 +1,65 @@
+{
+  "name": "@flora/florine",
+  "version": "0.0.0",
+  "description": "A lightweight VS Code-inspired React editor shell.",
+  "homepage": "https://github.com/uwu/flora#readme",
+  "bugs": {
+    "url": "https://github.com/uwu/flora/issues"
+  },
+  "license": "MIT",
+  "author": "uwu",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uwu/flora.git",
+    "directory": "packages/florine"
+  },
+  "files": [
+    "dist",
+    "src/style.css"
+  ],
+  "type": "module",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./style.css": "./src/style.css",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "build:example": "vp run build && vp run --filter @flora/florine-example build",
+    "check:example": "vp run --filter @flora/florine-example check",
+    "dev": "vp pack --watch",
+    "dev:example": "vp run --filter @flora/florine-example dev",
+    "preview:example": "vp run --filter @flora/florine-example preview",
+    "test": "vp test",
+    "check": "vp check",
+    "prepublishOnly": "vp run build"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@pierre/trees": "^1.0.0-beta.3",
+    "dockview": "^4.10.0",
+    "monaco-editor": "^0.55.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@typescript/native-preview": "7.0.0-dev.20260509.2",
+    "bumpp": "^11.1.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "typescript": "^6.0.3",
+    "vite-plus": "^0.1.20"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1 || ^19.0.0",
+    "react-dom": "^18.3.1 || ^19.0.0"
+  }
+}
