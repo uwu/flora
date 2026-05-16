@@ -28,7 +28,7 @@ pub struct DeploymentRevisionQuery {
     path = "/{guild_id}/revisions/{revision_id}",
     params(
         ("guild_id" = String, Path, description = "Guild ID"),
-        ("revision_id" = String, Path, description = "Revision id"),
+        ("revision_id" = String, Path, description = "Revision ID"),
         ("include_bundle" = Option<bool>, Query, description = "Include bundled output in response")
     ),
     tag = "Deployments",
@@ -50,7 +50,7 @@ pub async fn get_deployment_revision_handler(
     ensure_guild_admin(&state, &identity, &guild_id).await?;
 
     let revision_id =
-        Uuid::parse_str(&revision_id).map_err(|_| ApiError::bad_request("invalid revision id"))?;
+        Uuid::parse_str(&revision_id).map_err(|_| ApiError::bad_request("Invalid revision ID"))?;
 
     let revision = state
         .deployments
@@ -62,7 +62,7 @@ pub async fn get_deployment_revision_handler(
         })?;
 
     let Some(revision) = revision else {
-        return Err(ApiError::not_found("deployment revision not found"));
+        return Err(ApiError::not_found("Deployment revision not found"));
     };
 
     Ok(ApiJson(Json(DeploymentRevisionResponse::from_revision(

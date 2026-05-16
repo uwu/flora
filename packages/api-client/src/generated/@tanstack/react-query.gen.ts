@@ -518,7 +518,7 @@ export const healthCheckOptions = (options?: Options<HealthCheckData>) =>
 /**
  * Export guild stores
  *
- * Creates a backup of all stores for a guild and returns a backup id.
+ * Creates a backup of all stores for a guild and returns a backup ID.
  */
 export const exportGuildHandlerMutation = (
   options?: Partial<Options<ExportGuildHandlerData>>

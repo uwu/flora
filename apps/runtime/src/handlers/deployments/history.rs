@@ -40,7 +40,7 @@ fn default_history_limit() -> i64 {
         ("guild_id" = String, Path, description = "Guild ID"),
         ("limit" = Option<i64>, Query, description = "Page size, max 100"),
         ("cursor_deployed_at" = Option<String>, Query, description = "RFC3339 deployed_at cursor"),
-        ("cursor_id" = Option<String>, Query, description = "Revision id cursor"),
+        ("cursor_id" = Option<String>, Query, description = "Revision ID cursor"),
         ("include_bundle" = Option<bool>, Query, description = "Include bundled output in response")
     ),
     tag = "Deployments",
@@ -91,14 +91,14 @@ fn parse_cursor(
     match (cursor_deployed_at, cursor_id) {
         (None, None) => Ok(None),
         (Some(_), None) | (None, Some(_)) => Err(ApiError::bad_request(
-            "cursor_deployed_at and cursor_id must be provided together",
+            "`cursor_deployed_at` and `cursor_id` must be provided together",
         )),
         (Some(cursor_deployed_at), Some(cursor_id)) => {
             let deployed_at = DateTime::parse_from_rfc3339(&cursor_deployed_at)
-                .map_err(|_| ApiError::bad_request("cursor_deployed_at must be RFC3339"))?
+                .map_err(|_| ApiError::bad_request("`cursor_deployed_at` must be RFC3339"))?
                 .with_timezone(&Utc);
             let id = Uuid::parse_str(&cursor_id)
-                .map_err(|_| ApiError::bad_request("cursor_id must be a UUID"))?;
+                .map_err(|_| ApiError::bad_request("`cursor_id` must be a UUID"))?;
             Ok(Some(DeploymentRevisionCursor { deployed_at, id }))
         }
     }

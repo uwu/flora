@@ -290,7 +290,7 @@ export const healthCheck = <ThrowOnError extends boolean = false>(
 /**
  * Export guild stores
  *
- * Creates a backup of all stores for a guild and returns a backup id.
+ * Creates a backup of all stores for a guild and returns a backup ID.
  */
 export const exportGuildHandler = <ThrowOnError extends boolean = false>(
   options: Options<ExportGuildHandlerData, ThrowOnError>

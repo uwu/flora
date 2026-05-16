@@ -139,10 +139,10 @@ pub async fn create_build_handler(
         }
     }
 
-    let guild_id = guild_id.ok_or_else(|| ApiError::bad_request("guild_id is required"))?;
-    let entry = entry.ok_or_else(|| ApiError::bad_request("entry is required"))?;
+    let guild_id = guild_id.ok_or_else(|| ApiError::bad_request("`guild_id` is required"))?;
+    let entry = entry.ok_or_else(|| ApiError::bad_request("`entry` is required"))?;
     let project_zip =
-        project_zip.ok_or_else(|| ApiError::bad_request("project_zip is required"))?;
+        project_zip.ok_or_else(|| ApiError::bad_request("`project_zip` is required"))?;
 
     ensure_guild_admin(&state, &identity, &guild_id).await?;
 

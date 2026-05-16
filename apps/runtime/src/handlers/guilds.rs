@@ -50,7 +50,7 @@ pub async fn list_guilds_handler(
     let identity = require_identity(&state, &headers).await?;
     let access_token = identity
         .access_token
-        .ok_or_else(|| ApiError::forbidden("user session required for guild listing"))?;
+        .ok_or_else(|| ApiError::forbidden("User session required for guild listing"))?;
     let guilds = state
         .auth
         .fetch_user_guilds(&access_token)

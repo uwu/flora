@@ -20,19 +20,19 @@ pub struct ErrorResponse {
 #[derive(Debug, thiserror::Error)]
 pub enum ApiError {
     /// The requested resource does not exist.
-    #[error("resource not found: {message}")]
+    #[error("Resource not found: {message}")]
     NotFound { message: String },
     /// Authentication is required or invalid.
-    #[error("unauthorized: {message}")]
+    #[error("Unauthorized: {message}")]
     Unauthorized { message: String },
     /// The request was understood but refused.
-    #[error("forbidden: {message}")]
+    #[error("Forbidden: {message}")]
     Forbidden { message: String },
     /// Client sent invalid input.
-    #[error("bad request: {message}")]
+    #[error("Bad request: {message}")]
     BadRequest { message: String },
     /// Any unrecoverable server error.
-    #[error("internal server error")]
+    #[error("Internal server error")]
     Internal { message: String },
 }
 

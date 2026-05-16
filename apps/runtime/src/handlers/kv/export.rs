@@ -36,7 +36,7 @@ pub struct ExportGuildResponse {
         ("guild_id" = String, Path, description = "Guild ID"),
     ),
     summary = "Export guild stores",
-    description = "Creates a backup of all stores for a guild and returns a backup id.",
+    description = "Creates a backup of all stores for a guild and returns a backup ID.",
     responses(
         (status = 200, description = "Export created successfully", body = ExportGuildResponse),
         (status = 401, description = "Not authenticated"),

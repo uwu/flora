@@ -1083,7 +1083,7 @@ export type ListDeploymentHistoryHandlerData = {
      */
     cursor_deployed_at?: string
     /**
-     * Revision id cursor
+     * Revision ID cursor
      */
     cursor_id?: string
     /**
@@ -1181,7 +1181,7 @@ export type GetDeploymentRevisionHandlerData = {
      */
     guild_id: string
     /**
-     * Revision id
+     * Revision ID
      */
     revision_id: string
   }
@@ -1281,7 +1281,7 @@ export type RollbackDeploymentHandlerData = {
      */
     guild_id: string
     /**
-     * Successful revision id to rollback to
+     * Successful revision ID to rollback to
      */
     revision_id: string
   }

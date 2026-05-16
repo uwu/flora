@@ -27,7 +27,7 @@ use crate::{
     path = "/{guild_id}/rollback/{revision_id}",
     params(
         ("guild_id" = String, Path, description = "Guild ID"),
-        ("revision_id" = String, Path, description = "Successful revision id to rollback to")
+        ("revision_id" = String, Path, description = "Successful revision ID to rollback to")
     ),
     tag = "Deployments",
     summary = "Rollback deployment",
@@ -47,7 +47,7 @@ pub async fn rollback_deployment_handler(
     ensure_guild_admin(&state, &identity, &guild_id).await?;
 
     let revision_id =
-        Uuid::parse_str(&revision_id).map_err(|_| ApiError::bad_request("invalid revision id"))?;
+        Uuid::parse_str(&revision_id).map_err(|_| ApiError::bad_request("Invalid revision ID"))?;
 
     let revision = state
         .deployments
@@ -59,12 +59,12 @@ pub async fn rollback_deployment_handler(
         })?;
 
     let Some(revision) = revision else {
-        return Err(ApiError::not_found("deployment revision not found"));
+        return Err(ApiError::not_found("Deployment revision not found"));
     };
 
     if !matches!(revision.status, DeploymentRevisionStatus::Success) {
         return Err(ApiError::bad_request(
-            "rollback target must be a successful revision",
+            "Rollback target must be a successful revision",
         ));
     }
 

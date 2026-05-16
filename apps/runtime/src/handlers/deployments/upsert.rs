@@ -176,10 +176,10 @@ pub fn parse_deploy_source(headers: &HeaderMap) -> Result<DeploymentSource, ApiE
 
     let source = source
         .to_str()
-        .map_err(|_| ApiError::bad_request("x-flora-deploy-source must be ascii"))?;
+        .map_err(|_| ApiError::bad_request("`x-flora-deploy-source` must be ASCII"))?;
     DeploymentSource::from_str(source).map_err(|_| {
         ApiError::bad_request(format!(
-            "x-flora-deploy-source must be one of {}",
+            "`x-flora-deploy-source` must be one of {}",
             list_deploy_source_values()
         ))
     })
@@ -238,45 +238,51 @@ async fn resolve_token_username(state: &AppState, guild_id: &str, user_id: &str)
 
 fn validate_request(request: &DeploymentRequest) -> Result<(), ApiError> {
     if request.entry.trim().is_empty() {
-        return Err(ApiError::bad_request("entry must not be empty"));
+        return Err(ApiError::bad_request("`entry` must not be empty"));
     }
 
     match (&request.files, &request.bundle) {
         (Some(files), _) if files.is_empty() => {
-            return Err(ApiError::bad_request("files must not be empty"));
+            return Err(ApiError::bad_request("`files` must not be empty"));
         }
         (Some(files), _) => {
             for file in files {
                 if file.path.trim().is_empty() {
-                    return Err(ApiError::bad_request("files[].path must not be empty"));
+                    return Err(ApiError::bad_request("`files[].path` must not be empty"));
                 }
                 if file.contents.trim().is_empty() {
-                    return Err(ApiError::bad_request("files[].contents must not be empty"));
+                    return Err(ApiError::bad_request(
+                        "`files[].contents` must not be empty",
+                    ));
                 }
             }
         }
         (None, Some(bundle)) if bundle.trim().is_empty() => {
-            return Err(ApiError::bad_request("bundle must not be empty"));
+            return Err(ApiError::bad_request("`bundle` must not be empty"));
         }
         (None, None) => {
-            return Err(ApiError::bad_request("either files or bundle is required"));
+            return Err(ApiError::bad_request(
+                "Either `files` or `bundle` is required",
+            ));
         }
         _ => {}
     }
 
     if let Some(source_map) = &request.source_map {
         if source_map.path.trim().is_empty() {
-            return Err(ApiError::bad_request("source_map.path must not be empty"));
+            return Err(ApiError::bad_request("`source_map.path` must not be empty"));
         }
 
         if source_map.contents.trim().is_empty() {
             return Err(ApiError::bad_request(
-                "source_map.contents must not be empty",
+                "`source_map.contents` must not be empty",
             ));
         }
 
         if !source_map.path.ends_with(".map") {
-            return Err(ApiError::bad_request("source_map.path must end with .map"));
+            return Err(ApiError::bad_request(
+                "`source_map.path` must end with `.map`",
+            ));
         }
     }
 

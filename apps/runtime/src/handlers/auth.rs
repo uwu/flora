@@ -114,10 +114,10 @@ pub async fn callback_handler(
     Query(query): Query<CallbackQuery>,
 ) -> Result<ApiRedirectWithCookies, ApiError> {
     let Some(state_cookie) = cookie_value(&headers, STATE_COOKIE) else {
-        return Err(ApiError::unauthorized("missing oauth state"));
+        return Err(ApiError::unauthorized("Missing OAuth state"));
     };
     if state_cookie != query.state {
-        return Err(ApiError::unauthorized("oauth state mismatch"));
+        return Err(ApiError::unauthorized("OAuth state mismatch"));
     }
 
     if !state
@@ -126,7 +126,7 @@ pub async fn callback_handler(
         .await
         .map_err(ApiError::internal)?
     {
-        return Err(ApiError::unauthorized("expired oauth state"));
+        return Err(ApiError::unauthorized("Expired OAuth state"));
     }
 
     let tokens = state
@@ -197,13 +197,13 @@ pub async fn me_handler(
 /// Load and validate the session from cookies.
 pub async fn require_session(auth: &AuthService, headers: &HeaderMap) -> Result<Session, ApiError> {
     let Some(cookie) = cookie_value(headers, SESSION_COOKIE) else {
-        return Err(ApiError::unauthorized("login required"));
+        return Err(ApiError::unauthorized("Login required"));
     };
 
     let token = cookie.as_str();
     let session = auth.get_session(token).await.map_err(ApiError::internal)?;
 
-    session.ok_or_else(|| ApiError::unauthorized("session expired"))
+    session.ok_or_else(|| ApiError::unauthorized("Session expired"))
 }
 
 pub struct IdentityContext {
@@ -242,7 +242,7 @@ pub async fn require_identity(
         });
     }
 
-    Err(ApiError::unauthorized("login required"))
+    Err(ApiError::unauthorized("Login required"))
 }
 
 /// Ensure the user is an admin or has manage-guild permissions in the target guild.
@@ -258,7 +258,7 @@ pub async fn ensure_guild_admin(
             .await
             .map_err(ApiError::internal)?;
         let Some(guild) = guilds.into_iter().find(|g| g.id == guild_id) else {
-            return Err(ApiError::forbidden("user is not in guild"));
+            return Err(ApiError::forbidden("User is not in guild"));
         };
 
         let perms = guild
@@ -269,17 +269,17 @@ pub async fn ensure_guild_admin(
             .unwrap_or_default();
 
         if !has_admin_permissions(perms) {
-            return Err(ApiError::forbidden("admin permission required"));
+            return Err(ApiError::forbidden("Admin permission required"));
         }
 
         let guild_id_num: u64 = guild_id
             .parse()
-            .map_err(|_| ApiError::bad_request("invalid guild id"))?;
+            .map_err(|_| ApiError::bad_request("Invalid guild ID"))?;
         state
             .http
             .get_guild(guild_id_num.into())
             .await
-            .map_err(|_| ApiError::forbidden("bot not in guild"))?;
+            .map_err(|_| ApiError::forbidden("Bot not in guild"))?;
 
         return Ok(());
     }
@@ -288,16 +288,16 @@ pub async fn ensure_guild_admin(
         // bot lookup
         let guild_id_num: u64 = guild_id
             .parse()
-            .map_err(|_| ApiError::bad_request("invalid guild id"))?;
+            .map_err(|_| ApiError::bad_request("Invalid guild ID"))?;
         let user_id_num: u64 = identity
             .user_id
             .parse()
-            .map_err(|_| ApiError::bad_request("invalid user id"))?;
+            .map_err(|_| ApiError::bad_request("Invalid user ID"))?;
         let member = state
             .http
             .get_member(guild_id_num.into(), user_id_num.into())
             .await
-            .map_err(|err| ApiError::forbidden(format!("member fetch failed: {err}")))?;
+            .map_err(|err| ApiError::forbidden(format!("Member fetch failed: {err}")))?;
 
         let permissions = if let Some(perms) = member.permissions {
             perms.bits()
@@ -306,7 +306,7 @@ pub async fn ensure_guild_admin(
                 .http
                 .get_guild(guild_id_num.into())
                 .await
-                .map_err(|err| ApiError::forbidden(format!("guild fetch failed: {err}")))?;
+                .map_err(|err| ApiError::forbidden(format!("Guild fetch failed: {err}")))?;
             guild.member_permissions(&member).bits()
         };
 
@@ -316,7 +316,7 @@ pub async fn ensure_guild_admin(
     };
 
     let Some(member) = member else {
-        return Err(ApiError::forbidden("bot not in guild or user not a member"));
+        return Err(ApiError::forbidden("Bot not in guild or user not a member"));
     };
 
     let perms = member
@@ -326,7 +326,7 @@ pub async fn ensure_guild_admin(
     if has_admin_permissions(perms) {
         Ok(())
     } else {
-        Err(ApiError::forbidden("admin permission required"))
+        Err(ApiError::forbidden("Admin permission required"))
     }
 }
 

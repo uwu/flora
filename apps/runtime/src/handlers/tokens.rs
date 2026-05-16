@@ -150,6 +150,6 @@ pub async fn delete_token_handler(
     if deleted {
         Ok(ApiJson(Json(())))
     } else {
-        Err(ApiError::not_found("token not found"))
+        Err(ApiError::not_found("Token not found"))
     }
 }
