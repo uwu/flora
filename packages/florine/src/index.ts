@@ -1,9 +1,5 @@
-export {
-  FileExplorer,
-  Florine,
-  FlorineEditor,
-  type FileExplorerProps,
-  type FlorineFile,
-  type FlorineFileMap,
-  type FlorineProps
-} from './Florine.tsx'
+export { FileExplorer, type FileExplorerProps } from './components/FileExplorer.tsx'
+export { Florine, type FlorineProps } from './components/Florine.tsx'
+export { FlorineEditor } from './components/FlorineEditor.tsx'
+export { type FlorineEditorProps } from './components/FlorineEditor.tsx'
+export { type FlorineFile, type FlorineFileMap } from './core/files.ts'
