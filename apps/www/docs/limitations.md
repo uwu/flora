@@ -55,11 +55,12 @@ If your use case requires:
 - **Catch-up runs** after downtime
 - **Non-idempotent side effects** (webhooks, one-time notifications)
 
-Consider implementing your own persistence layer using the [KV store](/docs/sdk#kv-store) to track execution state:
+Consider implementing your own persistence layer using the [KV store](/docs/sdk/kv-storage) to track execution state:
 
 ```ts
 cron('critical-job', '0 * * * *', async () => {
-  const lastRun = await kv.get<string>('critical-job:last-run')
+  const store = kv.store('critical-jobs')
+  const lastRun = await store.get('critical-job:last-run')
   const now = new Date().toISOString()
 
   // Check if we already ran this hour
@@ -68,7 +69,7 @@ cron('critical-job', '0 * * * *', async () => {
   }
 
   await performCriticalWorkIdk()
-  await kv.set('critical-job:last-run', now)
+  await store.set('critical-job:last-run', now)
 })
 ```
 

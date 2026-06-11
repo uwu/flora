@@ -7,7 +7,7 @@ dist
 /data
 bindings
 config.toml
-**/.vitepress/cache/deps
+**/.vitepress/cache
 **/.vitepress/dist
 **/.wrangler
 /target-asan

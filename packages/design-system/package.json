@@ -1,0 +1,76 @@
+{
+  "name": "@flora-internal/design-system",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Flora's internal Vue design system.",
+  "license": "MIT",
+  "author": "taskylizard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/uwu/flora",
+    "directory": "packages/design-system"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./style.css": "./dist/style.css",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "vite build && vue-tsc -p tsconfig.build.json --declaration --emitDeclarationOnly",
+    "dev": "vite build --watch",
+    "storybook": "storybook dev -p 6006",
+    "storybook:build": "storybook build",
+    "test": "vp test run",
+    "typecheck": "vue-tsc -p tsconfig.json --noEmit",
+    "lint": "vp lint",
+    "format": "vp fmt",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@vueuse/core": "catalog:",
+    "class-variance-authority": "catalog:",
+    "clsx": "catalog:",
+    "reka-ui": "catalog:"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "1.2.111",
+    "@iconify-json/radix-icons": "catalog:",
+    "@radix-ui/colors": "catalog:",
+    "@storybook/addon-a11y": "catalog:",
+    "@storybook/vue3": "catalog:",
+    "@storybook/vue3-vite": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "@vue/test-utils": "catalog:",
+    "axe-core": "catalog:",
+    "happy-dom": "catalog:",
+    "storybook": "catalog:",
+    "typescript": "catalog:",
+    "unocss": "^66.5.12",
+    "unocss-preset-radix-colors": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
+    "vitest-axe": "catalog:",
+    "vue": "catalog:",
+    "vue-tsc": "catalog:"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  }
+}

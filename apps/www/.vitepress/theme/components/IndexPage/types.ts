@@ -4,6 +4,6 @@ export interface IndexFeature {
   id: FeatureId
   title: string
   desc: string
-  bg: string
-  snippetHtml?: string
+  href: string
+  linkLabel: string
 }

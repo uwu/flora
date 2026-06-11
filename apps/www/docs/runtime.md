@@ -2,6 +2,8 @@
 outline: deep
 ---
 
+# Runtime
+
 ## Cron scheduler
 
 The runtime includes a per-worker cron scheduler that fires every second to check for due jobs. Cron jobs registered via `cron()` in scripts are:

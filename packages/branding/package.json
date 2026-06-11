@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./logo-cursive.svg": "./logo-cursive.svg",
     "./logo.svg": "./logo.svg",
     "./logo.png": "./logo.png"
   }
