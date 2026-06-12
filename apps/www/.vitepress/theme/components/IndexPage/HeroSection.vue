@@ -1,8 +1,9 @@
 <template>
   <section class="hero">
     <p class="hero-description">
-      flora is a fast runtime that lets you write Discord bots for your servers with a rich
-      TypeScript SDK, without worrying about running infrastructure.
+      <span class="hero-description-brand">flora</span> is a fast runtime that lets you write
+      Discord bots for your servers with a rich TypeScript SDK, without worrying about running
+      infrastructure.
     </p>
 
     <div class="hero-actions">
@@ -15,17 +16,11 @@
         <span class="btn-icon i-lucide-layout-dashboard" aria-hidden="true" />
         Dashboard
       </a>
-      <a
-        href="/docs/sdk"
-        class="btn-common btn-secondary"
-      >
+      <a href="/docs/sdk" class="btn-common btn-secondary">
         <span class="btn-icon i-lucide-book-open" aria-hidden="true" />
         Documentation
       </a>
-      <a
-        href="https://github.com/uwu/flora"
-        class="btn-common btn-secondary"
-      >
+      <a href="https://github.com/uwu/flora" class="btn-common btn-secondary">
         <span class="btn-icon i-lucide-github" aria-hidden="true" />
         View on GitHub
       </a>
@@ -47,6 +42,11 @@
   font-size: clamp(17px, 2vw, 22px);
   line-height: 1.45;
   letter-spacing: -0.01em;
+}
+
+.hero-description-brand {
+  color: var(--gray12);
+  font-weight: 600;
 }
 
 .hero-actions {

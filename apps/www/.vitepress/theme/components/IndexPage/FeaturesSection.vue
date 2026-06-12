@@ -159,7 +159,9 @@ import FeatureShowcaseSymbols from './FeatureShowcaseSymbols.vue'
 }
 
 .features-section h3 {
-  font-size: inherit;
+  display: flex;
+  align-items: center;
+  margin-bottom: 3px;
 }
 
 .feature-note {
