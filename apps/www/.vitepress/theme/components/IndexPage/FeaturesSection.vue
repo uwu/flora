@@ -21,8 +21,7 @@ import FeatureShowcaseSymbols from './FeatureShowcaseSymbols.vue'
         The Discord bot runtime with the hosting, deploys, and state primitives already wired in.
       </p>
       <div
-        class="w-[calc(100%+2.5rem)] sm:w-full border-0 sm:border-1 -ml-5 sm:ml-0
-        grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-6 border-gray-6 mt-10"
+        class="w-[calc(100%+2.5rem)] sm:w-full border-0 sm:border-1 -ml-5 sm:ml-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-6 border-gray-6 mt-10"
       >
         <div class="p-5 bg-gray-1 flex flex-col justify-between">
           <div class="feature-showcase w-full h-60 overflow-hidden select-none">
@@ -134,9 +133,12 @@ import FeatureShowcaseSymbols from './FeatureShowcaseSymbols.vue'
         </div>
       </div>
       <div class="mx-0 sm:mx-2.5 mt-5 text-gray-11">
-        <p>
-          <span class="inline-block align-middle i-radix-icons-info-circled mr-1.5" />
-          <span>Some runtime behavior is guild-scoped while flora is in active development.</span>
+        <p class="feature-note">
+          <span class="feature-note-icon i-radix-icons-info-circled" aria-hidden="true" />
+          <span
+            >flora is in active development, so APIs and runtime behavior are subject to
+            change.</span
+          >
         </p>
       </div>
     </div>
@@ -160,6 +162,20 @@ import FeatureShowcaseSymbols from './FeatureShowcaseSymbols.vue'
   font-size: inherit;
 }
 
+.feature-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.45;
+}
+
+.feature-note-icon {
+  flex: 0 0 auto;
+  width: 1em;
+  height: 1em;
+  margin-top: 0.2em;
+}
+
 .feature-showcase {
   mask-image: linear-gradient(to bottom, var(--gray1) 50%, transparent 100%);
 }
@@ -179,18 +195,10 @@ import FeatureShowcaseSymbols from './FeatureShowcaseSymbols.vue'
   --editor: var(--gray2);
   --popups: var(--gray3);
   font-family:
-    'Geist Mono',
-    ui-monospace,
-    'SF Mono',
-    'Cascadia Code',
-    'Source Code Pro',
-    Menlo,
-    Consolas,
-    'DejaVu Sans Mono',
-    monospace;
+    'Geist Mono', ui-monospace, 'SF Mono', 'Cascadia Code', 'Source Code Pro', Menlo, Consolas,
+    'DejaVu Sans Mono', monospace;
   font-size: 13px;
   letter-spacing: 0;
   white-space: pre;
 }
-
 </style>
