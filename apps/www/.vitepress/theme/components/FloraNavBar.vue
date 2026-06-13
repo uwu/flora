@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import logoCursiveSvg from '@uwu/flora-branding/logo-cursive.svg'
 import logoSvg from '@uwu/flora-branding/logo.svg'
+// @ts-ignore
+import VPNavBarSearch from 'vitepress/dist/client/theme-default/components/VPNavBarSearch.vue'
 
 withDefaults(
   defineProps<{
@@ -28,6 +30,9 @@ defineEmits<{
         <img :src="logoSvg" alt="" class="nav-logo-mark" />
         <img :src="logoCursiveSvg" alt="" class="nav-logo-wordmark" />
       </a>
+      <div class="nav-search">
+        <VPNavBarSearch />
+      </div>
       <div class="nav-links">
         <div class="nav-menu-links">
           <a href="/docs/sdk/overview">SDK</a>
@@ -57,7 +62,7 @@ defineEmits<{
   --nav-page-max: var(--page-max, var(--flora-page-max, min(calc(100vw - 40px), 1040px)));
   --nav-edge-max: calc(var(--nav-grid-max-width) + var(--nav-grid-line-offset) * 2);
   --nav-padding-left: 32px;
-  --nav-padding-right: 16px;
+  --nav-padding-right: 32px;
 
   position: sticky;
   top: 0;
@@ -124,9 +129,10 @@ defineEmits<{
 }
 
 .nav-inner {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 18px;
   align-items: center;
-  justify-content: space-between;
   height: var(--vp-nav-height, 56px);
   max-width: var(--nav-edge-max);
   margin: 0 auto;
@@ -137,6 +143,7 @@ defineEmits<{
 
 .nav-brand {
   --uno: 'flex items-center gap-2';
+  justify-self: start;
 }
 
 .nav-logo-mark {
@@ -157,7 +164,97 @@ defineEmits<{
 
 .nav-links {
   --uno: 'flex items-center';
+  justify-self: end;
   gap: 18px;
+}
+
+.nav-search {
+  --uno: 'flex items-center justify-center';
+  justify-self: center;
+  min-width: 0;
+}
+
+.nav-search :deep(.VPNavBarSearch) {
+  flex: none;
+  padding-left: 0;
+}
+
+.nav-search :deep(.VPNavBarSearchButton) {
+  width: clamp(220px, 22vw, 264px);
+  min-width: 220px;
+  height: 32px;
+  justify-content: flex-start;
+  gap: 7px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 7px 0 10px;
+  background: var(--gray2);
+  color: var(--gray11);
+  box-shadow:
+    0 0 0 1px var(--gray6),
+    0 1px 2px -1px rgb(0 0 0 / 10%);
+  font-size: 13px;
+  line-height: 1;
+  transition-property: background-color, box-shadow, color, scale;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
+}
+
+.nav-search :deep(.VPNavBarSearchButton:hover) {
+  background: var(--gray1);
+  color: var(--gray12);
+  box-shadow:
+    0 0 0 1px var(--gray7),
+    0 1px 2px -1px rgb(0 0 0 / 12%),
+    0 2px 5px -3px rgb(0 0 0 / 12%);
+}
+
+.nav-search :deep(.VPNavBarSearchButton:active) {
+  scale: 0.98;
+}
+
+.nav-search :deep(.VPNavBarSearchButton .vpi-search) {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--gray10);
+}
+
+.nav-search :deep(.VPNavBarSearchButton .text) {
+  display: inline;
+  flex: 1 1 auto;
+  color: var(--gray10);
+  font-size: 13px;
+  text-align: left;
+}
+
+.nav-search :deep(.VPNavBarSearchButton .keys) {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--gray10);
+  font-size: 10px;
+  letter-spacing: 0;
+}
+
+.nav-search :deep(.VPNavBarSearchButton kbd) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border: 1px solid var(--gray6);
+  border-radius: 4px;
+  padding: 0 4px;
+  background: var(--gray1);
+  font-family: inherit;
+  font-weight: 500;
+  line-height: 1;
+  box-shadow: inset 0 -1px 0 var(--gray4);
 }
 
 .nav-menu-links {
@@ -206,6 +303,21 @@ defineEmits<{
 
   .grid-dot {
     display: flex;
+  }
+}
+
+@media (max-width: 1100px) {
+  .nav-search :deep(.VPNavBarSearchButton) {
+    width: 40px;
+    min-width: 40px;
+    height: 36px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .nav-search :deep(.VPNavBarSearchButton .text),
+  .nav-search :deep(.VPNavBarSearchButton .keys) {
+    display: none;
   }
 }
 

@@ -14,6 +14,9 @@ export default defineConfig({
   head: [['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }]],
   themeConfig: {
     logo: '/logo.svg',
+    search: {
+      provider: 'local'
+    },
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'SDK', link: '/docs/sdk/overview' },
