@@ -1,6 +1,6 @@
 import vue from '@vitejs/plugin-vue'
 import UnoCSS from 'unocss/vite'
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vite-plus/test/config'
 
 export default defineConfig({
   plugins: [vue(), UnoCSS()],

@@ -113,5 +113,31 @@ export default defineConfig({
     ignorePatterns,
   },
   **/
-  test: {}
+  test: {
+    projects: [
+      {
+        root: './packages/cli',
+        test: {
+          name: 'cli',
+          include: ['test/**/*.test.ts']
+        }
+      },
+      {
+        extends: './packages/design-system/vitest.config.ts',
+        root: './packages/design-system',
+        test: {
+          name: 'design-system',
+          include: ['test/**/*.test.ts']
+        }
+      },
+      {
+        extends: './packages/sdk/vitest.config.ts',
+        root: './packages/sdk',
+        test: {
+          name: 'sdk',
+          include: ['src/**/*.test.ts']
+        }
+      }
+    ]
+  }
 })

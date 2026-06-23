@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { mount } from '@vue/test-utils'
 import { axe } from 'vitest-axe'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 import {
   Button,
   Checkbox,
@@ -22,7 +22,7 @@ import {
   buttonVariants
 } from '../src'
 
-const styleCss = readFileSync(join(process.cwd(), 'src/style.css'), 'utf8')
+const styleCss = readFileSync(join(import.meta.dirname, '../src/style.css'), 'utf8')
 
 afterEach(() => {
   document.documentElement.className = ''

@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { deploy } from '../src/commands/deployments'
 import type { CliConfig } from '../src/lib/types'
 
-const { loadProjectConfigMock, zipProjectMock, fetchMock } = vi.hoisted(() => ({
+const { collectFilesMock, loadProjectConfigMock, zipProjectMock, fetchMock } = vi.hoisted(() => ({
+  collectFilesMock: vi.fn(),
   loadProjectConfigMock: vi.fn(),
   zipProjectMock: vi.fn(),
   fetchMock: vi.fn()
@@ -17,9 +18,21 @@ vi.mock('../src/lib/zip', () => ({
   zipProject: zipProjectMock
 }))
 
+vi.mock('../src/lib/files', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/lib/files')>()
+
+  return {
+    ...actual,
+    collectFiles: collectFilesMock
+  }
+})
+
 vi.mock('../src/lib/logger', () => ({
   logger: {
-    log: vi.fn()
+    info: vi.fn(),
+    log: vi.fn(),
+    success: vi.fn(),
+    warn: vi.fn()
   }
 }))
 
@@ -32,10 +45,12 @@ describe('deploy command', () => {
   }
 
   beforeEach(() => {
+    collectFilesMock.mockReset()
     loadProjectConfigMock.mockReset()
     zipProjectMock.mockReset()
     fetchMock.mockReset()
 
+    collectFilesMock.mockResolvedValue([{ path: 'src/main.ts', contents: 'export default {}' }])
     loadProjectConfigMock.mockResolvedValue({})
     zipProjectMock.mockResolvedValue({
       zip: new Uint8Array([1, 2, 3]),
@@ -48,13 +63,24 @@ describe('deploy command', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ build_id: 'b1', status: 'queued' })))
       .mockResolvedValueOnce(new Response('event: done\ndata: ok\n\n'))
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ status: 'success', guild_id: '123', entry: 'src/main.ts' }))
+        new Response(
+          JSON.stringify({
+            status: 'done',
+            guild_id: '123',
+            entry: 'src/main.ts',
+            artifact: {
+              bundle: 'console.log("ok")',
+              source_map: ''
+            }
+          })
+        )
       )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
 
     await deploy(config, '123', undefined)
 
     expect(zipProjectMock).toHaveBeenCalledWith('.')
-    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
 
     const [url, opts] = fetchMock.mock.calls[0]!
     expect(url).toBe('http://localhost:3000/api/builds')
@@ -70,9 +96,18 @@ describe('deploy command', () => {
       .mockResolvedValueOnce(new Response('event: done\ndata: ok\n\n'))
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify({ status: 'success', guild_id: '123', entry: 'src/cli-entry.ts' })
+          JSON.stringify({
+            status: 'done',
+            guild_id: '123',
+            entry: 'src/cli-entry.ts',
+            artifact: {
+              bundle: 'console.log("ok")',
+              source_map: ''
+            }
+          })
         )
       )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
 
     await deploy(config, '123', 'src/cli-entry.ts')
 
@@ -88,8 +123,19 @@ describe('deploy command', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ build_id: 'b3', status: 'queued' })))
       .mockResolvedValueOnce(new Response('event: done\ndata: ok\n\n'))
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ status: 'success', guild_id: '123', entry: 'src/main.ts' }))
+        new Response(
+          JSON.stringify({
+            status: 'done',
+            guild_id: '123',
+            entry: 'src/main.ts',
+            artifact: {
+              bundle: 'console.log("ok")',
+              source_map: ''
+            }
+          })
+        )
       )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
 
     await deploy(config, '123', undefined, './cli-root')
 

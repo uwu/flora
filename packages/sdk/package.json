@@ -27,12 +27,13 @@
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "build": "rolldown -c ./rolldown.config.ts",
-    "test": "vite test"
+    "test": "vp test run"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "@typescript/native-preview": "catalog:",
     "rolldown": "^1.0.0-beta.53",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
   }
 }
