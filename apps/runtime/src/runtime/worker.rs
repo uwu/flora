@@ -186,6 +186,19 @@ fn worker_thread(
                             let _ = respond_to.send(result);
                         }
 
+                        WorkerCommand::UndeployGuild { guild_id, respond_to } => {
+                            let result = undeploy_guild_from_worker(
+                                &mut guild_runtimes,
+                                &guild_id,
+                                &cron_registry,
+                                worker_id,
+                            );
+                            if let Err(ref err) = result {
+                                error!(target: "flora:runtime", worker_id, guild_id, ?err, "failed to undeploy guild");
+                            }
+                            let _ = respond_to.send(result);
+                        }
+
                         WorkerCommand::DispatchEvent { guild_id, event, payload, respond_to } => {
                             let guild_id_for_log = guild_id.clone();
                             let result = dispatch_to_worker(
@@ -611,6 +624,25 @@ pub(super) async fn deploy_guild_to_worker(
             Err(AnyError::msg(message))
         }
     }
+}
+
+fn undeploy_guild_from_worker(
+    guild_runtimes: &mut HashMap<String, JsRuntimeState>,
+    guild_id: &str,
+    cron_registry: &SharedCronRegistry,
+    worker_id: usize,
+) -> Result<(), AnyError> {
+    if let Some(runtime) = guild_runtimes.remove(guild_id) {
+        drop_runtime_state(runtime);
+    }
+
+    {
+        let mut reg = cron_registry.lock();
+        reg.clear_guild(guild_id);
+    }
+
+    info!(target: "flora:runtime", worker_id, guild_id, "Guild runtime undeployed");
+    Ok(())
 }
 
 async fn load_runtime_secrets(

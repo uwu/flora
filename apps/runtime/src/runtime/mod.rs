@@ -116,24 +116,44 @@ impl BotRuntime {
 
     /// Deploy a guild's script to the appropriate worker.
     pub async fn deploy_guild_script(&self, deployment: Deployment) -> Result<(), AnyError> {
-        let worker_idx = {
+        let guild_id = deployment.guild_id.clone();
+        let (worker_idx, inserted_route) = {
             let mut routes = self.guild_routes.lock();
-            match routes.get(&deployment.guild_id).copied() {
-                Some(worker_idx) => worker_idx,
+            match routes.get(&guild_id).copied() {
+                Some(worker_idx) => (worker_idx, false),
                 None => {
-                    let worker_idx = self.default_worker_for_guild(&deployment.guild_id);
-                    routes.insert(deployment.guild_id.clone(), worker_idx);
-                    worker_idx
+                    let worker_idx = self.default_worker_for_guild(&guild_id);
+                    routes.insert(guild_id.clone(), worker_idx);
+                    (worker_idx, true)
                 }
             }
         };
         info!(
             target: "flora:runtime",
-            guild_id = deployment.guild_id,
+            guild_id,
             worker_idx,
             "routing guild deployment to worker"
         );
-        self.workers[worker_idx].deploy_guild(deployment).await
+        let result = self.workers[worker_idx].deploy_guild(deployment).await;
+        if result.is_err() && inserted_route {
+            let mut routes = self.guild_routes.lock();
+            if routes.get(&guild_id).copied() == Some(worker_idx) {
+                routes.remove(&guild_id);
+            }
+        }
+        result
+    }
+
+    /// Remove a guild's script runtime from its worker.
+    pub async fn undeploy_guild_script(&self, guild_id: &str) -> Result<(), AnyError> {
+        let worker_idx = self.worker_for_guild(guild_id);
+        let result = self.workers[worker_idx]
+            .undeploy_guild(guild_id.to_string())
+            .await;
+        if result.is_ok() {
+            self.guild_routes.lock().remove(guild_id);
+        }
+        result
     }
 
     pub async fn migrate_guild_runtime(

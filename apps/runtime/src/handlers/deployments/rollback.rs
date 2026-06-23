@@ -7,7 +7,7 @@ use chrono::Utc;
 use tracing::error;
 use uuid::Uuid;
 
-use super::upsert::actor_from_identity;
+use super::upsert::{actor_from_identity, restore_runtime_deployment};
 use super::{DeploymentRevisionResponse, parse_deploy_source};
 use crate::{
     handlers::{
@@ -75,6 +75,15 @@ pub async fn rollback_deployment_handler(
     };
     let actor = actor_from_identity(&state, &identity, &guild_id).await;
 
+    let previous_deployment = state
+        .deployments
+        .get_persisted_deployment(&guild_id)
+        .await
+        .map_err(|err| {
+            error!(target: "flora:api", guild_id, ?err, "failed to fetch active deployment before rollback");
+            ApiError::internal(err)
+        })?;
+
     let previous_success = state
         .deployments
         .get_previous_successful_revision(&guild_id)
@@ -99,56 +108,69 @@ pub async fn rollback_deployment_handler(
         updated_at: now,
     };
 
-    let deploy_result = state.runtime.deploy_guild_script(deployment.clone()).await;
-    let status = match &deploy_result {
-        Ok(_) => DeploymentRevisionStatus::Success,
-        Err(_) => DeploymentRevisionStatus::Failed,
-    };
-    let error_message = deploy_result.as_ref().err().map(|err| err.to_string());
+    if let Err(err) = state.runtime.deploy_guild_script(deployment.clone()).await {
+        let error_message = Some(err.to_string());
+        state
+            .deployments
+            .create_revision(CreateDeploymentRevisionInput {
+                guild_id: guild_id.clone(),
+                entry: deployment.entry.clone(),
+                files: deployment.files.clone(),
+                bundle: deployment.bundle.clone(),
+                source_map: deployment.source_map.clone(),
+                status: DeploymentRevisionStatus::Failed,
+                deploy_source: source,
+                actor_user_id: actor.user_id,
+                actor_username: actor.username,
+                actor_type: actor.actor_type,
+                error_message,
+                build_id: None,
+                base_revision_id,
+                change_summary,
+            })
+            .await
+            .map_err(|err| {
+                error!(target: "flora:api", guild_id, ?err, "failed to create failed rollback revision");
+                ApiError::internal(err)
+            })?;
 
-    let new_revision = state
+        error!(target: "flora:api", guild_id, ?err, "failed to deploy rollback revision");
+        return Err(ApiError::bad_request(format!("rollback failed: {err}")));
+    }
+
+    let (new_revision, _) = match state
         .deployments
-        .create_revision(CreateDeploymentRevisionInput {
+        .create_successful_revision_and_upsert_deployment(CreateDeploymentRevisionInput {
             guild_id: guild_id.clone(),
             entry: deployment.entry.clone(),
             files: deployment.files.clone(),
             bundle: deployment.bundle.clone(),
             source_map: deployment.source_map.clone(),
-            status,
+            status: DeploymentRevisionStatus::Success,
             deploy_source: source,
             actor_user_id: actor.user_id,
             actor_username: actor.username,
             actor_type: actor.actor_type,
-            error_message,
+            error_message: None,
             build_id: None,
             base_revision_id,
             change_summary,
         })
         .await
-        .map_err(|err| {
-            error!(target: "flora:api", guild_id, ?err, "failed to create rollback revision");
-            ApiError::internal(err)
-        })?;
-
-    deploy_result.map_err(|err| {
-        error!(target: "flora:api", guild_id, ?err, "failed to deploy rollback revision");
-        ApiError::bad_request(format!("rollback failed: {err}"))
-    })?;
-
-    state
-        .deployments
-        .upsert_deployment(
-            deployment.guild_id,
-            deployment.entry,
-            deployment.files,
-            deployment.bundle,
-            deployment.source_map,
-        )
-        .await
-        .map_err(|err| {
-            error!(target: "flora:api", guild_id, ?err, "failed to update deployment snapshot after rollback");
-            ApiError::internal(err)
-        })?;
+    {
+        Ok(result) => result,
+        Err(err) => {
+            error!(target: "flora:api", guild_id, ?err, "failed to persist successful rollback; restoring previous runtime");
+            restore_runtime_deployment(
+                &state,
+                &guild_id,
+                previous_deployment,
+                "rollback persistence failure",
+            )
+            .await?;
+            return Err(ApiError::internal(err));
+        }
+    };
 
     Ok(ApiJson(Json(DeploymentRevisionResponse::from_revision(
         new_revision,

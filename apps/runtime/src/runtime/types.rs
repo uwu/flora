@@ -33,6 +33,11 @@ pub(super) enum WorkerCommand {
         deployment: Deployment,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
+    /// Remove a guild's script runtime.
+    UndeployGuild {
+        guild_id: String,
+        respond_to: oneshot::Sender<Result<(), AnyError>>,
+    },
     /// Dispatch an event to a specific guild's runtime.
     DispatchEvent {
         guild_id: Option<String>,
@@ -114,6 +119,15 @@ impl Worker {
         let (tx, rx) = oneshot::channel();
         self.send_cmd(WorkerCommand::DeployGuild {
             deployment,
+            respond_to: tx,
+        })?;
+        rx.await.map_err(|_| AnyError::msg("worker stopped"))?
+    }
+
+    pub(super) async fn undeploy_guild(&self, guild_id: String) -> Result<(), AnyError> {
+        let (tx, rx) = oneshot::channel();
+        self.send_cmd(WorkerCommand::UndeployGuild {
+            guild_id,
             respond_to: tx,
         })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?

@@ -840,6 +840,11 @@ impl DiscordHandler {
             updated_at: chrono::Utc::now(),
         };
 
+        let previous_deployment = self
+            .deployments
+            .get_persisted_deployment(&guild_str)
+            .await?;
+
         let previous_success = self
             .deployments
             .get_previous_successful_revision(&guild_str)
@@ -849,43 +854,71 @@ impl DiscordHandler {
         let change_summary =
             DeploymentService::summarize_changes(deployment.files.as_ref(), base_files);
 
-        let deploy_result = self.runtime.deploy_guild_script(deployment.clone()).await;
-        let status = match &deploy_result {
-            Ok(_) => DeploymentRevisionStatus::Success,
-            Err(_) => DeploymentRevisionStatus::Failed,
-        };
-        let error_message = deploy_result.as_ref().err().map(|err| err.to_string());
+        if let Err(err) = self.runtime.deploy_guild_script(deployment.clone()).await {
+            let error_message = Some(err.to_string());
+            self.deployments
+                .create_revision(CreateDeploymentRevisionInput {
+                    guild_id: guild_str.clone(),
+                    entry: deployment.entry.clone(),
+                    files: deployment.files.clone(),
+                    bundle: deployment.bundle.clone(),
+                    source_map: deployment.source_map.clone(),
+                    status: DeploymentRevisionStatus::Failed,
+                    deploy_source: DeploymentSource::Bootstrap,
+                    actor_user_id: None,
+                    actor_username: Some("system".to_string()),
+                    actor_type: DeploymentActorType::System,
+                    error_message,
+                    build_id: None,
+                    base_revision_id,
+                    change_summary,
+                })
+                .await?;
 
-        self.deployments
-            .create_revision(CreateDeploymentRevisionInput {
+            return Err(eyre!(err.to_string()));
+        }
+
+        if let Err(err) = self
+            .deployments
+            .create_successful_revision_and_upsert_deployment(CreateDeploymentRevisionInput {
                 guild_id: guild_str.clone(),
                 entry: deployment.entry.clone(),
                 files: deployment.files.clone(),
                 bundle: deployment.bundle.clone(),
                 source_map: deployment.source_map.clone(),
-                status,
+                status: DeploymentRevisionStatus::Success,
                 deploy_source: DeploymentSource::Bootstrap,
                 actor_user_id: None,
                 actor_username: Some("system".to_string()),
                 actor_type: DeploymentActorType::System,
-                error_message,
+                error_message: None,
                 build_id: None,
                 base_revision_id,
                 change_summary,
             })
-            .await?;
+            .await
+        {
+            error!(
+                target: "flora:deployments",
+                guild_id = guild_str,
+                ?err,
+                "failed to persist bootstrapped deployment; restoring previous runtime"
+            );
 
-        deploy_result.map_err(|err| eyre!(err.to_string()))?;
+            let restore_result = match previous_deployment {
+                Some(previous_deployment) => {
+                    self.runtime.deploy_guild_script(previous_deployment).await
+                }
+                None => self.runtime.undeploy_guild_script(&guild_str).await,
+            };
+            if let Err(restore_err) = restore_result {
+                return Err(eyre!(
+                    "failed to restore runtime after bootstrap persistence failure: {restore_err}; persistence error: {err}"
+                ));
+            }
 
-        self.deployments
-            .upsert_deployment(
-                deployment.guild_id,
-                deployment.entry,
-                deployment.files,
-                deployment.bundle,
-                deployment.source_map,
-            )
-            .await?;
+            return Err(err);
+        }
 
         info!(target: "flora:deployments", guild_id = guild_str, "bootstrapped default script");
         Ok(())

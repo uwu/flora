@@ -314,6 +314,86 @@ impl DeploymentService {
         to_revision(row)
     }
 
+    pub async fn create_successful_revision_and_upsert_deployment(
+        &self,
+        input: CreateDeploymentRevisionInput,
+    ) -> Result<(DeploymentRevision, Deployment)> {
+        if !matches!(&input.status, DeploymentRevisionStatus::Success) {
+            return Err(eyre!(
+                "create_successful_revision_and_upsert_deployment requires success status"
+            ));
+        }
+
+        let mut tx = self.db_pool.begin().await?;
+
+        let revision_row = sqlx::query_as::<_, DeploymentRevisionRow>(
+            r#"
+            INSERT INTO deployment_revisions (
+                guild_id, entry, files, bundle, source_map, status, deploy_source,
+                actor_user_id, actor_username, actor_type, error_message, build_id,
+                base_revision_id, change_summary
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            RETURNING id, guild_id, entry, files, bundle, source_map, status, deployed_at,
+                deploy_source, actor_user_id, actor_username, actor_type, error_message,
+                build_id, base_revision_id, change_summary
+            "#,
+        )
+        .bind(&input.guild_id)
+        .bind(&input.entry)
+        .bind(input.files.clone().map(sqlx::types::Json))
+        .bind(&input.bundle)
+        .bind(input.source_map.clone().map(sqlx::types::Json))
+        .bind(input.status.as_str())
+        .bind(input.deploy_source.as_str())
+        .bind(input.actor_user_id.clone())
+        .bind(input.actor_username.clone())
+        .bind(input.actor_type.as_str())
+        .bind(input.error_message.clone())
+        .bind(input.build_id.clone())
+        .bind(input.base_revision_id)
+        .bind(input.change_summary.clone().map(sqlx::types::Json))
+        .fetch_one(&mut *tx)
+        .await?;
+
+        let deployment_row = sqlx::query_as::<_, DeploymentRow>(
+            r#"
+            INSERT INTO deployments (guild_id, entry, files, bundle, source_map)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (guild_id) DO UPDATE
+            SET entry = EXCLUDED.entry,
+                files = EXCLUDED.files,
+                bundle = EXCLUDED.bundle,
+                source_map = EXCLUDED.source_map,
+                updated_at = NOW()
+            RETURNING guild_id, entry, files, source_map, bundle, created_at, updated_at
+            "#,
+        )
+        .bind(&input.guild_id)
+        .bind(&input.entry)
+        .bind(input.files.map(sqlx::types::Json))
+        .bind(&input.bundle)
+        .bind(input.source_map.map(sqlx::types::Json))
+        .fetch_one(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+
+        let revision = to_revision(revision_row)?;
+        let deployment = to_deployment(deployment_row)?;
+        if let Err(err) = self.cache_deployment(&deployment).await {
+            warn!(target: "flora:deployments", guild_id = deployment.guild_id, ?err, "failed to refresh deployment cache after successful deploy");
+            if let Err(err) = self
+                .invalidate_cached_deployment(&deployment.guild_id)
+                .await
+            {
+                warn!(target: "flora:deployments", guild_id = deployment.guild_id, ?err, "failed to invalidate deployment cache after refresh failure");
+            }
+        }
+        info!(target: "flora:deployments", guild_id = deployment.guild_id, "deployment stored");
+        Ok((revision, deployment))
+    }
+
     pub async fn list_guild_revisions(
         &self,
         guild_id: &str,
@@ -456,6 +536,15 @@ impl DeploymentService {
             return Ok(Some(cached));
         }
 
+        let Some(deployment) = self.get_persisted_deployment(guild_id).await? else {
+            return Ok(None);
+        };
+
+        self.cache_deployment(&deployment).await?;
+        Ok(Some(deployment))
+    }
+
+    pub async fn get_persisted_deployment(&self, guild_id: &str) -> Result<Option<Deployment>> {
         let row = sqlx::query_as::<_, DeploymentRow>(
             r#"
             SELECT guild_id, entry, files, source_map, bundle, created_at, updated_at
@@ -471,9 +560,7 @@ impl DeploymentService {
             return Ok(None);
         };
 
-        let deployment = to_deployment(row)?;
-        self.cache_deployment(&deployment).await?;
-        Ok(Some(deployment))
+        Ok(Some(to_deployment(row)?))
     }
 
     pub async fn list_deployments(&self) -> Result<Vec<Deployment>> {
@@ -551,6 +638,11 @@ impl DeploymentService {
         self.cache_pool
             .set::<(), _, _>(key, value, Some(Expiration::EX(600)), None, false)
             .await?;
+        Ok(())
+    }
+
+    async fn invalidate_cached_deployment(&self, guild_id: &str) -> Result<()> {
+        self.cache_pool.del::<(), _>(cache_key(guild_id)).await?;
         Ok(())
     }
 

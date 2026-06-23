@@ -206,6 +206,38 @@ pub async fn actor_from_identity(
     }
 }
 
+pub async fn restore_runtime_deployment(
+    state: &AppState,
+    guild_id: &str,
+    previous_deployment: Option<Deployment>,
+    reason: &str,
+) -> Result<(), ApiError> {
+    match previous_deployment {
+        Some(deployment) => state
+            .runtime
+            .deploy_guild_script(deployment)
+            .await
+            .map_err(|err| {
+                error!(target: "flora:api", guild_id, ?err, reason, "failed to restore previous runtime deployment");
+                ApiError::internal(format!(
+                    "failed to restore previous runtime deployment after {reason}: {err}"
+                ))
+            })?,
+        None => state
+            .runtime
+            .undeploy_guild_script(guild_id)
+            .await
+            .map_err(|err| {
+                error!(target: "flora:api", guild_id, ?err, reason, "failed to remove unpersisted runtime deployment");
+                ApiError::internal(format!(
+                    "failed to remove unpersisted runtime deployment after {reason}: {err}"
+                ))
+            })?,
+    }
+
+    Ok(())
+}
+
 async fn resolve_token_username(state: &AppState, guild_id: &str, user_id: &str) -> Option<String> {
     let Ok(guild_id_num) = guild_id.parse::<u64>() else {
         warn!(target: "flora:api", guild_id, "invalid guild id for deployment actor lookup");
@@ -319,6 +351,7 @@ pub async fn upsert_deployment_handler(
     let actor = actor_from_identity(&state, &identity, &guild_id).await;
 
     let files = request.files;
+    let build_id = request.build_id;
     let (bundle, source_map) = if let Some(bundle) = request.bundle {
         (bundle, request.source_map)
     } else if let Some(files_ref) = files.as_ref() {
@@ -339,6 +372,15 @@ pub async fn upsert_deployment_handler(
         };
         (bundle, request.source_map)
     };
+
+    let previous_deployment = state
+        .deployments
+        .get_persisted_deployment(&guild_id)
+        .await
+        .map_err(|err| {
+            error!(target: "flora:api", guild_id, ?err, "failed to fetch active deployment before update");
+            ApiError::internal(err)
+        })?;
 
     let previous_success = state
         .deployments
@@ -364,56 +406,69 @@ pub async fn upsert_deployment_handler(
         updated_at: now,
     };
 
-    let deploy_result = state.runtime.deploy_guild_script(deployment.clone()).await;
-    let status = match &deploy_result {
-        Ok(_) => DeploymentRevisionStatus::Success,
-        Err(_) => DeploymentRevisionStatus::Failed,
-    };
-    let error_message = deploy_result.as_ref().err().map(|err| err.to_string());
+    if let Err(err) = state.runtime.deploy_guild_script(deployment.clone()).await {
+        let error_message = Some(err.to_string());
+        state
+            .deployments
+            .create_revision(CreateDeploymentRevisionInput {
+                guild_id: guild_id.clone(),
+                entry: deployment.entry.clone(),
+                files: deployment.files.clone(),
+                bundle: deployment.bundle.clone(),
+                source_map: deployment.source_map.clone(),
+                status: DeploymentRevisionStatus::Failed,
+                deploy_source,
+                actor_user_id: actor.user_id,
+                actor_username: actor.username,
+                actor_type: actor.actor_type,
+                error_message,
+                build_id,
+                base_revision_id,
+                change_summary,
+            })
+            .await
+            .map_err(|err| {
+                error!(target: "flora:api", guild_id, ?err, "failed to create failed deployment revision");
+                ApiError::internal(err)
+            })?;
 
-    state
+        error!(target: "flora:api", guild_id, ?err, "failed to deploy guild script");
+        return Err(ApiError::bad_request(format!("deployment failed: {err}")));
+    }
+
+    let (_, deployment) = match state
         .deployments
-        .create_revision(CreateDeploymentRevisionInput {
+        .create_successful_revision_and_upsert_deployment(CreateDeploymentRevisionInput {
             guild_id: guild_id.clone(),
             entry: deployment.entry.clone(),
             files: deployment.files.clone(),
             bundle: deployment.bundle.clone(),
             source_map: deployment.source_map.clone(),
-            status,
+            status: DeploymentRevisionStatus::Success,
             deploy_source,
             actor_user_id: actor.user_id,
             actor_username: actor.username,
             actor_type: actor.actor_type,
-            error_message,
-            build_id: request.build_id,
+            error_message: None,
+            build_id,
             base_revision_id,
             change_summary,
         })
         .await
-        .map_err(|err| {
-            error!(target: "flora:api", guild_id, ?err, "failed to create deployment revision");
-            ApiError::internal(err)
-        })?;
-
-    deploy_result.map_err(|err| {
-        error!(target: "flora:api", guild_id, ?err, "failed to deploy guild script");
-        ApiError::bad_request(format!("deployment failed: {err}"))
-    })?;
-
-    let deployment = state
-        .deployments
-        .upsert_deployment(
-            deployment.guild_id,
-            deployment.entry,
-            deployment.files,
-            deployment.bundle,
-            deployment.source_map,
-        )
-        .await
-        .map_err(|err| {
-            error!(target: "flora:api", guild_id, ?err, "failed to update deployment snapshot");
-            ApiError::internal(err)
-        })?;
+    {
+        Ok(result) => result,
+        Err(err) => {
+            error!(target: "flora:api", guild_id, ?err, "failed to persist successful deployment; restoring previous runtime");
+            restore_runtime_deployment(
+                &state,
+                &guild_id,
+                previous_deployment,
+                "deployment persistence failure",
+            )
+            .await?;
+            return Err(ApiError::internal(err));
+        }
+    };
 
     Ok(ApiJson(Json(deployment.into())))
 }
