@@ -8,7 +8,7 @@ use utoipa::OpenApi;
 
 use crate::{
     handlers::{
-        auth::require_identity,
+        auth::require_operator_secret,
         error::ApiError,
         response::{ApiJson, ApiText},
     },
@@ -25,7 +25,9 @@ pub struct MetricsApi;
     get,
     path = "",
     responses(
-        (status = 200, description = "Prometheus metrics", content_type = "text/plain")
+        (status = 200, description = "Prometheus metrics", content_type = "text/plain"),
+        (status = 401, description = "Operator bearer token required", body = crate::handlers::error::ErrorResponse),
+        (status = 403, description = "Forbidden", body = crate::handlers::error::ErrorResponse)
     ),
     tag = "Metrics"
 )]
@@ -33,7 +35,7 @@ pub async fn get_metrics(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<ApiText, ApiError> {
-    require_identity(&state, &headers).await?;
+    require_operator_secret(&state, &headers)?;
     let body = metrics::metrics().prometheus_format();
     Ok(ApiText((
         StatusCode::OK,
@@ -47,7 +49,9 @@ pub async fn get_metrics(
     get,
     path = "/json",
     responses(
-        (status = 200, description = "Metrics as JSON", body = metrics::MetricsSnapshot)
+        (status = 200, description = "Metrics as JSON", body = metrics::MetricsSnapshot),
+        (status = 401, description = "Operator bearer token required", body = crate::handlers::error::ErrorResponse),
+        (status = 403, description = "Forbidden", body = crate::handlers::error::ErrorResponse)
     ),
     tag = "Metrics"
 )]
@@ -55,7 +59,7 @@ pub async fn get_metrics_json(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<ApiJson<metrics::MetricsSnapshot>, ApiError> {
-    require_identity(&state, &headers).await?;
+    require_operator_secret(&state, &headers)?;
     let snapshot = metrics::metrics().snapshot();
     Ok(ApiJson(axum::Json(snapshot)))
 }

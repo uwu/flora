@@ -27,7 +27,7 @@ pub struct ExportGuildResponse {
 
 /// Export all KV stores for a guild
 ///
-/// Creates a backup of all stores using RocksDB data files.
+/// Creates a checkpoint backup of all stores.
 /// Returns a backup ID for later retrieval.
 #[utoipa::path(
     post,
@@ -53,6 +53,9 @@ pub async fn export_guild_handler(
 ) -> Result<ApiJson<ExportGuildResponse>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
     ensure_guild_admin(&state, &identity, &params.guild_id).await?;
-    let backup_id = state.kv.export_guild(&params.guild_id).await?;
+    let backup_id = state
+        .kv
+        .export_guild(&params.guild_id, &identity.user_id)
+        .await?;
     Ok(ApiJson(Json(ExportGuildResponse { backup_id })))
 }

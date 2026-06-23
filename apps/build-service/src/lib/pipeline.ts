@@ -20,10 +20,12 @@ export async function runBuildPipeline(
   entry: string,
   zipData: Uint8Array
 ): Promise<void> {
-  const runsDir = getBuildRunsDir()
-  await fs.mkdir(runsDir, { recursive: true })
-  const tmpDir = await fs.mkdtemp(path.join(runsDir, `build-${buildId}-`))
   const buildLogger = logger.withTag(colors.magenta(`build:${buildId.slice(0, 8)}`))
+  const controller = new AbortController()
+  const timeout = setTimeout(() => {
+    controller.abort(new Error('Build timed out'))
+  }, BUILD_TIMEOUT)
+  let tmpDir: string | undefined
 
   const log = (line: string) => {
     appendLog(buildId, stripAnsi(line))
@@ -34,32 +36,35 @@ export async function runBuildPipeline(
     buildLogger.info(line)
   }
 
-  const timeout = setTimeout(() => {
-    setBuildError(buildId, 'Build timed out')
-    updateBuildStatus(buildId, 'failed')
-  }, BUILD_TIMEOUT)
-
   try {
+    const runsDir = getBuildRunsDir()
+    await fs.mkdir(runsDir, { recursive: true })
+    tmpDir = await fs.mkdtemp(path.join(runsDir, `build-${buildId}-`))
+
     updateBuildStatus(buildId, 'running')
 
     // 1. extract zip
     log('Extracting project...')
-    const extracted = await extractZip(zipData, tmpDir)
+    const extracted = await abortable(extractZip(zipData, tmpDir), controller.signal)
     log(`Extracted ${extracted.fileCount} files (${formatBytes(extracted.totalSize)})`)
+    throwIfAborted(controller.signal)
 
     // 2. validate & sanitize package.json
     log('Validating package.json...')
     const pkg = await validateAndSanitizePackageJson(tmpDir)
     const depCount = pkg.dependencies ? Object.keys(pkg.dependencies).length : 0
     log(`Found ${depCount} dependencies`)
+    throwIfAborted(controller.signal)
 
     // 3. install dependencies (only if there are any)
     if (depCount > 0) {
-      await pnpmInstall(tmpDir, log)
+      await pnpmInstall(tmpDir, log, controller.signal)
     }
+    throwIfAborted(controller.signal)
 
     // 4. bundle with rolldown
-    const result = await bundleProject(tmpDir, entry, log)
+    const result = await abortable(bundleProject(tmpDir, entry, log), controller.signal)
+    throwIfAborted(controller.signal)
 
     // 5. check bundle size limits
     const rawSize = Buffer.byteLength(result.bundle, 'utf-8')
@@ -80,15 +85,46 @@ export async function runBuildPipeline(
     updateBuildStatus(buildId, 'done')
     log('Build complete')
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
+    const message = controller.signal.aborted ? 'Build timed out' : errToMessage(err)
     log(`Build failed: ${message}`)
     setBuildError(buildId, message)
     updateBuildStatus(buildId, 'failed')
   } finally {
     clearTimeout(timeout)
     // clean up temp directory
-    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {})
+    if (tmpDir) {
+      await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {})
+    }
   }
+}
+
+function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) {
+    return Promise.reject(abortReason(signal))
+  }
+
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(abortReason(signal))
+    signal.addEventListener('abort', onAbort, { once: true })
+
+    promise.then(resolve, reject).finally(() => {
+      signal.removeEventListener('abort', onAbort)
+    })
+  })
+}
+
+function throwIfAborted(signal: AbortSignal): void {
+  if (signal.aborted) {
+    throw abortReason(signal)
+  }
+}
+
+function abortReason(signal: AbortSignal): Error {
+  return signal.reason instanceof Error ? signal.reason : new Error('Build timed out')
+}
+
+function errToMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
 }
 
 function formatBytes(bytes: number): string {

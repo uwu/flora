@@ -177,6 +177,7 @@ async fn main() -> Result<()> {
         secrets: secret_service.clone(),
         build_service,
         http: http.clone(),
+        operator_secret: config.api.operator_secret,
     };
 
     let api_router = create_router()

@@ -245,6 +245,27 @@ pub async fn require_identity(
     Err(ApiError::unauthorized("Login required"))
 }
 
+/// Ensure caller presents the operator bearer token configured for platform-only endpoints.
+pub fn require_operator_secret(state: &AppState, headers: &HeaderMap) -> Result<(), ApiError> {
+    let Some(secret) = state
+        .operator_secret
+        .as_deref()
+        .filter(|value| !value.is_empty())
+    else {
+        return Err(ApiError::forbidden("Operator access is not configured"));
+    };
+
+    let Some(token) = bearer_token(headers) else {
+        return Err(ApiError::unauthorized("Operator bearer token required"));
+    };
+
+    if !constant_time_equal(token.as_bytes(), secret.as_bytes()) {
+        return Err(ApiError::forbidden("Invalid operator token"));
+    }
+
+    Ok(())
+}
+
 /// Ensure the user is an admin or has manage-guild permissions in the target guild.
 pub async fn ensure_guild_admin(
     state: &AppState,
@@ -351,6 +372,19 @@ fn bearer_token(headers: &HeaderMap) -> Option<&str> {
         .strip_prefix("Bearer ")
 }
 
+fn constant_time_equal(a: &[u8], b: &[u8]) -> bool {
+    let max_len = a.len().max(b.len());
+    let mut diff = a.len() ^ b.len();
+
+    for index in 0..max_len {
+        let left = a.get(index).copied().unwrap_or_default();
+        let right = b.get(index).copied().unwrap_or_default();
+        diff |= usize::from(left ^ right);
+    }
+
+    diff == 0
+}
+
 fn cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
     let raw = headers.get(axum::http::header::COOKIE)?.to_str().ok()?;
     cookie::Cookie::split_parse(raw)
@@ -361,7 +395,7 @@ fn cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::has_admin_permissions;
+    use super::{constant_time_equal, has_admin_permissions};
 
     #[test]
     fn detects_admin_flags() {
@@ -370,5 +404,12 @@ mod tests {
         assert!(has_admin_permissions(0x28));
         assert!(!has_admin_permissions(0x4));
         assert!(!has_admin_permissions(0));
+    }
+
+    #[test]
+    fn compares_tokens_without_short_circuiting_lengths() {
+        assert!(constant_time_equal(b"secret", b"secret"));
+        assert!(!constant_time_equal(b"secret", b"sec"));
+        assert!(!constant_time_equal(b"secret", b"secreu"));
     }
 }

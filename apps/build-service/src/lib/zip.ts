@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { unzipSync } from 'fflate'
 
-const MAX_COMPRESSED_SIZE = 50 * 1024 * 1024 // 50 MB
+export const MAX_COMPRESSED_SIZE = 50 * 1024 * 1024 // 50 MB
 const MAX_FILE_COUNT = 1000
 const MAX_INDIVIDUAL_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 const MAX_TOTAL_UNCOMPRESSED_SIZE = 200 * 1024 * 1024 // 200 MB
@@ -18,7 +18,35 @@ export async function extractZip(zipData: Uint8Array, destDir: string): Promise<
     throw new Error(`Zip file exceeds maximum compressed size of ${MAX_COMPRESSED_SIZE} bytes`)
   }
 
-  const entries = unzipSync(zipData)
+  let scannedFileCount = 0
+  let scannedTotalSize = 0
+  const entries = unzipSync(zipData, {
+    filter(file) {
+      validatePath(file.name)
+
+      if (file.name.endsWith('/')) return false
+
+      scannedFileCount += 1
+      if (scannedFileCount > MAX_FILE_COUNT) {
+        throw new Error(`Zip contains more than ${MAX_FILE_COUNT} files`)
+      }
+
+      if (file.originalSize > MAX_INDIVIDUAL_FILE_SIZE) {
+        throw new Error(
+          `File ${file.name} exceeds maximum size of ${MAX_INDIVIDUAL_FILE_SIZE} bytes`
+        )
+      }
+
+      scannedTotalSize += file.originalSize
+      if (scannedTotalSize > MAX_TOTAL_UNCOMPRESSED_SIZE) {
+        throw new Error(
+          `Total uncompressed size exceeds limit of ${MAX_TOTAL_UNCOMPRESSED_SIZE} bytes`
+        )
+      }
+
+      return true
+    }
+  })
   const entryNames = Object.keys(entries)
 
   if (entryNames.length > MAX_FILE_COUNT) {
@@ -47,7 +75,8 @@ export async function extractZip(zipData: Uint8Array, destDir: string): Promise<
 
     const destPath = path.join(destDir, name)
     const resolved = path.resolve(destPath)
-    if (!resolved.startsWith(path.resolve(destDir))) {
+    const root = path.resolve(destDir)
+    if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
       throw new Error(`Path traversal detected: ${name}`)
     }
 
@@ -62,11 +91,15 @@ export async function extractZip(zipData: Uint8Array, destDir: string): Promise<
 }
 
 function validatePath(name: string): void {
-  if (path.isAbsolute(name)) {
+  if (name.includes('\0')) {
+    throw new Error(`Null byte not allowed in path: ${name}`)
+  }
+
+  if (path.isAbsolute(name) || path.win32.isAbsolute(name)) {
     throw new Error(`Absolute path not allowed: ${name}`)
   }
 
-  const segments = name.split('/')
+  const segments = name.split(/[\\/]+/)
   for (const segment of segments) {
     if (segment === '..') {
       throw new Error(`Path traversal not allowed: ${name}`)

@@ -208,7 +208,7 @@ const main = defineCommand({
     logs: defineCommand({
       args: {
         api: { type: 'string', required: false, alias: 'a' },
-        guild: { type: 'string', required: false },
+        guild: { type: 'string', required: true },
         follow: { type: 'boolean', required: false, alias: 'f' },
         limit: { type: 'string', required: false, alias: 'n' }
       },

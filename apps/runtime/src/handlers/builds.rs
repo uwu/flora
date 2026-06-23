@@ -219,7 +219,19 @@ pub async fn stream_build_logs_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
-    require_identity(&state, &headers).await?;
+    let identity = require_identity(&state, &headers).await?;
+
+    let build = state
+        .build_service
+        .get_build(&build_id)
+        .await
+        .map_err(|err| {
+            error!(target: "flora:api", build_id, ?err, "failed to get build");
+            ApiError::internal(err)
+        })?;
+    let build = build.ok_or_else(|| ApiError::not_found(format!("build {build_id} not found")))?;
+
+    ensure_guild_admin(&state, &identity, &build.guild_id).await?;
 
     let response = state
         .build_service

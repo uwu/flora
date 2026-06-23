@@ -20,7 +20,7 @@ import { useKvKeysQuery, useKvStoresQuery, useKvValueQuery } from '@/data/querie
 import { cn } from '@/lib/utils'
 import type { KvStore, RawKvKeyInfo } from '@uwu/flora-api-client'
 import { Database, KeyRound, Plus, RefreshCw, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 function formatExpiration(expiration?: number | null) {
   if (!expiration) return 'never'
@@ -63,6 +63,7 @@ export function KvManager({ guildId }: { guildId: string }) {
   const [keyPrefix, setKeyPrefix] = useState('')
   const [keyName, setKeyName] = useState('')
   const [keyValueDraft, setKeyValueDraft] = useState<string | null>(null)
+  const [loadedValueKey, setLoadedValueKey] = useState<string | null>(null)
   const [keyMetadata, setKeyMetadata] = useState('')
   const [keyExpiration, setKeyExpiration] = useState('')
   const [selectedKey, setSelectedKey] = useState<RawKvKeyInfo | null>(null)
@@ -80,7 +81,8 @@ export function KvManager({ guildId }: { guildId: string }) {
 
   const keysQuery = useKvKeysQuery(guildId, activeStore, keyPrefix)
 
-  const valueQuery = useKvValueQuery(guildId, activeStore, selectedKey?.name ?? null)
+  const selectedKeyName = selectedKey?.name ?? null
+  const valueQuery = useKvValueQuery(guildId, activeStore, selectedKeyName)
 
   const createStoreMutation = useCreateKvStoreMutation({
     onSuccess: () => {
@@ -109,6 +111,7 @@ export function KvManager({ guildId }: { guildId: string }) {
       setSelectedKey(null)
       setKeyName('')
       setKeyValueDraft('')
+      setLoadedValueKey(null)
       setKeyMetadata('')
       setKeyExpiration('')
     },
@@ -123,6 +126,7 @@ export function KvManager({ guildId }: { guildId: string }) {
       setSelectedKey(null)
       setKeyName('')
       setKeyValueDraft('')
+      setLoadedValueKey(null)
       setKeyMetadata('')
       setKeyExpiration('')
     },
@@ -134,12 +138,22 @@ export function KvManager({ guildId }: { guildId: string }) {
   const stores = storesQuery.data ?? []
   const keys = keysQuery.data?.keys ?? []
 
-  const resolvedKeyValue = keyValueDraft ?? valueQuery.data?.value ?? ''
+  useEffect(() => {
+    if (!selectedKeyName || valueQuery.data === undefined) return
+    setKeyValueDraft(valueQuery.data.value ?? '')
+    setLoadedValueKey(selectedKeyName)
+  }, [selectedKeyName, valueQuery.data])
+
+  const selectedValueLoading =
+    selectedKeyName !== null &&
+    (valueQuery.isLoading || keyValueDraft === null || loadedValueKey !== selectedKeyName)
+  const resolvedKeyValue = keyValueDraft ?? ''
 
   const resetEditor = () => {
     setSelectedKey(null)
     setKeyName('')
     setKeyValueDraft('')
+    setLoadedValueKey(null)
     setKeyMetadata('')
     setKeyExpiration('')
   }
@@ -173,6 +187,7 @@ export function KvManager({ guildId }: { guildId: string }) {
     setSelectedKey(keyInfo)
     setKeyName(keyInfo.name)
     setKeyValueDraft(null)
+    setLoadedValueKey(null)
     setKeyMetadata(formatMetadata(keyInfo.metadata))
     setKeyExpiration(keyInfo.expiration ? String(keyInfo.expiration) : '')
     setError(null)
@@ -182,6 +197,10 @@ export function KvManager({ guildId }: { guildId: string }) {
     setError(null)
     if (!activeStore) {
       setError('Select a store')
+      return
+    }
+    if (selectedValueLoading) {
+      setError('Key value is still loading')
       return
     }
 
@@ -244,6 +263,7 @@ export function KvManager({ guildId }: { guildId: string }) {
     setSelectedKey(null)
     setKeyName('')
     setKeyValueDraft('')
+    setLoadedValueKey(null)
     setKeyMetadata('')
     setKeyExpiration('')
     setError(null)
@@ -436,7 +456,7 @@ export function KvManager({ guildId }: { guildId: string }) {
                 placeholder='Value'
                 value={resolvedKeyValue}
                 onChange={(event) => setKeyValueDraft(event.target.value)}
-                disabled={!activeStore || valueQuery.isLoading}
+                disabled={!activeStore || selectedValueLoading}
               />
 
               <textarea
@@ -448,7 +468,10 @@ export function KvManager({ guildId }: { guildId: string }) {
               />
 
               <div className='flex flex-wrap gap-2'>
-                <Button onClick={handleSaveKey} disabled={!activeStore || setKeyMutation.isPending}>
+                <Button
+                  onClick={handleSaveKey}
+                  disabled={!activeStore || selectedValueLoading || setKeyMutation.isPending}
+                >
                   Save key
                 </Button>
                 <Button variant='outline' onClick={handleClearEditor} disabled={!activeStore}>

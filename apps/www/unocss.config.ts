@@ -1,9 +1,4 @@
-import {
-  defineConfig,
-  presetIcons,
-  presetWind4,
-  transformerDirectives
-} from 'unocss'
+import { defineConfig, presetIcons, presetWind4, transformerDirectives } from 'unocss'
 import { presetRadixColors } from 'unocss-preset-radix-colors'
 
 export default defineConfig({

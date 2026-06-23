@@ -56,8 +56,6 @@ pub fn create_router() -> Router<AppState> {
         .layer(CompressionLayer::new());
 
     let logs_router = Router::new()
-        .route("/logs", get(logs::get_logs))
-        .route("/logs/stream", get(logs::stream_logs))
         .route("/logs/{guild_id}", get(logs::get_guild_logs))
         .route("/logs/{guild_id}/stream", get(logs::stream_guild_logs));
 

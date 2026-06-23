@@ -39,7 +39,14 @@ app.use(async (event, next) => {
 })
 
 // auth middleware for all /internal/* routes
-app.use('/internal', auth)
+app.use((event, next) => {
+  const pathname = event.url.pathname
+  if (pathname === '/internal' || pathname.startsWith('/internal/')) {
+    return auth(event, next)
+  }
+
+  return next()
+})
 
 app.post('/internal/builds', handleCreateBuild)
 app.get('/internal/builds/:build_id', handleGetBuild)

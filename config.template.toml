@@ -221,6 +221,11 @@
 # Default value: false
 # cookie_secure = false
 
+# Optional bearer token for operator-only endpoints such as metrics.
+#
+# Can also be specified via environment variable `API_OPERATOR_SECRET`.
+# operator_secret =
+
 # Build service configuration.
 [build_service]
 # Base URL of the internal build service.

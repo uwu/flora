@@ -32,12 +32,7 @@ defineProps<{
     <use href="#showcase-files" x="0" y="-50" />
   </svg>
 
-  <svg
-    v-else
-    fill="none"
-    viewBox="0 0 301 157"
-    class="w-full h-auto showcase-svg"
-  >
+  <svg v-else fill="none" viewBox="0 0 301 157" class="w-full h-auto showcase-svg">
     <use href="#showcase-checks" x="0" y="-13" />
   </svg>
 </template>

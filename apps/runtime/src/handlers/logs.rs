@@ -22,10 +22,7 @@ use crate::{
 };
 
 #[derive(OpenApi)]
-#[openapi(
-    paths(get_logs, get_guild_logs),
-    components(schemas(LogEntry, LogsQuery))
-)]
+#[openapi(paths(get_guild_logs), components(schemas(LogEntry, LogsQuery)))]
 pub struct LogsApi;
 
 #[derive(Debug, Deserialize, IntoParams, ToSchema)]
@@ -37,52 +34,6 @@ pub struct LogsQuery {
 
 fn default_limit() -> usize {
     100
-}
-
-/// Get recent logs.
-#[utoipa::path(
-    get,
-    path = "",
-    params(LogsQuery),
-    summary = "List logs",
-    description = "Returns recent log entries visible to the authenticated user.",
-    responses(
-        (status = 200, description = "Recent log entries", body = Vec<LogEntry>)
-    ),
-    tag = "Logs"
-)]
-pub async fn get_logs(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    Query(query): Query<LogsQuery>,
-) -> Result<ApiJson<Vec<LogEntry>>, ApiError> {
-    require_identity(&state, &headers).await?;
-    let limit = query.limit.min(1000);
-    let logs = log_sink::log_sink().recent(limit);
-    Ok(ApiJson(Json(logs)))
-}
-
-/// Stream logs via Server-Sent Events.
-///
-/// Note: This endpoint is not documented in OpenAPI due to SSE response type limitations.
-pub async fn stream_logs(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-) -> Result<Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>>, ApiError> {
-    require_identity(&state, &headers).await?;
-    let receiver = log_sink::log_sink().subscribe();
-
-    let stream = tokio_stream::wrappers::BroadcastStream::new(receiver).filter_map(|result| {
-        match result {
-            Ok(entry) => {
-                let json = serde_json::to_string(&entry).ok()?;
-                Some(Ok::<_, Infallible>(Event::default().data(json)))
-            }
-            Err(_) => None, // Skip lagged messages
-        }
-    });
-
-    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
 
 /// Get recent logs for a specific guild.

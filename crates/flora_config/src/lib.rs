@@ -146,6 +146,9 @@ pub struct ApiConfig {
     /// Whether to use secure cookies.
     #[config(env = "API_COOKIE_SECURE", default = false)]
     pub cookie_secure: bool,
+    /// Optional bearer token for operator-only endpoints such as metrics.
+    #[config(env = "API_OPERATOR_SECRET")]
+    pub operator_secret: Option<String>,
 }
 
 /// Secrets configuration.

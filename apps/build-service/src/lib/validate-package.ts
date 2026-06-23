@@ -8,6 +8,9 @@ const DISALLOWED_SPECIFIER_PREFIXES = [
   'link:',
   'workspace:',
   'catalog:',
+  'npm:',
+  'patch:',
+  'portal:',
   'git+ssh:',
   'git+https:',
   'git:',
@@ -16,6 +19,22 @@ const DISALLOWED_SPECIFIER_PREFIXES = [
   'gitlab:',
   'http://',
   'https://'
+]
+
+const DISALLOWED_PACKAGE_MANAGER_FILES = [
+  '.npmrc',
+  '.pnpmfile.cjs',
+  '.pnpmfile.mjs',
+  '.yarnrc',
+  '.yarnrc.yml',
+  'bun.lock',
+  'bun.lockb',
+  'npm-shrinkwrap.json',
+  'package-lock.json',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
+  'pnpm-workspace.yml',
+  'yarn.lock'
 ]
 
 // Matches bare GitHub shorthands like "user/repo" or "user/repo#ref"
@@ -31,6 +50,17 @@ export type ValidatedPackageJson = {
 export async function validateAndSanitizePackageJson(
   workspaceDir: string
 ): Promise<ValidatedPackageJson> {
+  for (const file of DISALLOWED_PACKAGE_MANAGER_FILES) {
+    const hasFile = await fs
+      .access(path.join(workspaceDir, file))
+      .then(() => true)
+      .catch(() => false)
+
+    if (hasFile) {
+      throw new Error(`Disallowed package-manager file: ${file}`)
+    }
+  }
+
   const pkgPath = path.join(workspaceDir, 'package.json')
   const raw = await fs.readFile(pkgPath, 'utf-8')
   const pkg = JSON.parse(raw) as Record<string, unknown>
@@ -67,6 +97,10 @@ export async function validateAndSanitizePackageJson(
             `Disallowed specifier for dependency "${name}": "${specifier}" (${prefix} not allowed)`
           )
         }
+      }
+
+      if (specifier.includes('://')) {
+        throw new Error(`Disallowed URL-like specifier for dependency "${name}": "${specifier}"`)
       }
 
       if (specifier.startsWith('/') || specifier.startsWith('./') || specifier.startsWith('../')) {

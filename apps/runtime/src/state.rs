@@ -27,4 +27,6 @@ pub struct AppState {
     pub build_service: BuildServiceClient,
     /// Bot HTTP client for guild permission checks.
     pub http: Arc<Http>,
+    /// Bearer token for operator-only endpoints.
+    pub operator_secret: Option<String>,
 }

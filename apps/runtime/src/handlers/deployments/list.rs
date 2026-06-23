@@ -4,7 +4,11 @@ use tracing::error;
 use utoipa::ToSchema;
 
 use crate::{
-    handlers::{auth::require_identity, error::ApiError, response::ApiJson},
+    handlers::{
+        auth::{ensure_guild_admin, require_identity},
+        error::ApiError,
+        response::ApiJson,
+    },
     services::deployments::Deployment,
     state::AppState,
 };
@@ -43,7 +47,7 @@ pub async fn list_deployments_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<ApiJson<Vec<DeploymentListItem>>, ApiError> {
-    let _identity = require_identity(&state, &headers).await?;
+    let identity = require_identity(&state, &headers).await?;
 
     let deployments = state.deployments.list_deployments().await.map_err(|err| {
         error!(target: "flora:api", ?err, "failed to list deployments");
@@ -52,6 +56,12 @@ pub async fn list_deployments_handler(
 
     let mut items = Vec::with_capacity(deployments.len());
     for deployment in deployments {
+        match ensure_guild_admin(&state, &identity, &deployment.guild_id).await {
+            Ok(()) => {}
+            Err(ApiError::Forbidden { .. }) => continue,
+            Err(err) => return Err(err),
+        }
+
         items.push(DeploymentListItem::from(deployment));
     }
 
