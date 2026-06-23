@@ -2,7 +2,10 @@ FROM node:22-slim AS base
 
 WORKDIR /app
 ENV NODE_ENV=production
-RUN corepack enable
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && corepack enable
 
 FROM base AS build
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./

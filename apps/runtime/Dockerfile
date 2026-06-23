@@ -6,7 +6,10 @@
 FROM node:22-slim AS frontend
 
 WORKDIR /app
-RUN corepack enable
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && corepack enable
 
 # Copy workspace root manifests
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
