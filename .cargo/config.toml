@@ -3,9 +3,6 @@ TS_RS_EXPORT_DIR = "../../../sdk/src/generated"
 TS_RS_IMPORT_EXTENSION = "ts"
 V8_FROM_SOURCE = "0"
 
-[build]
-rustc-wrapper = "sccache"
-
 [profile.dev]
 opt-level = 0
 debug = 1

@@ -52,12 +52,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 git \
   && rm -rf /var/lib/apt/lists/*
 
-# Use the same absolute path as the source tree so that file:// git deps in
-# Cargo.toml (e.g. submodules/deno_core) resolve correctly.
 WORKDIR /home/tasky/flora
-
-# Disable sccache wrapper (set in .cargo/config.toml but not available in Docker)
-ENV RUSTC_WRAPPER=""
 
 # Copy full workspace source
 COPY Cargo.toml Cargo.lock ./
@@ -65,7 +60,6 @@ COPY .cargo/ .cargo/
 COPY apps/runtime/ apps/runtime/
 COPY crates/ crates/
 COPY packages/runtime-dist/ packages/runtime-dist/
-COPY submodules/ submodules/
 
 # Embedded assets
 COPY examples/basic/src/ examples/basic/src/

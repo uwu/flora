@@ -1,6 +1,0 @@
-manifest_path = "../Cargo.toml"
-third_party_dir = "rust"
-vendor = true
-
-[buck]
-file_name = "BUCK2"

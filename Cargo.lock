@@ -1175,7 +1175,7 @@ dependencies = [
 [[package]]
 name = "deno_core"
 version = "0.376.0"
-source = "git+file:///home/tasky/flora/submodules/deno_core?branch=flora-locker-compat#7999afe24081ac4cfd74205a36e98b742555408d"
+source = "git+https://github.com/taskylizard/deno_core.git?rev=7999afe24081ac4cfd74205a36e98b742555408d#7999afe24081ac4cfd74205a36e98b742555408d"
 dependencies = [
  "anyhow",
  "az",
@@ -1398,7 +1398,7 @@ dependencies = [
 [[package]]
 name = "deno_ops"
 version = "0.252.0"
-source = "git+file:///home/tasky/flora/submodules/deno_core?branch=flora-locker-compat#7999afe24081ac4cfd74205a36e98b742555408d"
+source = "git+https://github.com/taskylizard/deno_core.git?rev=7999afe24081ac4cfd74205a36e98b742555408d#7999afe24081ac4cfd74205a36e98b742555408d"
 dependencies = [
  "indexmap 2.12.1",
  "proc-macro2",
@@ -4503,7 +4503,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls 0.23.28",
- "socket2 0.6.1",
+ "socket2 0.5.10",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -4542,9 +4542,9 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.6.1",
+ "socket2 0.5.10",
  "tracing",
- "windows-sys 0.60.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4964,7 +4964,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4977,7 +4977,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.11.0",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5288,7 +5288,7 @@ dependencies = [
 [[package]]
 name = "serde_v8"
 version = "0.285.0"
-source = "git+file:///home/tasky/flora/submodules/deno_core?branch=flora-locker-compat#7999afe24081ac4cfd74205a36e98b742555408d"
+source = "git+https://github.com/taskylizard/deno_core.git?rev=7999afe24081ac4cfd74205a36e98b742555408d#7999afe24081ac4cfd74205a36e98b742555408d"
 dependencies = [
  "deno_error",
  "num-bigint",
@@ -6091,9 +6091,9 @@ dependencies = [
 
 [[package]]
 name = "t0x"
-version = "0.1.8"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0219c290cd9aecba1b62fe67ef283be5be8bb4f1c35dc3d84c0bd9ff56ba7a74"
+checksum = "25f22734234f532fa0b1da6d98809b241790b9ab87877afd99d4319fb5a9fdf5"
 dependencies = [
  "oxc_allocator",
  "oxc_ast",
@@ -6105,9 +6105,9 @@ dependencies = [
 
 [[package]]
 name = "t0x-macros"
-version = "0.1.8"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7962d9177208f27a427667a8b865118c2d90ad456a342f5d3069ab752352b026"
+checksum = "803e3709abcbd09c164561ca059b2a2a83572b31439b443d284cf3f1c4989989"
 dependencies = [
  "proc-macro2",
  "quote",
