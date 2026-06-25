@@ -26,11 +26,12 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./unocss": "./src/unocss/index.ts",
     "./style.css": "./dist/style.css",
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "vite build && vue-tsc -p tsconfig.build.json --declaration --emitDeclarationOnly",
+    "build": "vp build && vue-tsc -p tsconfig.build.json --declaration --emitDeclarationOnly",
     "dev": "vite build --watch",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
@@ -41,15 +42,18 @@
     "check": "vp check"
   },
   "dependencies": {
+    "@lucide/vue": "catalog:",
+    "@radix-ui/colors": "catalog:",
     "@vueuse/core": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
-    "reka-ui": "catalog:"
+    "reka-ui": "catalog:",
+    "tailwind-merge": "catalog:",
+    "tw-animate-css": "catalog:"
   },
   "devDependencies": {
     "@iconify-json/lucide": "1.2.111",
     "@iconify-json/radix-icons": "catalog:",
-    "@radix-ui/colors": "catalog:",
     "@storybook/addon-a11y": "catalog:",
     "@storybook/vue3": "catalog:",
     "@storybook/vue3-vite": "catalog:",
@@ -62,7 +66,6 @@
     "storybook": "catalog:",
     "typescript": "catalog:",
     "unocss": "^66.5.12",
-    "unocss-preset-radix-colors": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:",

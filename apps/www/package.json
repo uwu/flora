@@ -7,6 +7,7 @@
     "preview": "vitepress preview"
   },
   "dependencies": {
+    "@flora-internal/design-system": "workspace:*",
     "@uwu/flora-branding": "workspace:*",
     "vitepress": "2.0.0-alpha.16",
     "vue": "^3.5.29"
@@ -21,7 +22,6 @@
     "sass": "^1.97.2",
     "typescript": "catalog:",
     "unocss": "^66.5.12",
-    "unocss-preset-radix-colors": "catalog:",
     "wrangler": "^4.58.0"
   }
 }

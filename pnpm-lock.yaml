@@ -18,6 +18,9 @@ catalogs:
     '@iconify-json/simple-icons':
       specifier: 1.2.86
       version: 1.2.86
+    '@lucide/vue':
+      specifier: 1.21.0
+      version: 1.21.0
     '@radix-ui/colors':
       specifier: 3.0.0
       version: 3.0.0
@@ -81,12 +84,15 @@ catalogs:
     storybook:
       specifier: 10.4.4
       version: 10.4.4
+    tailwind-merge:
+      specifier: ^3.5.0
+      version: 3.5.0
+    tw-animate-css:
+      specifier: ^1.4.0
+      version: 1.4.0
     typescript:
       specifier: ^5
       version: 5.9.3
-    unocss-preset-radix-colors:
-      specifier: 0.2.0
-      version: 0.2.0
     vite-plus:
       specifier: 0.2.1
       version: 0.2.1
@@ -388,6 +394,9 @@ importers:
 
   apps/www:
     dependencies:
+      '@flora-internal/design-system':
+        specifier: workspace:*
+        version: link:../../packages/design-system
       '@uwu/flora-branding':
         specifier: workspace:*
         version: link:../../packages/branding
@@ -425,9 +434,6 @@ importers:
       unocss:
         specifier: ^66.5.12
         version: 66.6.6(vite@8.0.0-beta.16(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(yaml@2.9.0))
-      unocss-preset-radix-colors:
-        specifier: 'catalog:'
-        version: 0.2.0(unocss@66.6.6(vite@8.0.0-beta.16(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(yaml@2.9.0)))
       wrangler:
         specifier: ^4.58.0
         version: 4.73.0
@@ -519,6 +525,12 @@ importers:
 
   packages/design-system:
     dependencies:
+      '@lucide/vue':
+        specifier: 'catalog:'
+        version: 1.21.0(vue@3.5.38(typescript@5.9.3))
+      '@radix-ui/colors':
+        specifier: 'catalog:'
+        version: 3.0.0
       '@vueuse/core':
         specifier: 'catalog:'
         version: 14.3.0(vue@3.5.38(typescript@5.9.3))
@@ -531,6 +543,12 @@ importers:
       reka-ui:
         specifier: 'catalog:'
         version: 2.9.10(vue@3.5.38(typescript@5.9.3))
+      tailwind-merge:
+        specifier: 'catalog:'
+        version: 3.5.0
+      tw-animate-css:
+        specifier: 'catalog:'
+        version: 1.4.0
     devDependencies:
       '@iconify-json/lucide':
         specifier: 1.2.111
@@ -538,9 +556,6 @@ importers:
       '@iconify-json/radix-icons':
         specifier: 'catalog:'
         version: 1.2.6
-      '@radix-ui/colors':
-        specifier: 'catalog:'
-        version: 3.0.0
       '@storybook/addon-a11y':
         specifier: 'catalog:'
         version: 10.4.4(storybook@10.4.4(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite-plus@0.2.1(@types/node@24.12.0)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0))(esbuild@0.27.7)(happy-dom@20.10.2)(jiti@2.6.1)(msw@2.12.10(@types/node@24.12.0)(typescript@5.9.3))(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0)))
@@ -577,9 +592,6 @@ importers:
       unocss:
         specifier: ^66.5.12
         version: 66.6.6(@voidzero-dev/vite-plus-core@0.2.1(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0))
-      unocss-preset-radix-colors:
-        specifier: 'catalog:'
-        version: 0.2.0(unocss@66.6.6(@voidzero-dev/vite-plus-core@0.2.1(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0)))
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@0.2.1
         version: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0)'
@@ -595,6 +607,37 @@ importers:
       vue:
         specifier: 'catalog:'
         version: 3.5.38(typescript@5.9.3)
+      vue-tsc:
+        specifier: 'catalog:'
+        version: 3.3.4(typescript@5.9.3)
+
+  packages/design-system-showcase:
+    dependencies:
+      '@flora-internal/design-system':
+        specifier: workspace:*
+        version: link:../design-system
+      vue:
+        specifier: 'catalog:'
+        version: 3.5.38(typescript@5.9.3)
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.12.0
+      '@vitejs/plugin-vue':
+        specifier: 'catalog:'
+        version: 6.0.7(@voidzero-dev/vite-plus-core@0.2.1(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0))(vue@3.5.38(typescript@5.9.3))
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      unocss:
+        specifier: ^66.5.12
+        version: 66.6.6(@voidzero-dev/vite-plus-core@0.2.1(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0))
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@0.2.1
+        version: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0)'
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.1(@types/node@24.12.0)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0))(esbuild@0.27.7)(happy-dom@20.10.2)(jiti@2.6.1)(msw@2.12.10(@types/node@24.12.0)(typescript@5.9.3))(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0)
       vue-tsc:
         specifier: 'catalog:'
         version: 3.3.4(typescript@5.9.3)
@@ -1768,6 +1811,11 @@ packages:
 
   '@jsdevtools/ono@7.1.3':
     resolution: {integrity: sha512-4JQNk+3mVzK3xh2rqd6RB4J46qUR19azEHBneZyTZM+c456qOrbbM/5xcR8huNCCcbVt7+UmizG6GuUvPvKUYg==}
+
+  '@lucide/vue@1.21.0':
+    resolution: {integrity: sha512-eoFn3tppjKAc12ZqdnRSMFdtwQ1ZMRQFb6SV1Eub6Y8kU28ccnqKeSFdnur9hMg8gIbosU2Y3WFJr/J/xS/IlQ==}
+    peerDependencies:
+      vue: '>=3.0.1'
 
   '@medv/finder@4.0.2':
     resolution: {integrity: sha512-RraNY9SCcx4KZV0Dh6BEW6XEW2swkqYca74pkFFRw6hHItSHiy+O/xMnpbofjYbzXj0tSpBGthUF1hHTsr3vIQ==}
@@ -6564,11 +6612,6 @@ packages:
     resolution: {integrity: sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==}
     engines: {node: '>= 10.0.0'}
 
-  unocss-preset-radix-colors@0.2.0:
-    resolution: {integrity: sha512-bnp9jaJyt7qTXhvicci/cPU2sbWPK5T5HTnpGQG/utfbzZ7hC7lr+THglvAnUe5dig8NClD+2eZD/W+IPayEog==}
-    peerDependencies:
-      unocss: ^0.62.3
-
   unocss@66.6.6:
     resolution: {integrity: sha512-PRKK945e2oZKHV664MA5Z9CDHbvY/V79IvTOUWKZ514jpl3UsJU3sS+skgxmKJSmwrWvXE5OVcmPthJrD/7vxg==}
     engines: {node: '>=14'}
@@ -8036,6 +8079,10 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.5
 
   '@jsdevtools/ono@7.1.3': {}
+
+  '@lucide/vue@1.21.0(vue@3.5.38(typescript@5.9.3))':
+    dependencies:
+      vue: 3.5.38(typescript@5.9.3)
 
   '@medv/finder@4.0.2': {}
 
@@ -10130,8 +10177,8 @@ snapshots:
   '@vue/language-core@3.3.4':
     dependencies:
       '@volar/language-core': 2.4.28
-      '@vue/compiler-dom': 3.5.30
-      '@vue/shared': 3.5.30
+      '@vue/compiler-dom': 3.5.38
+      '@vue/shared': 3.5.38
       alien-signals: 3.2.1
       muggle-string: 0.4.1
       path-browserify: 1.0.1
@@ -13195,16 +13242,6 @@ snapshots:
       unist-util-visit-parents: 6.0.2
 
   universalify@2.0.1: {}
-
-  unocss-preset-radix-colors@0.2.0(unocss@66.6.6(@voidzero-dev/vite-plus-core@0.2.1(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0))):
-    dependencies:
-      '@radix-ui/colors': 3.0.0
-      unocss: 66.6.6(@voidzero-dev/vite-plus-core@0.2.1(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0))
-
-  unocss-preset-radix-colors@0.2.0(unocss@66.6.6(vite@8.0.0-beta.16(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(yaml@2.9.0))):
-    dependencies:
-      '@radix-ui/colors': 3.0.0
-      unocss: 66.6.6(vite@8.0.0-beta.16(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(yaml@2.9.0))
 
   unocss@66.6.6(@voidzero-dev/vite-plus-core@0.2.1(@types/node@24.12.0)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0)):
     dependencies:

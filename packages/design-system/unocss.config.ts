@@ -3,9 +3,10 @@ import {
   presetIcons,
   presetWind4,
   transformerDirectives,
-  transformerVariantGroup
+  transformerVariantGroup,
+  presetTypography
 } from 'unocss'
-import { presetRadixColors } from 'unocss-preset-radix-colors'
+import { presetFloraShadcn } from './src/unocss'
 
 export default defineConfig({
   transformers: [transformerDirectives(), transformerVariantGroup()],
@@ -17,21 +18,17 @@ export default defineConfig({
         'vertical-align': '-0.125em'
       }
     }),
-    presetRadixColors({
-      prefix: '',
-      lightSelector: '.light',
-      darkSelector: '.dark',
-      colors: ['gray', 'iris', 'red', 'yellow', 'orange', 'pink', 'blue', 'green'],
-      aliases: {
-        neutral: 'gray',
-        primary: 'iris',
-        info: 'blue',
-        tip: 'green',
-        warning: 'yellow',
-        danger: 'red'
-      }
-    })
+    presetTypography(),
+    presetFloraShadcn()
   ],
+  content: {
+    pipeline: {
+      include: [
+        /\.(vue|svelte|[jt]sx|mdx?|astro|elm|php|phtml|html)($|\?)/,
+        'src/**/*.{js,ts}'
+      ]
+    }
+  },
   safelist: [
     'i-lucide-alert-circle',
     'i-lucide-arrow-left',
