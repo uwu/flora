@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { GridLines } from '@flora-internal/design-system'
 import logoCursiveSvg from '@uwu/flora-branding/logo-cursive.svg'
 import logoSvg from '@uwu/flora-branding/logo.svg'
 // @ts-ignore
@@ -20,10 +21,8 @@ defineEmits<{
 
 <template>
   <nav class="nav" :class="{ 'screen-open': isScreenOpen }">
-    <div aria-hidden="true" class="grid-line-v nav-grid-line nav-grid-line-left" />
-    <div aria-hidden="true" class="grid-line-v nav-grid-line nav-grid-line-right" />
-    <div aria-hidden="true" class="grid-dot nav-grid-dot nav-grid-dot-left" />
-    <div aria-hidden="true" class="grid-dot nav-grid-dot nav-grid-dot-right" />
+    <GridLines mode="lines-with-dots" variant="navbar-lines" />
+    <GridLines mode="lines-with-dots" variant="navbar-dots" />
 
     <div class="nav-inner">
       <a href="/" class="nav-brand" aria-label="flora home">
@@ -57,8 +56,13 @@ defineEmits<{
 <style scoped>
 .nav {
   --nav-fallback-grid-max-width: var(--flora-grid-max-width, min(calc(100vw - 64px), 1376px));
-  --nav-grid-max-width: var(--grid-max-width, var(--nav-fallback-grid-max-width));
-  --nav-grid-line-offset: var(--grid-line-offset, var(--flora-grid-line-offset, 16px));
+  --grid-max-width: var(--nav-fallback-grid-max-width);
+  --grid-line-offset: var(--flora-grid-line-offset, 16px);
+  --grid-line-color: var(--gray5);
+  --grid-dot-color: var(--gray9);
+  --grid-dot-fill: var(--gray1);
+  --nav-grid-max-width: var(--grid-max-width);
+  --nav-grid-line-offset: var(--grid-line-offset);
   --nav-page-max: var(--page-max, var(--flora-page-max, min(calc(100vw - 40px), 1040px)));
   --nav-edge-max: calc(var(--nav-grid-max-width) + var(--nav-grid-line-offset) * 2);
   --nav-padding-left: 32px;
@@ -73,59 +77,6 @@ defineEmits<{
   background: var(--gray1);
   border-bottom: 1px solid var(--gray5);
   pointer-events: none;
-}
-
-.grid-line-v {
-  display: none;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  z-index: 10;
-  width: 0;
-  border-left: 1px solid var(--gray5);
-  pointer-events: none;
-}
-
-.grid-dot {
-  display: none;
-  position: absolute;
-  z-index: 20;
-  width: 20px;
-  height: 20px;
-  align-items: center;
-  justify-content: center;
-  background: var(--gray1);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.grid-dot::after {
-  content: '';
-  display: block;
-  width: 2px;
-  height: 2px;
-  background: var(--gray9);
-  border-radius: 50%;
-}
-
-.nav-grid-line-left {
-  left: calc(50% - var(--nav-grid-max-width) / 2 - var(--nav-grid-line-offset));
-}
-
-.nav-grid-line-right {
-  right: calc(50% - var(--nav-grid-max-width) / 2 - var(--nav-grid-line-offset));
-}
-
-.nav-grid-dot-left {
-  bottom: 0;
-  left: calc(50% - var(--nav-grid-max-width) / 2 - var(--nav-grid-line-offset));
-  transform: translate(-50%, 50%);
-}
-
-.nav-grid-dot-right {
-  right: calc(50% - var(--nav-grid-max-width) / 2 - var(--nav-grid-line-offset));
-  bottom: 0;
-  transform: translate(50%, 50%);
 }
 
 .nav-inner {

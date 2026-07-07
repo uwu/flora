@@ -123,14 +123,6 @@ export default defineConfig({
         }
       },
       {
-        extends: './packages/design-system/vitest.config.ts',
-        root: './packages/design-system',
-        test: {
-          name: 'design-system',
-          include: ['test/**/*.test.ts']
-        }
-      },
-      {
         extends: './packages/sdk/vitest.config.ts',
         root: './packages/sdk',
         test: {

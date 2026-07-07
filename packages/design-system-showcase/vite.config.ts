@@ -5,6 +5,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [vue(), UnoCSS()],
   server: {
+    allowedHosts: true,
     port: 5174
   }
 })

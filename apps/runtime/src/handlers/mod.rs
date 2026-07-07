@@ -8,6 +8,8 @@ use crate::state::AppState;
 pub mod auth;
 pub mod builds;
 pub mod deployments;
+#[cfg(debug_assertions)]
+pub mod dev;
 pub mod error;
 pub mod guilds;
 pub mod health;
@@ -88,6 +90,6 @@ pub fn create_router() -> Router<AppState> {
 
     #[cfg(debug_assertions)]
     {
-        router
+        router.nest("/__dev", dev::router())
     }
 }

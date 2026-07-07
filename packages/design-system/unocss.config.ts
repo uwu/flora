@@ -1,15 +1,14 @@
 import {
   defineConfig,
   presetIcons,
+  presetWebFonts,
   presetWind4,
-  transformerDirectives,
-  transformerVariantGroup,
-  presetTypography
+  transformerDirectives
 } from 'unocss'
-import { presetFloraShadcn } from './src/unocss'
+import { presetFlora } from './src/unocss'
 
 export default defineConfig({
-  transformers: [transformerDirectives(), transformerVariantGroup()],
+  transformers: [transformerDirectives()],
   presets: [
     presetWind4(),
     presetIcons({
@@ -18,30 +17,18 @@ export default defineConfig({
         'vertical-align': '-0.125em'
       }
     }),
-    presetTypography(),
-    presetFloraShadcn()
+    presetWebFonts({
+      provider: 'google',
+      fonts: {
+        sans: 'Geist:400,500,600,700',
+        mono: 'Geist Mono:400,500,600,700'
+      }
+    }),
+    presetFlora()
   ],
   content: {
     pipeline: {
-      include: [
-        /\.(vue|svelte|[jt]sx|mdx?|astro|elm|php|phtml|html)($|\?)/,
-        'src/**/*.{js,ts}'
-      ]
+      include: [/\.(vue|svelte|[jt]sx|mdx?|astro|elm|php|phtml|html)($|\?)/, 'src/**/*.{js,ts}']
     }
-  },
-  safelist: [
-    'i-lucide-alert-circle',
-    'i-lucide-arrow-left',
-    'i-lucide-arrow-right',
-    'i-lucide-check',
-    'i-lucide-chevron-down',
-    'i-lucide-chevron-right',
-    'i-lucide-circle',
-    'i-lucide-info',
-    'i-lucide-loader-2',
-    'i-lucide-minus',
-    'i-lucide-panel-left',
-    'i-lucide-search',
-    'i-lucide-x'
-  ]
+  }
 })

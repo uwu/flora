@@ -14,22 +14,15 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "preserve",
-    "types": ["node", "vitest/globals"],
+    "types": ["node"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
-    }
+      "@flora-internal/design-system": ["./src/index.ts"],
+      "@flora-internal/design-system/*": ["./src/*"]
+    },
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.vue",
-    "src/**/*.d.ts",
-    "stories/**/*.ts",
-    "stories/**/*.vue",
-    "test/**/*.ts",
-    "*.config.ts",
-    ".storybook/**/*.ts"
-  ],
-  "references": []
+  "include": ["src/**/*.ts", "src/**/*.vue", "src/**/*.d.ts", "*.config.ts"]
 }

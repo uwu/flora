@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build": "vp build",
+    "build": "vue-tsc -p tsconfig.json --noEmit && vp build",
     "preview": "vp preview",
     "typecheck": "vue-tsc -p tsconfig.json --noEmit"
   },
@@ -13,7 +13,9 @@
     "vue": "catalog:"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "1.2.111",
     "@types/node": "catalog:",
+    "@unocss/reset": "^66.5.12",
     "@vitejs/plugin-vue": "catalog:",
     "typescript": "catalog:",
     "unocss": "^66.5.12",

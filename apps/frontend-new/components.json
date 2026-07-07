@@ -1,7 +1,7 @@
 {
   "$schema": "https://shadcn-vue.com/schema.json",
-  "style": "reka-nova",
-  "font": "inter",
+  "style": "new-york",
+  "font": "geist-sans",
   "typescript": true,
   "tailwind": {
     "config": "",
@@ -12,7 +12,7 @@
   },
   "iconLibrary": "lucide",
   "rtl": false,
-  "pointer": true,
+  "pointer": false,
   "aliases": {
     "components": "@/components",
     "utils": "@/lib/utils",
@@ -20,7 +20,5 @@
     "lib": "@/lib",
     "composables": "@/composables"
   },
-  "menuColor": "inverted-translucent",
-  "menuAccent": "subtle",
   "registries": {}
 }
