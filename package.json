@@ -4,7 +4,7 @@
   "scripts": {
     "prepare": "vp config",
     "format": "cargo fmt && vp fmt",
-    "ready": "vp fmt && vp lint && vp run test -r && vp run build -r"
+    "ready": "vp fmt && vp lint && vp run -r test && vp run -r build"
   },
   "devDependencies": {
     "vite-plus": "catalog:"
