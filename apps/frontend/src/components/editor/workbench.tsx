@@ -37,6 +37,8 @@ import * as monaco from 'monaco-editor'
 import { useEffect, useRef, useState } from 'react'
 
 import floraSdkGlobalTypes from '../../../../../packages/sdk/global-types.d.ts?raw'
+import floraSdkCustomBotTsconfig from '../../../../../packages/sdk/tsconfig.custom-bot.json?raw'
+import floraSdkTsconfig from '../../../../../packages/sdk/tsconfig.json?raw'
 import { getParentFolder, normalizePath } from './editor-utils'
 
 const WORKSPACE_ROOT = '/workspace'
@@ -57,11 +59,29 @@ const DEFAULT_TSCONFIG = JSON.stringify(
   null,
   2
 )
+const CUSTOM_BOT_TSCONFIG = JSON.stringify(
+  {
+    extends: '@uwu/flora-sdk/tsconfig/custom-bot',
+    compilerOptions: {
+      moduleResolution: 'Bundler',
+      types: ['@uwu/flora-sdk'],
+      skipLibCheck: true
+    },
+    include: ['src/**/*', 'node_modules/@uwu/flora-sdk/global-types.d.ts']
+  },
+  null,
+  2
+)
 const FLORA_SDK_PACKAGE_JSON = JSON.stringify(
   {
     name: '@uwu/flora-sdk',
     version: '0.0.0',
-    types: 'index.d.ts'
+    types: 'index.d.ts',
+    exports: {
+      '.': { types: './index.d.ts' },
+      './tsconfig': './tsconfig.json',
+      './tsconfig/custom-bot': './tsconfig.custom-bot.json'
+    }
   },
   null,
   2
@@ -75,6 +95,7 @@ declare module '@uwu/flora-sdk' {
   export const prefix: typeof globalThis.prefix
   export const slash: typeof globalThis.slash
   export const createBot: typeof globalThis.createBot
+  export const customBot: typeof globalThis.customBot
   export const embed: typeof globalThis.embed
   export const ActionRowBuilder: typeof globalThis.ActionRowBuilder
   export const ButtonBuilder: typeof globalThis.ButtonBuilder
@@ -85,9 +106,16 @@ const SUPPORT_FILES: Record<string, string> = {
   'tsconfig.json': DEFAULT_TSCONFIG,
   'node_modules/@uwu/flora-sdk/package.json': FLORA_SDK_PACKAGE_JSON,
   'node_modules/@uwu/flora-sdk/global-types.d.ts': floraSdkGlobalTypes,
-  'node_modules/@uwu/flora-sdk/index.d.ts': FLORA_SDK_INDEX_TYPES
+  'node_modules/@uwu/flora-sdk/index.d.ts': FLORA_SDK_INDEX_TYPES,
+  'node_modules/@uwu/flora-sdk/tsconfig.json': floraSdkTsconfig,
+  'node_modules/@uwu/flora-sdk/tsconfig.custom-bot.json': floraSdkCustomBotTsconfig
 }
 const SUPPORT_PATHS = new Set(Object.keys(SUPPORT_FILES))
+type EditorRuntime = 'guild' | 'custom-bot'
+
+function tsconfigForRuntime(runtime: EditorRuntime) {
+  return runtime === 'custom-bot' ? CUSTOM_BOT_TSCONFIG : DEFAULT_TSCONFIG
+}
 
 const workerLoaders: Partial<Record<string, () => Worker>> = {
   editorWorkerService: () =>
@@ -200,6 +228,7 @@ function areFileMapsEqual(a: Record<string, string>, b: Record<string, string>) 
 
 type WorkbenchController = {
   provider: RegisteredFileSystemProvider
+  setRuntime: (runtime: EditorRuntime) => Promise<void>
   syncFiles: (nextFiles: Record<string, string>) => Promise<void>
   subscribe: (listener: (next: Record<string, string>) => void) => () => void
 }
@@ -211,7 +240,8 @@ let suppressEvents = false
 async function createController(
   container: HTMLElement,
   initialFiles: Record<string, string>,
-  entryFile?: string | null
+  entryFile: string | null | undefined,
+  runtime: EditorRuntime
 ) {
   ensureWorkerEnvironment()
   const provider = new RegisteredFileSystemProvider(false)
@@ -221,6 +251,7 @@ async function createController(
     await ensureDirectory(provider, path)
     await upsertFile(provider, path, contents)
   }
+  await upsertFile(provider, 'tsconfig.json', tsconfigForRuntime(runtime))
 
   for (const [path, contents] of Object.entries(initialFiles)) {
     const normalized = normalizePath(path)
@@ -307,6 +338,9 @@ async function createController(
 
   const controller: WorkbenchController = {
     provider,
+    setRuntime: async (nextRuntime) => {
+      await upsertFile(provider, 'tsconfig.json', tsconfigForRuntime(nextRuntime))
+    },
     syncFiles: async (nextFiles) => {
       if (areFileMapsEqual(currentFiles, nextFiles)) return
       suppressEvents = true
@@ -387,10 +421,16 @@ async function handleFileChange(
 type EditorWorkbenchProps = {
   files: Record<string, string>
   entryFile?: string | null
+  runtime?: EditorRuntime
   onFilesChange: (next: Record<string, string>) => void
 }
 
-export function EditorWorkbench({ files, entryFile, onFilesChange }: EditorWorkbenchProps) {
+export function EditorWorkbench({
+  files,
+  entryFile,
+  runtime = 'guild',
+  onFilesChange
+}: EditorWorkbenchProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -405,8 +445,10 @@ export function EditorWorkbench({ files, entryFile, onFilesChange }: EditorWorkb
     const setup = async () => {
       try {
         if (!sharedController) {
-          sharedController = await createController(container, files, entryFile)
+          sharedController = await createController(container, files, entryFile, runtime)
         }
+
+        await sharedController.setRuntime(runtime)
 
         changeDisposable = sharedController.provider.onDidChangeFile((changes) => {
           void handleFileChange(sharedController!.provider, changes)
@@ -429,7 +471,7 @@ export function EditorWorkbench({ files, entryFile, onFilesChange }: EditorWorkb
       changeDisposable?.dispose()
       if (unsubscribe) unsubscribe()
     }
-  }, [entryFile, files, onFilesChange])
+  }, [entryFile, files, onFilesChange, runtime])
 
   return (
     <div className='relative h-full min-w-0 flex-1'>

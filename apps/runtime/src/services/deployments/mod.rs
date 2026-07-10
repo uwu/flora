@@ -8,7 +8,12 @@ use tracing::{info, warn};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{bundler::DeploymentFile, services::orchestrator::ORCHESTRATOR_DEPLOYMENT_ID};
+use crate::{
+    bundler::DeploymentFile,
+    services::{
+        custom_bots::CUSTOM_BOT_DEPLOYMENT_PREFIX, orchestrator::ORCHESTRATOR_DEPLOYMENT_ID,
+    },
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct DeploymentSourceMapFile {
@@ -569,9 +574,11 @@ impl DeploymentService {
             SELECT guild_id, entry, files, source_map, bundle, created_at, updated_at
             FROM deployments
             WHERE guild_id <> $1
+              AND guild_id NOT LIKE $2
             "#,
         )
         .bind(ORCHESTRATOR_DEPLOYMENT_ID)
+        .bind(format!("{CUSTOM_BOT_DEPLOYMENT_PREFIX}%"))
         .fetch_all(&self.db_pool)
         .await?;
 

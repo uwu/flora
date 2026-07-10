@@ -7,6 +7,7 @@ import type {
   RawClearReactions,
   RawCommandPermissions,
   RawCreateChannel,
+  RawCreateDm,
   RawCreateGuildCommand,
   RawCreateThread,
   RawCreateThreadFromMessage,
@@ -40,6 +41,7 @@ import type {
   RawThreadId,
   RawThreadMember,
   RawUpdateInteractionResponse,
+  RawUpsertGlobalCommands,
   RawUpsertGuildCommands
 } from '../generated'
 
@@ -90,6 +92,8 @@ export const rest = {
 
   upsertGuildCommands: (args: RawUpsertGuildCommands): Promise<void> =>
     ops.op_upsert_guild_commands(args),
+  upsertGlobalCommands: (args: RawUpsertGlobalCommands): Promise<void> =>
+    ops.op_upsert_global_commands(args),
   createGuildCommand: (args: RawCreateGuildCommand): Promise<JsonValue> =>
     ops.op_create_guild_command(args),
   editGuildCommand: (args: RawEditGuildCommand): Promise<JsonValue> =>
@@ -115,6 +119,7 @@ export const rest = {
     ops.op_edit_current_member(args),
 
   createChannel: (args: RawCreateChannel): Promise<JsonValue> => ops.op_create_channel(args),
+  createDm: (args: RawCreateDm): Promise<JsonValue> => ops.op_create_dm(args),
   editChannel: (args: RawEditChannel): Promise<JsonValue> => ops.op_edit_channel(args),
   deleteChannel: (args: RawDeleteChannel): Promise<JsonValue> => ops.op_delete_channel(args),
   createThread: (args: RawCreateThread): Promise<JsonValue> => ops.op_create_thread(args),

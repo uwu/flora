@@ -72,4 +72,18 @@ describe('createBot slash registration', () => {
     )
     log.mockRestore()
   })
+
+  it('registers slash commands through the runtime for custom bots', () => {
+    const register = vi.fn(() => Promise.resolve())
+    globalThis.on = vi.fn() as any
+    globalThis.registerSlashCommands = register
+    globalThis.__floraGuildId = undefined
+    globalThis.__floraRuntimeKind = 'custom_bot'
+
+    createBot({
+      slashCommands: [slash({ name: 'global-ping', description: 'Ping', run: () => {} })]
+    })
+
+    expect(register).toHaveBeenCalledTimes(1)
+  })
 })

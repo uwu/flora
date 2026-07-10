@@ -68,6 +68,12 @@ pub struct RawUpsertGuildCommands {
     pub commands: Vec<RawSlashCommand>,
 }
 
+/// Arguments for bulk-upserting global application commands for a custom bot.
+#[expose_input]
+pub struct RawUpsertGlobalCommands {
+    pub commands: Vec<RawSlashCommand>,
+}
+
 /// Definition of a slash command.
 #[derive(serde::Serialize)]
 #[expose_input]
@@ -530,6 +536,56 @@ pub async fn op_upsert_guild_commands(
             Err(JsErrorBox::generic(err.to_string()))
         }
     }
+}
+
+#[op2(async)]
+pub async fn op_upsert_global_commands(
+    state: Rc<RefCell<OpState>>,
+    #[serde] args: RawUpsertGlobalCommands,
+) -> Result<(), JsErrorBox> {
+    let command_defs = args.commands;
+    let commands_hash = serde_json::to_string(&command_defs)
+        .map(hash_json)
+        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    let (http, skipped) = {
+        let mut state = state.borrow_mut();
+        if !state.has::<crate::ops::CustomBotScope>() {
+            return Err(JsErrorBox::generic(
+                "global commands are only available to custom bot runtimes",
+            ));
+        }
+        let http = state.borrow::<Arc<Http>>().clone();
+        let cache = state.borrow_mut::<CommandHashCache>();
+        let skipped = cache.is_duplicate_and_update("__global__", commands_hash);
+        (http, skipped)
+    };
+    if skipped {
+        return Ok(());
+    }
+    let names: Vec<String> = command_defs
+        .iter()
+        .map(|command| command.name.clone())
+        .collect();
+    let commands: Vec<CreateCommand<'static>> = command_defs
+        .into_iter()
+        .map(|command| {
+            let description = command
+                .description
+                .ok_or_else(|| JsErrorBox::generic("Slash command must have a description"))?;
+            let mut builder = CreateCommand::new(command.name).description(description);
+            if let Some(options) = command.options {
+                for option in options {
+                    builder = builder.add_option(build_option(option)?);
+                }
+            }
+            Ok(builder)
+        })
+        .collect::<Result<_, JsErrorBox>>()?;
+    http.create_global_commands(&commands)
+        .await
+        .map_err(|err| JsErrorBox::generic(err.to_string()))?;
+    info!(target: "flora:ops", count = names.len(), commands = ?names, "updated global slash commands");
+    Ok(())
 }
 
 fn build_option(opt: RawSlashCommandOption) -> Result<CreateCommandOption<'static>, JsErrorBox> {

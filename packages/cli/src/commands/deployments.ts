@@ -22,9 +22,14 @@ export async function deploy(
   config: CliConfig,
   guildArg: string | undefined,
   entryArg: string | undefined,
-  root?: string
+  root?: string,
+  botArg?: string
 ): Promise<void> {
-  const guild = await promptIfMissing(guildArg, 'Guild ID')
+  if (guildArg && botArg) {
+    throw new Error('Pass either --guild or --bot, not both')
+  }
+  const targetId = botArg ?? (await promptIfMissing(guildArg, 'Guild ID'))
+  const targetScope = botArg ? `__flora_custom_bot__:${botArg}` : targetId
   const projectConfig = await loadProjectConfig()
   const entry = entryArg ?? projectConfig.entry ?? 'src/main.ts'
   const projectRoot = root ?? projectConfig.root ?? '.'
@@ -37,7 +42,7 @@ export async function deploy(
   logger.success(`Upload complete (${fileCount} files, ${zipSize})`)
 
   const formData = new FormData()
-  formData.append('guild_id', guild)
+  formData.append('guild_id', targetScope)
   formData.append('entry', entryRel)
   formData.append('project_zip', new Blob([zip]), 'project.zip')
 
@@ -101,7 +106,10 @@ export async function deploy(
 
   const files = await collectFiles(projectRootAbs)
 
-  const deployRes = await fetch(`${baseUrl}/deployments/${build.guild_id}`, {
+  const deployPath = botArg
+    ? `${baseUrl}/custom-bots/${botArg}/deployment`
+    : `${baseUrl}/deployments/${build.guild_id}`
+  const deployRes = await fetch(deployPath, {
     method: 'POST',
     headers: {
       ...headers,
@@ -126,7 +134,7 @@ export async function deploy(
     throw new Error(`Deployment apply failed (${deployRes.status}): ${body}`)
   }
 
-  logger.success(`Deployed guild ${build.guild_id}`)
+  logger.success(botArg ? `Deployed custom bot ${botArg}` : `Deployed guild ${build.guild_id}`)
   logger.info(`${colors.cyan('•')} ${colors.cyan('entry:')} ${build.entry}`)
   logger.info(`${colors.gray('•')} ${colors.gray('updated:')} ${new Date().toISOString()}`)
 }

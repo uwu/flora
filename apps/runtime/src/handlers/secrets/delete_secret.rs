@@ -7,11 +7,7 @@ use serde::Serialize;
 use utoipa::ToSchema;
 
 use crate::{
-    handlers::{
-        auth::{ensure_guild_admin, require_identity},
-        error::ApiError,
-        response::ApiJson,
-    },
+    handlers::{auth::require_identity, error::ApiError, response::ApiJson},
     state::AppState,
 };
 
@@ -41,7 +37,7 @@ pub async fn delete_secret_handler(
     headers: HeaderMap,
 ) -> Result<ApiJson<DeleteSecretResponse>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
-    ensure_guild_admin(&state, &identity, &guild_id).await?;
+    super::ensure_secret_scope_access(&state, &identity, &guild_id).await?;
 
     state
         .secrets
@@ -49,11 +45,7 @@ pub async fn delete_secret_handler(
         .await
         .map_err(ApiError::internal)?;
 
-    state
-        .runtime
-        .refresh_guild_secrets(&guild_id)
-        .await
-        .map_err(ApiError::internal)?;
+    super::refresh_secret_scope(&state, &guild_id).await?;
 
     Ok(ApiJson(Json(DeleteSecretResponse { deleted: true })))
 }

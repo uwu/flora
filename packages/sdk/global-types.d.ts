@@ -83,7 +83,9 @@ declare global {
 
   var __floraGuildId: string | undefined
 
-  var __floraRuntimeKind: 'orchestrator' | undefined
+  var __floraBotId: string | undefined
+
+  var __floraRuntimeKind: 'orchestrator' | 'custom_bot' | undefined
 
   function on<E extends keyof FloraEventMap>(
     event: E,
@@ -459,6 +461,12 @@ declare global {
 
   const InputTextStyles: { readonly Short: 1; readonly Paragraph: 2 }
 
+  const customBot: {
+    readonly id: string
+    createDm(userId: string): Promise<JsonValue>
+    upsertGlobalCommands(commands: SlashCommand[]): Promise<void>
+  }
+
   function embed(initial?: Embed | undefined): EmbedBuilder
 
   class EmbedBuilder {
@@ -551,6 +559,7 @@ declare global {
     editFollowupMessage: (args: RawFollowupMessage) => Promise<JsonValue>
     deleteFollowupMessage: (args: RawDeleteFollowupMessage) => Promise<void>
     upsertGuildCommands: (args: RawUpsertGuildCommands) => Promise<void>
+    upsertGlobalCommands: (args: RawUpsertGlobalCommands) => Promise<void>
     createGuildCommand: (args: RawCreateGuildCommand) => Promise<JsonValue>
     editGuildCommand: (args: RawEditGuildCommand) => Promise<JsonValue>
     deleteGuildCommand: (args: RawDeleteGuildCommand) => Promise<void>
@@ -567,6 +576,7 @@ declare global {
     editMember: (args: RawEditMember) => Promise<JsonValue>
     editCurrentMember: (args: RawEditCurrentMember) => Promise<JsonValue>
     createChannel: (args: RawCreateChannel) => Promise<JsonValue>
+    createDm: (args: RawCreateDm) => Promise<JsonValue>
     editChannel: (args: RawEditChannel) => Promise<JsonValue>
     deleteChannel: (args: RawDeleteChannel) => Promise<JsonValue>
     createThread: (args: RawCreateThread) => Promise<JsonValue>
@@ -943,8 +953,8 @@ declare global {
       fields?: { name: string; value: string; inline: boolean }[]
     }[]
     attachments?:
-      | { url: { url: string; filename?: string; description?: string } }
-      | { base64: { data: string; filename: string; description?: string } }[]
+      | { Url: { url: string; filename?: string; description?: string } }
+      | { Base64: { data: string; filename: string; description?: string } }[]
     components?:
       | number
       | string
@@ -962,38 +972,6 @@ declare global {
     flags?: bigint
     messageId?: string
     replyTo?: string
-  }
-
-  type SendMessageOptions = {
-    content?: string | undefined
-    embeds?:
-      | {
-          title?: string
-          description?: string
-          url?: string
-          color?: number
-          timestamp?: string
-          footer?: { text?: string; iconUrl?: string }
-          image?: { url?: string }
-          thumbnail?: { url?: string }
-          author?: { name?: string; url?: string; iconUrl?: string }
-          fields?: { name: string; value: string; inline: boolean }[]
-        }[]
-      | undefined
-    attachments?:
-      | { url: { url: string; filename?: string; description?: string } }
-      | { base64: { data: string; filename: string; description?: string } }[]
-      | undefined
-    components?:
-      | (number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null[])
-      | undefined
-    tts?: boolean | undefined
-    allowedMentions?:
-      | { parse?: string[]; users?: string[]; roles?: string[]; repliedUser?: boolean }
-      | undefined
-    flags?: bigint | undefined
-    messageId?: string | undefined
-    replyTo?: string | undefined
   }
 
   type RawEditMessage = {
@@ -1067,8 +1045,8 @@ declare global {
       fields?: { name: string; value: string; inline: boolean }[]
     }[]
     attachments?:
-      | { url: { url: string; filename?: string; description?: string } }
-      | { base64: { data: string; filename: string; description?: string } }[]
+      | { Url: { url: string; filename?: string; description?: string } }
+      | { Base64: { data: string; filename: string; description?: string } }[]
     components?:
       | number
       | string
@@ -1089,6 +1067,20 @@ declare global {
 
   type RawUpsertGuildCommands = {
     guildId: string
+    commands: {
+      name: string
+      description?: string
+      options?: {
+        name: string
+        description: string
+        kind?: string
+        required?: boolean
+        options?: RawSlashCommandOption[]
+      }[]
+    }[]
+  }
+
+  type RawUpsertGlobalCommands = {
     commands: {
       name: string
       description?: string
@@ -1141,8 +1133,8 @@ declare global {
       fields?: { name: string; value: string; inline: boolean }[]
     }[]
     attachments?:
-      | { url: { url: string; filename?: string; description?: string } }
-      | { base64: { data: string; filename: string; description?: string } }[]
+      | { Url: { url: string; filename?: string; description?: string } }
+      | { Base64: { data: string; filename: string; description?: string } }[]
     components?:
       | number
       | string
@@ -1176,8 +1168,8 @@ declare global {
       fields?: { name: string; value: string; inline: boolean }[]
     }[]
     attachments?:
-      | { url: { url: string; filename?: string; description?: string } }
-      | { base64: { data: string; filename: string; description?: string } }[]
+      | { Url: { url: string; filename?: string; description?: string } }
+      | { Base64: { data: string; filename: string; description?: string } }[]
     components?:
       | number
       | string
@@ -1213,8 +1205,8 @@ declare global {
       fields?: { name: string; value: string; inline: boolean }[]
     }[]
     attachments?:
-      | { url: { url: string; filename?: string; description?: string } }
-      | { base64: { data: string; filename: string; description?: string } }[]
+      | { Url: { url: string; filename?: string; description?: string } }
+      | { Base64: { data: string; filename: string; description?: string } }[]
     components?:
       | number
       | string
@@ -1313,6 +1305,8 @@ declare global {
     reason?: string
   }
 
+  type RawCreateDm = { userId: string }
+
   type RawEditChannel = {
     channelId: string
     payload: number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null
@@ -1361,8 +1355,8 @@ declare global {
       fields?: { name: string; value: string; inline: boolean }[]
     }[]
     attachments?:
-      | { url: { url: string; filename?: string; description?: string } }
-      | { base64: { data: string; filename: string; description?: string } }[]
+      | { Url: { url: string; filename?: string; description?: string } }
+      | { Base64: { data: string; filename: string; description?: string } }[]
     components?:
       | number
       | string

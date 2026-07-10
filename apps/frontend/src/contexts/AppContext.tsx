@@ -20,7 +20,7 @@ type LoadState<T> = {
 
 const initialState = { data: null, loading: true, error: null }
 
-type AppView = 'guild' | 'overview' | 'editor' | 'deployments' | 'kv'
+type AppView = 'guild' | 'overview' | 'editor' | 'deployments' | 'kv' | 'custom-bot-editor'
 
 interface AppContextType {
   session: AuthUser | null

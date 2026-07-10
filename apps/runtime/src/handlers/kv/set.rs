@@ -7,11 +7,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
-    handlers::{
-        auth::{ensure_guild_admin, require_identity},
-        error::ApiError,
-        response::ApiJson,
-    },
+    handlers::{auth::require_identity, error::ApiError, response::ApiJson},
     state::AppState,
 };
 
@@ -65,7 +61,7 @@ pub async fn set_value_handler(
     Json(req): Json<SetValueRequest>,
 ) -> Result<ApiJson<SetValueResponse>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
-    ensure_guild_admin(&state, &identity, &params.guild_id).await?;
+    super::ensure_kv_scope_access(&state, &identity, &params.guild_id).await?;
     state
         .kv
         .set(

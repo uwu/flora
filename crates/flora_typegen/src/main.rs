@@ -9,8 +9,8 @@ use flora::{
     },
     ops::{
         channels::{
-            RawCreateChannel, RawCreateThread, RawCreateThreadFromMessage, RawDeleteChannel,
-            RawEditChannel, RawThreadId, RawThreadMember,
+            RawCreateChannel, RawCreateDm, RawCreateThread, RawCreateThreadFromMessage,
+            RawDeleteChannel, RawEditChannel, RawThreadId, RawThreadMember,
         },
         commands::{
             RawCommandPermissions, RawCreateGuildCommand, RawDeleteGuildCommand,
@@ -21,7 +21,7 @@ use flora::{
             RawDeferInteractionResponse, RawDeleteFollowupMessage, RawDeleteInteractionResponse,
             RawEditInteractionResponse, RawFollowupMessage, RawInteractionResponse,
             RawSlashCommand, RawSlashCommandOption, RawUpdateInteractionResponse,
-            RawUpsertGuildCommands,
+            RawUpsertGlobalCommands, RawUpsertGuildCommands,
         },
         kv::{RawKvListKeysOptions, RawKvSetOptions},
         message::{
@@ -38,7 +38,7 @@ use t0x::{export, serde_json::json_value_def};
 
 fn main() {
     let output_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../sdk/src")
+        .join("../../packages/sdk/src")
         .canonicalize()
         .expect("Failed to resolve output path")
         .join("generated.ts");
@@ -92,6 +92,7 @@ fn main() {
         // Interaction types
         RawInteractionResponse,
         RawUpsertGuildCommands,
+        RawUpsertGlobalCommands,
         RawSlashCommand,
         RawSlashCommandOption,
         RawDeferInteractionResponse,
@@ -115,6 +116,7 @@ fn main() {
         RawEditCurrentMember,
         // Channel types
         RawCreateChannel,
+        RawCreateDm,
         RawEditChannel,
         RawDeleteChannel,
         RawCreateThread,

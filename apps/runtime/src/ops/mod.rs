@@ -14,6 +14,7 @@ pub mod message;
 pub mod secrets;
 mod tls;
 pub mod webhooks;
+pub(crate) use authz::CustomBotScope;
 pub use cron::{CronRegistry, SharedCronRegistry};
 pub(crate) use errors::FloraError;
 
@@ -42,6 +43,7 @@ deno_core::extension!(
         interaction::op_edit_followup_message,
         interaction::op_delete_followup_message,
         interaction::op_upsert_guild_commands,
+        interaction::op_upsert_global_commands,
         commands::op_create_guild_command,
         commands::op_edit_guild_command,
         commands::op_delete_guild_command,
@@ -58,6 +60,7 @@ deno_core::extension!(
         guilds::op_edit_member,
         guilds::op_edit_current_member,
         channels::op_create_channel,
+        channels::op_create_dm,
         channels::op_edit_channel,
         channels::op_delete_channel,
         channels::op_create_thread,

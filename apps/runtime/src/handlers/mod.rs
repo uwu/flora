@@ -7,6 +7,7 @@ use crate::state::AppState;
 
 pub mod auth;
 pub mod builds;
+pub mod custom_bots;
 pub mod deployments;
 #[cfg(debug_assertions)]
 pub mod dev;
@@ -28,6 +29,7 @@ pub fn create_router() -> Router<AppState> {
         nest(
             (path = "/auth", api = auth::AuthApi),
             (path = "/builds", api = builds::BuildApi),
+            (path = "/custom-bots", api = custom_bots::CustomBotsApi),
             (path = "/guilds", api = guilds::GuildApi),
             (path = "/tokens", api = tokens::TokenApi),
             (path = "/deployments", api = deployments::DeploymentApi),
@@ -49,6 +51,7 @@ pub fn create_router() -> Router<AppState> {
     let compressed_api = Router::new()
         .nest("/auth", auth::router())
         .nest("/builds", builds::router())
+        .nest("/custom-bots", custom_bots::router())
         .nest("/guilds", guilds::router())
         .nest("/tokens", tokens::router())
         .nest("/deployments", deployments::router())

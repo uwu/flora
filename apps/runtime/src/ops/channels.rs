@@ -23,6 +23,43 @@ pub struct RawCreateChannel {
     pub reason: Option<String>,
 }
 
+/// Arguments for opening or fetching a DM channel with a user.
+#[expose_input]
+pub struct RawCreateDm {
+    pub user_id: String,
+}
+
+#[op2(async)]
+#[serde]
+pub async fn op_create_dm(
+    state: Rc<RefCell<OpState>>,
+    #[serde] args: RawCreateDm,
+) -> Result<serde_json::Value, JsErrorBox> {
+    let rest = {
+        let state = state.borrow();
+        if !state.has::<crate::ops::CustomBotScope>() {
+            return Err(JsErrorBox::generic(
+                "DM creation is only available to custom bot runtimes",
+            ));
+        }
+        state.borrow::<Arc<DiscordRest>>().clone()
+    };
+    let user_id = args
+        .user_id
+        .parse::<u64>()
+        .map(UserId::new)
+        .map_err(|_| JsErrorBox::generic("Invalid user id"))?;
+    let channel = rest
+        .execute(
+            GuildId::new(0),
+            "POST /users/@me/channels",
+            RestRetry::None,
+            move |http| async move { http.create_private_channel(&user_id).await },
+        )
+        .await?;
+    serde_json::to_value(channel).map_err(|err| JsErrorBox::generic(err.to_string()))
+}
+
 #[op2(async)]
 #[serde]
 pub async fn op_create_channel(

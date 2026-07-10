@@ -1,0 +1,4 @@
+{
+  "extends": "@uwu/flora-sdk/tsconfig/custom-bot",
+  "include": ["src", "node_modules/@uwu/flora-sdk/global-types.d.ts"]
+}

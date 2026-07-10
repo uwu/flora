@@ -54,7 +54,8 @@ export interface Secrets {
 declare global {
   var __floraHandlers: Record<string, Function[]>
   var __floraGuildId: string | undefined
-  var __floraRuntimeKind: 'orchestrator' | undefined
+  var __floraBotId: string | undefined
+  var __floraRuntimeKind: 'orchestrator' | 'custom_bot' | undefined
   function on<E extends keyof FloraEventMap>(event: E, handler: FloraEventHandler<E>): void
   function __floraDispatch(event: string, payload: unknown): Promise<void>
   function registerSlashCommands(commands: FlattenedSlashCommand[]): Promise<void> | undefined
@@ -73,6 +74,7 @@ declare const Deno: {
         guildId: string
         commands: FlattenedSlashCommand[]
       }): Promise<void>
+      op_upsert_global_commands(options: { commands: FlattenedSlashCommand[] }): Promise<void>
       op_register_cron(options: { name: string; expr: string; skipIfRunning?: boolean }): void
       op_secret_placeholder(name: string): string | undefined
     }
@@ -129,11 +131,15 @@ globalThis.console = {
 globalThis.registerSlashCommands = function registerSlashCommands(
   commands: FlattenedSlashCommand[]
 ): Promise<void> | undefined {
-  if (!globalThis.__floraGuildId) return
-  return core.ops.op_upsert_guild_commands({
-    guildId: globalThis.__floraGuildId,
-    commands
-  })
+  if (globalThis.__floraGuildId) {
+    return core.ops.op_upsert_guild_commands({
+      guildId: globalThis.__floraGuildId,
+      commands
+    })
+  }
+  if (globalThis.__floraRuntimeKind === 'custom_bot') {
+    return core.ops.op_upsert_global_commands({ commands })
+  }
 }
 
 const CRON_EVENT_PREFIX = '__cron:'

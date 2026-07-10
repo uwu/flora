@@ -605,6 +605,27 @@ var flora = (function (exports) {
   const ButtonStyles = ButtonStyle
   const InputTextStyles = InputTextStyle
   //#endregion
+  //#region src/sdk/custom-bot.ts
+  function ensureCustomBotRuntime() {
+    if (globalThis.__floraRuntimeKind !== 'custom_bot' || !globalThis.__floraBotId)
+      throw new Error('customBot is only available in a custom bot runtime')
+    return globalThis.__floraBotId
+  }
+  /** Custom-bot-only capabilities for DMs, global commands, and runtime identity. */
+  const customBot = {
+    get id() {
+      return ensureCustomBotRuntime()
+    },
+    createDm(userId) {
+      ensureCustomBotRuntime()
+      return Deno.core.ops.op_create_dm({ userId })
+    },
+    upsertGlobalCommands(commands) {
+      ensureCustomBotRuntime()
+      return Deno.core.ops.op_upsert_global_commands({ commands: flattenCommands(commands) })
+    }
+  }
+  //#endregion
   //#region src/sdk/embed.ts
   var EmbedBuilder = class {
     #embed
@@ -820,6 +841,7 @@ var flora = (function (exports) {
     editFollowupMessage: (args) => ops.op_edit_followup_message(args),
     deleteFollowupMessage: (args) => ops.op_delete_followup_message(args),
     upsertGuildCommands: (args) => ops.op_upsert_guild_commands(args),
+    upsertGlobalCommands: (args) => ops.op_upsert_global_commands(args),
     createGuildCommand: (args) => ops.op_create_guild_command(args),
     editGuildCommand: (args) => ops.op_edit_guild_command(args),
     deleteGuildCommand: (args) => ops.op_delete_guild_command(args),
@@ -836,6 +858,7 @@ var flora = (function (exports) {
     editMember: (args) => ops.op_edit_member(args),
     editCurrentMember: (args) => ops.op_edit_current_member(args),
     createChannel: (args) => ops.op_create_channel(args),
+    createDm: (args) => ops.op_create_dm(args),
     editChannel: (args) => ops.op_edit_channel(args),
     deleteChannel: (args) => ops.op_delete_channel(args),
     createThread: (args) => ops.op_create_thread(args),
@@ -880,6 +903,7 @@ var flora = (function (exports) {
   exports.channelSelect = channelSelect
   exports.container = container
   exports.createBot = createBot
+  exports.customBot = customBot
   exports.defineOrchestrator = defineOrchestrator
   exports.embed = embed
   exports.file = file
@@ -922,6 +946,7 @@ var flora = (function (exports) {
   global.container = global.flora.container
   global.ContainerBuilder = global.flora.ContainerBuilder
   global.createBot = global.flora.createBot
+  global.customBot = global.flora.customBot
   global.defineOrchestrator = global.flora.defineOrchestrator
   global.embed = global.flora.embed
   global.EmbedBuilder = global.flora.EmbedBuilder

@@ -160,12 +160,13 @@ const main = defineCommand({
       args: {
         api: { type: 'string', required: false, alias: 'a' },
         guild: { type: 'string', required: false },
+        bot: { type: 'string', required: false },
         root: { type: 'string', required: false }
       },
       async run({ args }) {
         const config = resolveConfig(args)
         const entry = positional(args, 0)
-        await deploy(config, args.guild, entry, args.root)
+        await deploy(config, args.guild, entry, args.root, args.bot)
       }
     }),
     get: defineCommand({

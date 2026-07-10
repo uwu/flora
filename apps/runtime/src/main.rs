@@ -3,6 +3,7 @@ use confique::Config;
 use deno_tls::{rustls, rustls::crypto::CryptoProvider};
 use eyre::{Context, eyre};
 use flora::{
+    custom_bot_gateway::CustomBotGatewayManager,
     discord_handler::DiscordHandler,
     handlers::create_router,
     layers::logger::LoggingMiddleware,
@@ -10,6 +11,7 @@ use flora::{
     services::{
         auth::{AuthConfig, AuthService},
         build::BuildServiceClient,
+        custom_bots::CustomBotService,
         deployments::DeploymentService,
         kv::KvService,
         orchestrator::ORCHESTRATOR_DEPLOYMENT_ID,
@@ -103,6 +105,8 @@ async fn main() -> Result<()> {
     let token_service = TokenService::new(db_pool.clone());
     let kv_service = KvService::new(db_pool.clone(), "./data/kv".into());
     let secret_service = SecretService::new(db_pool.clone(), config.secrets.master_key.clone())?;
+    let custom_bot_service =
+        CustomBotService::new(db_pool.clone(), config.secrets.master_key.clone())?;
     let auth_task = cache_client.clone().init().await?;
     let auth_service = AuthService::new(
         AuthConfig {
@@ -132,6 +136,8 @@ async fn main() -> Result<()> {
     let app_info = http.get_current_application_info().await?;
     http.set_application_id(app_info.id);
 
+    let custom_bot_rest_timeout_ms = config.runtime.rest_timeout_ms;
+    let custom_bot_guild_concurrency = config.runtime.guild_concurrency;
     let runtime = Arc::new(BotRuntime::new(
         http.clone(),
         kv_service.clone(),
@@ -164,6 +170,18 @@ async fn main() -> Result<()> {
         }
     }
 
+    let custom_bot_gateway = CustomBotGatewayManager::new(
+        runtime.clone(),
+        deployment_service.clone(),
+        custom_bot_service.clone(),
+        cache_client.clone(),
+        custom_bot_rest_timeout_ms,
+        custom_bot_guild_concurrency,
+    );
+    if let Err(err) = custom_bot_gateway.reconcile_all().await {
+        error!("Failed to reconcile custom bots: {:?}", err);
+    }
+
     let intents = GatewayIntents::all();
 
     let handler = Arc::new(DiscordHandler {
@@ -172,6 +190,7 @@ async fn main() -> Result<()> {
         http: http.clone(),
         application_id: Arc::new(std::sync::RwLock::new(Some(app_info.id))),
         deployments: deployment_service.clone(),
+        custom_bot_id: None,
     });
 
     let mut client = Client::builder(token, intents)
@@ -181,6 +200,8 @@ async fn main() -> Result<()> {
     let api_state = AppState {
         runtime: runtime.clone(),
         deployments: deployment_service.clone(),
+        custom_bots: custom_bot_service,
+        custom_bot_gateway,
         auth: auth_service.clone(),
         tokens: token_service.clone(),
         kv: kv_service.clone(),

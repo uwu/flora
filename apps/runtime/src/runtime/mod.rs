@@ -176,6 +176,54 @@ impl BotRuntime {
         self.workers[0].authorize_feature(request).await
     }
 
+    /// Atomically create or replace a user-owned custom bot isolate.
+    pub async fn deploy_custom_bot_script(
+        &self,
+        bot_id: &str,
+        deployment: Deployment,
+        rest: Arc<DiscordRest>,
+    ) -> Result<(), AnyError> {
+        let worker = self.default_worker_for_guild(bot_id);
+        self.workers[worker]
+            .deploy_custom_bot(bot_id.to_string(), deployment, rest)
+            .await
+    }
+
+    pub async fn undeploy_custom_bot_script(&self, bot_id: &str) -> Result<(), AnyError> {
+        let worker = self.default_worker_for_guild(bot_id);
+        self.workers[worker]
+            .undeploy_custom_bot(bot_id.to_string())
+            .await
+    }
+
+    pub async fn dispatch_custom_bot_event(
+        &self,
+        bot_id: &str,
+        event: &str,
+        payload: Value,
+    ) -> Result<(), AnyError> {
+        let worker = self.default_worker_for_guild(bot_id);
+        self.workers[worker]
+            .dispatch_custom_bot(bot_id.to_string(), event.to_string(), payload)
+            .await
+    }
+
+    pub async fn refresh_custom_bot_secrets(
+        &self,
+        bot_id: &str,
+        scope_id: &str,
+    ) -> Result<(), AnyError> {
+        let data = self
+            .secrets
+            .load_runtime(scope_id)
+            .await
+            .map_err(|err| AnyError::msg(err.to_string()))?;
+        let worker = self.default_worker_for_guild(bot_id);
+        self.workers[worker]
+            .update_custom_bot_secrets(bot_id.to_string(), data)
+            .await
+    }
+
     pub async fn migrate_guild_runtime(
         &self,
         guild_id: &str,

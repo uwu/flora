@@ -13,6 +13,7 @@ import { PrivacyPolicyPage } from '@/pages/privacy-policy-page'
 import { Settings } from '@/pages/settings'
 import { TermsOfServicePage } from '@/pages/terms-of-service-page'
 import { UserSettingsPage } from '@/pages/user-settings-page'
+import { CustomBotEditorPage } from '@/pages/custom-bot-editor-page'
 import { type ComponentType, lazy, Suspense, useEffect } from 'react'
 import { Route, Switch, useParams } from 'wouter'
 
@@ -89,6 +90,7 @@ export default function App() {
           <Route path='/terms-of-service' component={TermsOfServicePage} />
           <Route path='/privacy-policy' component={PrivacyPolicyPage} />
           <ProtectedRoute path='/settings' component={UserSettingsPage} />
+          <ProtectedRoute path='/bots/:botId/editor' component={CustomBotEditorPage} />
           <ProtectedRoute path='/' component={Dashboard} />
           <ProtectedRoute path='/:guildId/editor' component={EditorPageRoute} />
           <ProtectedRoute path='/:guildId/deployments' component={DeploymentsPage} />

@@ -11,6 +11,7 @@
     "global-types.d.ts",
     "src",
     "tsconfig.json",
+    "tsconfig.custom-bot.json",
     "README.md"
   ],
   "type": "module",
@@ -19,7 +20,8 @@
     ".": {
       "types": "./global-types.d.ts"
     },
-    "./tsconfig": "./tsconfig.json"
+    "./tsconfig": "./tsconfig.json",
+    "./tsconfig/custom-bot": "./tsconfig.custom-bot.json"
   },
   "publishConfig": {
     "access": "public"

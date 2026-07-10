@@ -1,8 +1,10 @@
 use crate::{
+    custom_bot_gateway::CustomBotGatewayManager,
     runtime::BotRuntime,
     services::{
-        auth::AuthService, build::BuildServiceClient, deployments::DeploymentService,
-        kv::KvService, secrets::SecretService, tokens::TokenService,
+        auth::AuthService, build::BuildServiceClient, custom_bots::CustomBotService,
+        deployments::DeploymentService, kv::KvService, secrets::SecretService,
+        tokens::TokenService,
     },
 };
 use serenity::http::Http;
@@ -15,6 +17,10 @@ pub struct AppState {
     pub runtime: Arc<BotRuntime>,
     /// Service responsible for storing and caching deployment records.
     pub deployments: DeploymentService,
+    /// User-owned custom bot metadata and encrypted tokens.
+    pub custom_bots: CustomBotService,
+    /// Lifecycle manager for custom bot isolates and Discord gateway clients.
+    pub custom_bot_gateway: CustomBotGatewayManager,
     /// Authentication and session management.
     pub auth: AuthService,
     /// Long-lived API tokens for CLI authentication.

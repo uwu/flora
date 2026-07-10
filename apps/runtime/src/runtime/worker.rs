@@ -2,7 +2,8 @@ use super::{
     constants::{RUNTIME_PRELUDE, SDK_BUNDLE, SDK_BUNDLE_PATH},
     js::{
         extract_dispatch_fn_no_enter_impl, load_es_module_source, load_script_source,
-        new_js_runtime, run_event_loop_with_timeout, terminate_runtime, with_timeout,
+        new_custom_bot_js_runtime, new_js_runtime, run_event_loop_with_timeout, terminate_runtime,
+        with_timeout,
     },
     limits::RuntimeLimits,
     secrets::SecretScope,
@@ -102,6 +103,7 @@ fn worker_thread(
         let mut guild_runtimes: HashMap<String, JsRuntimeState> = HashMap::new();
         let mut default_runtime: Option<JsRuntimeState> = None;
         let mut orchestrator_runtime: Option<JsRuntimeState> = None;
+        let mut custom_bot_runtimes: HashMap<String, JsRuntimeState> = HashMap::new();
         let mut cron_interval = tokio::time::interval(Duration::from_secs(1));
         let default_secrets = SecretsRuntimeData::empty();
 
@@ -113,6 +115,7 @@ fn worker_thread(
                     run_cron_tick(
                         &cron_registry,
                         &mut guild_runtimes,
+                        &mut custom_bot_runtimes,
                         &mut default_runtime,
                         worker_id,
                         &limits,
@@ -238,6 +241,69 @@ fn worker_thread(
                             let _ = respond_to.send(result);
                         }
 
+                        WorkerCommand::DeployCustomBot { bot_id, deployment, rest, respond_to } => {
+                            let result = deploy_custom_bot_to_worker(
+                                &mut custom_bot_runtimes,
+                                rest,
+                                &kv,
+                                &secrets,
+                                bot_id,
+                                deployment,
+                                worker_id,
+                                &limits,
+                                cron_registry.clone(),
+                            )
+                            .await;
+                            let _ = respond_to.send(result);
+                        }
+
+                        WorkerCommand::UndeployCustomBot { bot_id, respond_to } => {
+                            let scope_id = format!(
+                                "{}{}",
+                                crate::services::custom_bots::CUSTOM_BOT_DEPLOYMENT_PREFIX,
+                                bot_id
+                            );
+                            if let Some(runtime) = custom_bot_runtimes.remove(&scope_id) {
+                                drop_runtime_state(runtime);
+                            }
+                            cron_registry.lock().clear_guild(&scope_id);
+                            let _ = respond_to.send(Ok(()));
+                        }
+
+                        WorkerCommand::DispatchCustomBotEvent { bot_id, event, payload, respond_to } => {
+                            let scope_id = format!(
+                                "{}{}",
+                                crate::services::custom_bots::CUSTOM_BOT_DEPLOYMENT_PREFIX,
+                                bot_id
+                            );
+                            let result = match custom_bot_runtimes.get_mut(&scope_id) {
+                                Some(runtime) => dispatch_into_runtime(
+                                    runtime,
+                                    event,
+                                    payload,
+                                    worker_id,
+                                    &limits,
+                                )
+                                .await,
+                                None => Err(AnyError::msg("custom bot runtime is not deployed")),
+                            };
+                            let _ = respond_to.send(result);
+                        }
+
+                        WorkerCommand::UpdateCustomBotSecrets { bot_id, secrets, respond_to } => {
+                            let scope_id = format!(
+                                "{}{}",
+                                crate::services::custom_bots::CUSTOM_BOT_DEPLOYMENT_PREFIX,
+                                bot_id
+                            );
+                            let result = update_runtime_secrets(
+                                &mut custom_bot_runtimes,
+                                &scope_id,
+                                secrets,
+                            );
+                            let _ = respond_to.send(result);
+                        }
+
                         WorkerCommand::DispatchEvent { guild_id, event, payload, respond_to } => {
                             let guild_id_for_log = guild_id.clone();
                             let result = dispatch_to_worker(
@@ -328,6 +394,9 @@ fn worker_thread(
         if let Some(runtime) = orchestrator_runtime.take() {
             drop_runtime_state(runtime);
         }
+        for (_, runtime) in custom_bot_runtimes.drain() {
+            drop_runtime_state(runtime);
+        }
         for (_, runtime) in guild_runtimes.drain() {
             drop_runtime_state(runtime);
         }
@@ -339,6 +408,7 @@ fn worker_thread(
 async fn run_cron_tick(
     cron_registry: &SharedCronRegistry,
     guild_runtimes: &mut HashMap<String, JsRuntimeState>,
+    custom_bot_runtimes: &mut HashMap<String, JsRuntimeState>,
     default_runtime: &mut Option<JsRuntimeState>,
     worker_id: usize,
     limits: &RuntimeLimits,
@@ -381,7 +451,9 @@ async fn run_cron_tick(
         });
 
         let runtime = match &guild_id {
-            Some(gid) => guild_runtimes.get_mut(gid),
+            Some(gid) => guild_runtimes
+                .get_mut(gid)
+                .or_else(|| custom_bot_runtimes.get_mut(gid)),
             None => default_runtime.as_mut(),
         };
 
@@ -755,6 +827,126 @@ async fn deploy_orchestrator_to_worker(
         }
         Err(err) => {
             *orchestrator_runtime = saved_runtime;
+            Err(AnyError::msg(user_visible_error_message(
+                &err,
+                limits.show_internal_stack_frames,
+            )))
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn deploy_custom_bot_to_worker(
+    custom_bot_runtimes: &mut HashMap<String, JsRuntimeState>,
+    rest: Arc<DiscordRest>,
+    kv: &KvService,
+    secrets: &SecretService,
+    bot_id: String,
+    deployment: Deployment,
+    worker_id: usize,
+    limits: &RuntimeLimits,
+    cron_registry: SharedCronRegistry,
+) -> Result<(), AnyError> {
+    let scope_id = deployment.guild_id.clone();
+    let mut saved_runtime = custom_bot_runtimes.remove(&scope_id);
+    let saved_crons = cron_registry
+        .lock()
+        .jobs
+        .get(&Some(scope_id.clone()))
+        .cloned();
+    cron_registry.lock().clear_guild(&scope_id);
+
+    let result = async {
+        let secrets_data = load_runtime_secrets(secrets, &scope_id).await?;
+        let mut runtime = new_custom_bot_js_runtime(
+            rest,
+            kv.clone(),
+            secrets_data,
+            scope_id.clone(),
+            cron_registry.clone(),
+        );
+        runtime.runtime_mut().execute_script(
+            "flora:custom_bot_context",
+            format!(
+                "globalThis.__floraRuntimeKind = 'custom_bot'; globalThis.__floraBotId = '{}';",
+                bot_id
+            ),
+        )?;
+        runtime
+            .runtime_mut()
+            .execute_script("flora:bootstrap", RUNTIME_PRELUDE)?;
+        run_event_loop_with_timeout(
+            runtime.runtime_mut(),
+            PollEventLoopOptions::default(),
+            limits.boot_timeout,
+            worker_id,
+            "bootstrap",
+        )
+        .await?;
+
+        {
+            let context = runtime.runtime().main_context();
+            let mut v8_guard = runtime.runtime_mut().v8_guard();
+            runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(
+                &context,
+                v8_guard.isolate(),
+            )?);
+        }
+
+        load_script_source(
+            runtime.runtime_mut(),
+            SDK_BUNDLE_PATH.to_string().into(),
+            SDK_BUNDLE.to_string(),
+            SDK_BUNDLE_PATH.to_string(),
+            worker_id,
+            limits,
+        )
+        .await?;
+
+        let module_specifier =
+            ModuleSpecifier::parse(&format!("file:///custom-bots/{bot_id}/bundle.js"))?;
+        let source_map = deployment.source_map;
+        load_es_module_source(
+            runtime.runtime_mut(),
+            module_specifier,
+            deployment.bundle,
+            source_map
+                .as_ref()
+                .map(|source_map| source_map.contents.as_str()),
+            worker_id,
+            limits,
+        )
+        .await?;
+
+        {
+            let context = runtime.runtime().main_context();
+            let mut v8_guard = runtime.runtime_mut().v8_guard();
+            runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(
+                &context,
+                v8_guard.isolate(),
+            )?);
+        }
+        Ok::<JsRuntimeState, AnyError>(runtime)
+    }
+    .await;
+
+    match result {
+        Ok(runtime) => {
+            if let Some(old) = saved_runtime.take() {
+                drop_runtime_state(old);
+                metrics().isolate_restarted();
+            }
+            custom_bot_runtimes.insert(scope_id.clone(), runtime);
+            info!(target: "flora:runtime", worker_id, bot_id, "custom bot deployment loaded");
+            Ok(())
+        }
+        Err(err) => {
+            if let Some(old) = saved_runtime.take() {
+                custom_bot_runtimes.insert(scope_id.clone(), old);
+            }
+            if let Some(crons) = saved_crons {
+                cron_registry.lock().jobs.insert(Some(scope_id), crons);
+            }
             Err(AnyError::msg(user_visible_error_message(
                 &err,
                 limits.show_internal_stack_frames,

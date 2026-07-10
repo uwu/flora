@@ -7,11 +7,7 @@ use serde::Serialize;
 use utoipa::ToSchema;
 
 use crate::{
-    handlers::{
-        auth::{ensure_guild_admin, require_identity},
-        error::ApiError,
-        response::ApiJson,
-    },
+    handlers::{auth::require_identity, error::ApiError, response::ApiJson},
     services::secrets::SecretMetadata,
     state::AppState,
 };
@@ -52,7 +48,7 @@ pub async fn list_secrets_handler(
     headers: HeaderMap,
 ) -> Result<ApiJson<Vec<SecretMetadataResponse>>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
-    ensure_guild_admin(&state, &identity, &guild_id).await?;
+    super::ensure_secret_scope_access(&state, &identity, &guild_id).await?;
 
     let secrets = state
         .secrets

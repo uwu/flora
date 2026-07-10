@@ -9,7 +9,7 @@ export type OrchestratorDefinition = {
 }
 
 declare global {
-  var __floraRuntimeKind: 'orchestrator' | undefined
+  var __floraRuntimeKind: 'orchestrator' | 'custom_bot' | undefined
   var __floraAuthorizeFeature:
     | ((request: FeatureAuthorizationRequest) => Promise<boolean>)
     | undefined

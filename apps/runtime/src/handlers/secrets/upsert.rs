@@ -7,11 +7,7 @@ use serde::Deserialize;
 use utoipa::ToSchema;
 
 use crate::{
-    handlers::{
-        auth::{ensure_guild_admin, require_identity},
-        error::ApiError,
-        response::ApiJson,
-    },
+    handlers::{auth::require_identity, error::ApiError, response::ApiJson},
     state::AppState,
 };
 
@@ -45,7 +41,7 @@ pub async fn upsert_secret_handler(
     Json(body): Json<UpsertSecretRequest>,
 ) -> Result<ApiJson<super::SecretMetadataResponse>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
-    ensure_guild_admin(&state, &identity, &guild_id).await?;
+    super::ensure_secret_scope_access(&state, &identity, &guild_id).await?;
 
     let metadata = state
         .secrets
@@ -53,11 +49,7 @@ pub async fn upsert_secret_handler(
         .await
         .map_err(ApiError::internal)?;
 
-    state
-        .runtime
-        .refresh_guild_secrets(&guild_id)
-        .await
-        .map_err(ApiError::internal)?;
+    super::refresh_secret_scope(&state, &guild_id).await?;
 
     let response: super::SecretMetadataResponse = metadata.into();
     Ok(ApiJson(Json(response)))

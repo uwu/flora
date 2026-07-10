@@ -262,6 +262,10 @@ pub async fn deploy_orchestrator(
         }
     };
 
+    if let Err(err) = state.custom_bot_gateway.reconcile_all().await {
+        error!(target: "flora:api", ?err, "failed to reconcile custom bots after orchestrator deploy");
+    }
+
     Ok(ApiJson(Json(deployment.into())))
 }
 
@@ -299,6 +303,9 @@ pub async fn delete_orchestrator(
             .await
             .map_err(ApiError::internal)?;
         return Err(ApiError::internal(err));
+    }
+    if let Err(err) = state.custom_bot_gateway.reconcile_all().await {
+        error!(target: "flora:api", ?err, "failed to reconcile custom bots after orchestrator delete");
     }
     Ok(ApiJson(Json(())))
 }

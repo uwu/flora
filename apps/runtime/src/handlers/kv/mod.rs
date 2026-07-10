@@ -1,4 +1,12 @@
-use crate::{services::kv::KvStore, state::AppState};
+use crate::{
+    handlers::{
+        auth::{IdentityContext, ensure_guild_admin},
+        custom_bots::{ensure_feature_enabled, ensure_scope_owner},
+        error::ApiError,
+    },
+    services::{custom_bots::CUSTOM_BOT_DEPLOYMENT_PREFIX, kv::KvStore},
+    state::AppState,
+};
 use axum::{
     Router,
     routing::{delete, get, post, put},
@@ -36,6 +44,20 @@ pub fn router() -> Router<AppState> {
         .route("/{guild_id}/{store_name}/{key}", delete(delete_key_handler))
         .route("/{guild_id}/{store_name}", get(list_keys_handler))
         .route("/export/{guild_id}", post(export_guild_handler))
+}
+
+async fn ensure_kv_scope_access(
+    state: &AppState,
+    identity: &IdentityContext,
+    scope_id: &str,
+) -> Result<(), ApiError> {
+    if scope_id.starts_with(CUSTOM_BOT_DEPLOYMENT_PREFIX) {
+        ensure_feature_enabled(state, identity).await?;
+        ensure_scope_owner(state, identity, scope_id).await?;
+        Ok(())
+    } else {
+        ensure_guild_admin(state, identity, scope_id).await
+    }
 }
 
 #[derive(OpenApi)]

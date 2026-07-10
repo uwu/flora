@@ -1,0 +1,8 @@
+{
+  "name": "@uwu/flora-example-custom-bot",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@uwu/flora-sdk": "workspace:"
+  }
+}

@@ -105,11 +105,13 @@ globalThis.__floraDispatch = async function __floraDispatch(event, payload) {
 }
 globalThis.console = { log: (...args) => core.ops.op_log(args) }
 globalThis.registerSlashCommands = function registerSlashCommands(commands) {
-  if (!globalThis.__floraGuildId) return
-  return core.ops.op_upsert_guild_commands({
-    guildId: globalThis.__floraGuildId,
-    commands
-  })
+  if (globalThis.__floraGuildId)
+    return core.ops.op_upsert_guild_commands({
+      guildId: globalThis.__floraGuildId,
+      commands
+    })
+  if (globalThis.__floraRuntimeKind === 'custom_bot')
+    return core.ops.op_upsert_global_commands({ commands })
 }
 const CRON_EVENT_PREFIX = '__cron:'
 globalThis.cron = function cron(name, cronExpr, handler, options) {

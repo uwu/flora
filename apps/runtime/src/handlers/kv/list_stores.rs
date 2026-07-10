@@ -1,9 +1,5 @@
 use crate::{
-    handlers::{
-        auth::{ensure_guild_admin, require_identity},
-        error::ApiError,
-        response::ApiJson,
-    },
+    handlers::{auth::require_identity, error::ApiError, response::ApiJson},
     services::kv::KvStore,
     state::AppState,
 };
@@ -43,7 +39,7 @@ pub async fn list_stores_handler(
     Query(query): Query<ListStoresQuery>,
 ) -> Result<ApiJson<Vec<KvStore>>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
-    ensure_guild_admin(&state, &identity, &query.guild_id).await?;
+    super::ensure_kv_scope_access(&state, &identity, &query.guild_id).await?;
     let stores = state.kv.list_stores(&query.guild_id).await?;
     Ok(ApiJson(Json(stores)))
 }

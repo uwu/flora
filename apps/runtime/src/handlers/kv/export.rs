@@ -7,11 +7,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
-    handlers::{
-        auth::{ensure_guild_admin, require_identity},
-        error::ApiError,
-        response::ApiJson,
-    },
+    handlers::{auth::require_identity, error::ApiError, response::ApiJson},
     state::AppState,
 };
 
@@ -52,7 +48,7 @@ pub async fn export_guild_handler(
     Path(params): Path<ExportGuildParams>,
 ) -> Result<ApiJson<ExportGuildResponse>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
-    ensure_guild_admin(&state, &identity, &params.guild_id).await?;
+    super::ensure_kv_scope_access(&state, &identity, &params.guild_id).await?;
     let backup_id = state
         .kv
         .export_guild(&params.guild_id, &identity.user_id)

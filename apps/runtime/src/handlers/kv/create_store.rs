@@ -1,9 +1,5 @@
 use crate::{
-    handlers::{
-        auth::{ensure_guild_admin, require_identity},
-        error::ApiError,
-        response::ApiJson,
-    },
+    handlers::{auth::require_identity, error::ApiError, response::ApiJson},
     services::kv::KvStore,
     state::AppState,
 };
@@ -44,7 +40,7 @@ pub async fn create_store_handler(
     Json(req): Json<CreateStoreRequest>,
 ) -> Result<ApiJson<CreateStoreResponse>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
-    ensure_guild_admin(&state, &identity, &req.guild_id).await?;
+    super::ensure_kv_scope_access(&state, &identity, &req.guild_id).await?;
     let store = state.kv.create_store(req.guild_id, req.store_name).await?;
     Ok(ApiJson(Json(CreateStoreResponse { store })))
 }

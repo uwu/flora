@@ -1,9 +1,5 @@
 use crate::{
-    handlers::{
-        auth::{ensure_guild_admin, require_identity},
-        error::ApiError,
-        response::ApiJson,
-    },
+    handlers::{auth::require_identity, error::ApiError, response::ApiJson},
     services::kv::{RawKvKeyInfo, RawKvListKeysResult},
     state::AppState,
 };
@@ -62,7 +58,7 @@ pub async fn list_keys_handler(
     Query(query): Query<ListKeysQuery>,
 ) -> Result<ApiJson<RawKvListKeysResult>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
-    ensure_guild_admin(&state, &identity, &params.guild_id).await?;
+    super::ensure_kv_scope_access(&state, &identity, &params.guild_id).await?;
     let result = state
         .kv
         .list_keys(

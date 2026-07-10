@@ -11,7 +11,7 @@ export type JsonValue =
 /**
  * A Discord user.
  *
- * [Discord docs](https://discord.com/developers/docs/resources/user#user-object).
+ * {@link https://discord.com/developers/docs/resources/user#user-object Discord docs}.
  */
 export type EventUser = {
   /** The user's unique snowflake ID. */
@@ -27,7 +27,7 @@ export type EventUser = {
 /**
  * A member of a guild.
  *
- * [Discord docs](https://discord.com/developers/docs/resources/guild#guild-member-object).
+ * {@link https://discord.com/developers/docs/resources/guild#guild-member-object Discord docs}.
  */
 export type EventMember = {
   /** The user this member represents. */
@@ -68,7 +68,7 @@ export type EventMember = {
 /**
  * A message sent in a channel.
  *
- * [Discord docs](https://discord.com/developers/docs/resources/message#message-object).
+ * {@link https://discord.com/developers/docs/resources/message#message-object Discord docs}.
  */
 export type EventMessage = {
   /** The user's unique snowflake ID. */
@@ -131,7 +131,7 @@ export type EventMessage = {
 /**
  * Payload for a message update event.
  *
- * [Discord docs](https://discord.com/developers/docs/events/gateway-events#message-update).
+ * {@link https://discord.com/developers/docs/events/gateway-events#message-update Discord docs}.
  */
 export type EventMessageUpdate = {
   /** The user's unique snowflake ID. */
@@ -276,7 +276,7 @@ export type EventMessageUpdate = {
 /**
  * Payload for a message delete event.
  *
- * [Discord docs](https://discord.com/developers/docs/events/gateway-events#message-delete).
+ * {@link https://discord.com/developers/docs/events/gateway-events#message-delete Discord docs}.
  */
 export type EventMessageDelete = {
   /** The deleted message's ID. */
@@ -290,7 +290,7 @@ export type EventMessageDelete = {
 /**
  * Payload for a bulk message delete event.
  *
- * [Discord docs](https://discord.com/developers/docs/events/gateway-events#message-delete-bulk).
+ * {@link https://discord.com/developers/docs/events/gateway-events#message-delete-bulk Discord docs}.
  */
 export type EventMessageDeleteBulk = {
   /** IDs of the deleted messages. */
@@ -304,7 +304,7 @@ export type EventMessageDeleteBulk = {
 /**
  * Payload for the ready event, fired when the bot connects to the gateway.
  *
- * [Discord docs](https://discord.com/developers/docs/events/gateway-events#ready).
+ * {@link https://discord.com/developers/docs/events/gateway-events#ready Discord docs}.
  */
 export type EventReady = {
   /** The bot user. */
@@ -325,7 +325,7 @@ export type EventReady = {
 /**
  * Payload for an application command interaction.
  *
- * [Discord docs](https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object).
+ * {@link https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object Discord docs}.
  */
 export type EventInteractionCreate = {
   /** The interaction's unique snowflake ID. */
@@ -398,7 +398,7 @@ export type EventInteractionCreate = {
 /**
  * Payload for a message component interaction (buttons, select menus).
  *
- * [Discord docs](https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object).
+ * {@link https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object Discord docs}.
  */
 export type EventComponentInteraction = {
   /** The interaction's unique snowflake ID. */
@@ -597,8 +597,7 @@ export type RawKvListKeysOptions = {
 /** Attachment to include in a message (either URL or base64-encoded data). */
 export type RawAttachment =
   | {
-      /** The URL to fetch the attachment from. */
-      url: {
+      Url: {
         /** The URL to fetch the attachment from. */
         url: string
         /** Filename for the attachment. */
@@ -608,7 +607,7 @@ export type RawAttachment =
       }
     }
   | {
-      base64: {
+      Base64: {
         /** Base64-encoded file data. */
         data: string
         /** Filename for the attachment. */
@@ -655,7 +654,7 @@ export type RawEmbedField = {
 /**
  * A rich embed for a message.
  *
- * [Discord docs](https://discord.com/developers/docs/resources/message#embed-object).
+ * {@link https://discord.com/developers/docs/resources/message#embed-object Discord docs}.
  */
 export type RawEmbed = {
   /** Embed title. */
@@ -708,7 +707,7 @@ export type RawEmbed = {
 /**
  * Configuration for which mentions are allowed.
  *
- * [Discord docs](https://discord.com/developers/docs/resources/message#allowed-mentions-object).
+ * {@link https://discord.com/developers/docs/resources/message#allowed-mentions-object Discord docs}.
  */
 export type RawAllowedMentions = {
   /** Types of mentions to parse ("everyone", "users", "roles"). */
@@ -778,8 +777,7 @@ export type RawSendMessage = {
   /** Attachments to include. */
   attachments?:
     | {
-        /** The URL to fetch the attachment from. */
-        url: {
+        Url: {
           /** The URL to fetch the attachment from. */
           url: string
           /** Filename for the attachment. */
@@ -789,7 +787,7 @@ export type RawSendMessage = {
         }
       }
     | {
-        base64: {
+        Base64: {
           /** Base64-encoded file data. */
           data: string
           /** Filename for the attachment. */
@@ -826,9 +824,6 @@ export type RawSendMessage = {
   /** Message ID to reply to. */
   replyTo?: string
 }
-
-/** Message options without routing fields. */
-export type SendMessageOptions = Omit<RawSendMessage, 'channelId'>
 
 /** Arguments for editing a message. */
 export type RawEditMessage = {
@@ -1044,8 +1039,7 @@ export type RawInteractionResponse = {
   /** Attachments to include. */
   attachments?:
     | {
-        /** The URL to fetch the attachment from. */
-        url: {
+        Url: {
           /** The URL to fetch the attachment from. */
           url: string
           /** Filename for the attachment. */
@@ -1055,7 +1049,7 @@ export type RawInteractionResponse = {
         }
       }
     | {
-        base64: {
+        Base64: {
           /** Base64-encoded file data. */
           data: string
           /** Filename for the attachment. */
@@ -1096,6 +1090,29 @@ export type RawUpsertGuildCommands = {
   /** The guild's snowflake ID. */
   guildId: string
   /** The commands to register. */
+  commands: {
+    /** The option name. */
+    name: string
+    /** The option description. */
+    description?: string
+    /** Nested options (for subcommands/subcommand groups). */
+    options?: {
+      /** The option name. */
+      name: string
+      /** The option description. */
+      description: string
+      /** The option type (string, integer, boolean, etc.). */
+      kind?: string
+      /** Whether this option is required. */
+      required?: boolean
+      /** Nested options (for subcommands/subcommand groups). */
+      options?: RawSlashCommandOption[]
+    }[]
+  }[]
+}
+
+/** Arguments for bulk-upserting global application commands for a custom bot. */
+export type RawUpsertGlobalCommands = {
   commands: {
     /** The option name. */
     name: string
@@ -1221,8 +1238,7 @@ export type RawUpdateInteractionResponse = {
   /** Attachments to include. */
   attachments?:
     | {
-        /** The URL to fetch the attachment from. */
-        url: {
+        Url: {
           /** The URL to fetch the attachment from. */
           url: string
           /** Filename for the attachment. */
@@ -1232,7 +1248,7 @@ export type RawUpdateInteractionResponse = {
         }
       }
     | {
-        base64: {
+        Base64: {
           /** Base64-encoded file data. */
           data: string
           /** Filename for the attachment. */
@@ -1323,8 +1339,7 @@ export type RawEditInteractionResponse = {
   /** Attachments to include. */
   attachments?:
     | {
-        /** The URL to fetch the attachment from. */
-        url: {
+        Url: {
           /** The URL to fetch the attachment from. */
           url: string
           /** Filename for the attachment. */
@@ -1334,7 +1349,7 @@ export type RawEditInteractionResponse = {
         }
       }
     | {
-        base64: {
+        Base64: {
           /** Base64-encoded file data. */
           data: string
           /** Filename for the attachment. */
@@ -1431,8 +1446,7 @@ export type RawFollowupMessage = {
   /** Attachments to include. */
   attachments?:
     | {
-        /** The URL to fetch the attachment from. */
-        url: {
+        Url: {
           /** The URL to fetch the attachment from. */
           url: string
           /** Filename for the attachment. */
@@ -1442,7 +1456,7 @@ export type RawFollowupMessage = {
         }
       }
     | {
-        base64: {
+        Base64: {
           /** Base64-encoded file data. */
           data: string
           /** Filename for the attachment. */
@@ -1633,6 +1647,11 @@ export type RawCreateChannel = {
   reason?: string
 }
 
+/** Arguments for opening or fetching a DM channel with a user. */
+export type RawCreateDm = {
+  userId: string
+}
+
 /** Arguments for editing a channel. */
 export type RawEditChannel = {
   /** The channel's snowflake ID. */
@@ -1758,8 +1777,7 @@ export type RawExecuteWebhook = {
   /** Attachments to include. */
   attachments?:
     | {
-        /** The URL to fetch the attachment from. */
-        url: {
+        Url: {
           /** The URL to fetch the attachment from. */
           url: string
           /** Filename for the attachment. */
@@ -1769,7 +1787,7 @@ export type RawExecuteWebhook = {
         }
       }
     | {
-        base64: {
+        Base64: {
           /** Base64-encoded file data. */
           data: string
           /** Filename for the attachment. */

@@ -1,7 +1,7 @@
 use crate::{
     metrics::metrics,
     ops::cron::CronJob,
-    services::{deployments::Deployment, secrets::SecretsRuntimeData},
+    services::{deployments::Deployment, discord_rest::DiscordRest, secrets::SecretsRuntimeData},
 };
 use deno_core::{
     JsRuntime,
@@ -51,6 +51,30 @@ pub(super) enum WorkerCommand {
     AuthorizeFeature {
         request: Value,
         respond_to: oneshot::Sender<Result<bool, AnyError>>,
+    },
+    /// Create or replace a user-owned custom bot isolate.
+    DeployCustomBot {
+        bot_id: String,
+        deployment: Deployment,
+        rest: Arc<DiscordRest>,
+        respond_to: oneshot::Sender<Result<(), AnyError>>,
+    },
+    /// Remove a user-owned custom bot isolate.
+    UndeployCustomBot {
+        bot_id: String,
+        respond_to: oneshot::Sender<Result<(), AnyError>>,
+    },
+    /// Dispatch a Discord event to one custom bot isolate.
+    DispatchCustomBotEvent {
+        bot_id: String,
+        event: String,
+        payload: Value,
+        respond_to: oneshot::Sender<Result<(), AnyError>>,
+    },
+    UpdateCustomBotSecrets {
+        bot_id: String,
+        secrets: Arc<SecretsRuntimeData>,
+        respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
     /// Dispatch an event to a specific guild's runtime.
     DispatchEvent {
@@ -166,6 +190,61 @@ impl Worker {
         let (tx, rx) = oneshot::channel();
         self.send_cmd(WorkerCommand::AuthorizeFeature {
             request,
+            respond_to: tx,
+        })?;
+        rx.await.map_err(|_| AnyError::msg("worker stopped"))?
+    }
+
+    pub(super) async fn deploy_custom_bot(
+        &self,
+        bot_id: String,
+        deployment: Deployment,
+        rest: Arc<DiscordRest>,
+    ) -> Result<(), AnyError> {
+        let (tx, rx) = oneshot::channel();
+        self.send_cmd(WorkerCommand::DeployCustomBot {
+            bot_id,
+            deployment,
+            rest,
+            respond_to: tx,
+        })?;
+        rx.await.map_err(|_| AnyError::msg("worker stopped"))?
+    }
+
+    pub(super) async fn undeploy_custom_bot(&self, bot_id: String) -> Result<(), AnyError> {
+        let (tx, rx) = oneshot::channel();
+        self.send_cmd(WorkerCommand::UndeployCustomBot {
+            bot_id,
+            respond_to: tx,
+        })?;
+        rx.await.map_err(|_| AnyError::msg("worker stopped"))?
+    }
+
+    pub(super) async fn dispatch_custom_bot(
+        &self,
+        bot_id: String,
+        event: String,
+        payload: Value,
+    ) -> Result<(), AnyError> {
+        let (tx, rx) = oneshot::channel();
+        self.send_cmd(WorkerCommand::DispatchCustomBotEvent {
+            bot_id,
+            event,
+            payload,
+            respond_to: tx,
+        })?;
+        rx.await.map_err(|_| AnyError::msg("worker stopped"))?
+    }
+
+    pub(super) async fn update_custom_bot_secrets(
+        &self,
+        bot_id: String,
+        secrets: Arc<SecretsRuntimeData>,
+    ) -> Result<(), AnyError> {
+        let (tx, rx) = oneshot::channel();
+        self.send_cmd(WorkerCommand::UpdateCustomBotSecrets {
+            bot_id,
+            secrets,
             respond_to: tx,
         })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?

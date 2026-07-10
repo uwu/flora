@@ -6,10 +6,7 @@ use serde::Deserialize;
 use utoipa::ToSchema;
 
 use crate::{
-    handlers::{
-        auth::{ensure_guild_admin, require_identity},
-        error::ApiError,
-    },
+    handlers::{auth::require_identity, error::ApiError},
     state::AppState,
 };
 
@@ -46,7 +43,7 @@ pub async fn delete_key_handler(
     Path(params): Path<DeleteKeyParams>,
 ) -> Result<(), ApiError> {
     let identity = require_identity(&state, &headers).await?;
-    ensure_guild_admin(&state, &identity, &params.guild_id).await?;
+    super::ensure_kv_scope_access(&state, &identity, &params.guild_id).await?;
     state
         .kv
         .delete(&params.guild_id, &params.store_name, &params.key)

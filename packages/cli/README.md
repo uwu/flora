@@ -2,14 +2,16 @@
 
 TypeScript CLI for flora runtime management.
 
-## Generate API types
-
-```bash
-pnpm --filter @uwu/flora-cli run generate:api
-```
-
 ## Build
 
 ```bash
-pnpm --filter @uwu/flora-cli run build
+vp run build
+```
+
+## Deploy a custom bot
+
+Use the custom bot ID shown in the Flora dashboard:
+
+```bash
+flora deploy --bot YOUR_CUSTOM_BOT_ID
 ```

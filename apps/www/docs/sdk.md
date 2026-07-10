@@ -92,6 +92,25 @@ createBot({
 })
 ```
 
+In custom-bot deployments, `createBot()` registers these commands globally and receives both guild
+and DM interactions. Custom-bot-only capabilities are available through `customBot`:
+
+```ts
+console.log(customBot.id)
+
+const dm = await customBot.createDm('123456789012345678')
+await rest.sendMessage({ channelId: dm.id, content: 'Hello from Flora' })
+```
+
+Repository projects for custom bots should extend the dedicated configuration:
+
+```json
+{
+  "extends": "@uwu/flora-sdk/tsconfig/custom-bot",
+  "include": ["src", "node_modules/@uwu/flora-sdk/global-types.d.ts"]
+}
+```
+
 ### Slash command subcommands
 
 ```ts

@@ -11,15 +11,31 @@ use std::convert::Infallible;
 use tokio_stream::StreamExt as _;
 use utoipa::{IntoParams, OpenApi, ToSchema};
 
+use crate::services::custom_bots::CUSTOM_BOT_DEPLOYMENT_PREFIX;
 use crate::{
     handlers::{
         auth::{ensure_guild_admin, require_identity},
+        custom_bots::{ensure_feature_enabled, ensure_scope_owner},
         error::ApiError,
         response::ApiJson,
     },
     log_sink::{self, LogEntry},
     state::AppState,
 };
+
+async fn ensure_log_scope_access(
+    state: &AppState,
+    identity: &crate::handlers::auth::IdentityContext,
+    scope_id: &str,
+) -> Result<(), ApiError> {
+    if scope_id.starts_with(CUSTOM_BOT_DEPLOYMENT_PREFIX) {
+        ensure_feature_enabled(state, identity).await?;
+        ensure_scope_owner(state, identity, scope_id).await?;
+        Ok(())
+    } else {
+        ensure_guild_admin(state, identity, scope_id).await
+    }
+}
 
 #[derive(OpenApi)]
 #[openapi(paths(get_guild_logs), components(schemas(LogEntry, LogsQuery)))]
@@ -58,7 +74,7 @@ pub async fn get_guild_logs(
     Query(query): Query<LogsQuery>,
 ) -> Result<ApiJson<Vec<LogEntry>>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
-    ensure_guild_admin(&state, &identity, &guild_id).await?;
+    ensure_log_scope_access(&state, &identity, &guild_id).await?;
     let limit = query.limit.min(1000);
     let logs = log_sink::log_sink().recent_for_guild(&guild_id, limit);
     Ok(ApiJson(Json(logs)))
@@ -73,7 +89,7 @@ pub async fn stream_guild_logs(
     Path(guild_id): Path<String>,
 ) -> Result<Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>>, ApiError> {
     let identity = require_identity(&state, &headers).await?;
-    ensure_guild_admin(&state, &identity, &guild_id).await?;
+    ensure_log_scope_access(&state, &identity, &guild_id).await?;
     let receiver = log_sink::log_sink().subscribe();
 
     let stream = tokio_stream::wrappers::BroadcastStream::new(receiver).filter_map(move |result| {

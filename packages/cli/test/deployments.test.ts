@@ -141,4 +141,29 @@ describe('deploy command', () => {
 
     expect(zipProjectMock).toHaveBeenCalledWith('./cli-root')
   })
+
+  it('deploys a custom bot through its scoped build and deployment endpoints', async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ build_id: 'b4', status: 'queued' })))
+      .mockResolvedValueOnce(new Response('event: done\ndata: ok\n\n'))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: 'done',
+            guild_id: '__flora_custom_bot__:bot-id',
+            entry: 'src/main.ts',
+            artifact: { bundle: 'console.log("ok")', source_map: '' }
+          })
+        )
+      )
+      .mockResolvedValueOnce(new Response('null'))
+
+    await deploy(config, undefined, undefined, undefined, 'bot-id')
+
+    const buildForm = fetchMock.mock.calls[0]![1].body as FormData
+    expect(buildForm.get('guild_id')).toBe('__flora_custom_bot__:bot-id')
+    expect(fetchMock.mock.calls[3]![0]).toBe(
+      'http://localhost:3000/api/custom-bots/bot-id/deployment'
+    )
+  })
 })

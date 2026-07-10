@@ -1,4 +1,5 @@
 import { TokenManager } from '@/components/features/TokenManager'
+import { CustomBotManager } from '@/components/features/CustomBotManager'
 import { DashboardSidebar } from '@/components/sidebar/app-sidebar'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { Seo } from '@/lib/seo'
@@ -27,6 +28,7 @@ export function UserSettingsPage() {
                   <h2 className='text-2xl font-bold tracking-tight'>User Settings</h2>
                   <p className='text-muted-foreground'>Manage your global account settings.</p>
                 </div>
+                <CustomBotManager />
                 <TokenManager />
               </div>
             </div>

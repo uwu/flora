@@ -5,7 +5,7 @@ pub(crate) const DEFAULT_LIST_LIMIT: u32 = 100;
 pub(crate) const MAX_LIST_LIMIT: u32 = 1000;
 const MAX_KEY_SIZE: usize = 512;
 const MAX_STORE_NAME_SIZE: usize = 64;
-const MAX_GUILD_ID_SIZE: usize = 32;
+const MAX_GUILD_ID_SIZE: usize = 64;
 
 pub(crate) fn validate_guild_id(guild_id: &str) -> Result<()> {
     if guild_id.is_empty() {

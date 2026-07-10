@@ -24,6 +24,10 @@ Deployments are replaced atomically. If the new script fails to load or does not
 `authorizeFeature`, the previous orchestrator remains active. Missing orchestrators deny feature
 access by default.
 
+The custom-bot feature asks the orchestrator with `feature: 'custom_bots'`. Redeploying the
+orchestrator immediately reconciles existing custom bot gateways, so removing a user from the
+policy stops their bot isolates and Discord clients.
+
 ## Cron scheduler
 
 The runtime includes a per-worker cron scheduler that fires every second to check for due jobs. Cron jobs registered via `cron()` in scripts are:

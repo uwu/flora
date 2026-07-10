@@ -309,6 +309,27 @@ pub(super) fn new_js_runtime(
     guild_id: Option<String>,
     cron_registry: SharedCronRegistry,
 ) -> JsRuntimeState {
+    new_js_runtime_inner(rest, kv, secrets, guild_id, false, cron_registry)
+}
+
+pub(super) fn new_custom_bot_js_runtime(
+    rest: Arc<DiscordRest>,
+    kv: KvService,
+    secrets: Arc<SecretsRuntimeData>,
+    scope_id: String,
+    cron_registry: SharedCronRegistry,
+) -> JsRuntimeState {
+    new_js_runtime_inner(rest, kv, secrets, Some(scope_id), true, cron_registry)
+}
+
+fn new_js_runtime_inner(
+    rest: Arc<DiscordRest>,
+    kv: KvService,
+    secrets: Arc<SecretsRuntimeData>,
+    guild_id: Option<String>,
+    custom_bot_scope: bool,
+    cron_registry: SharedCronRegistry,
+) -> JsRuntimeState {
     metrics().isolate_created();
     let use_v8_locker = guild_id.is_some();
     let blob_store = Arc::new(deno_web::BlobStore::default());
@@ -359,6 +380,12 @@ pub(super) fn new_js_runtime(
 
     if let Some(ref gid) = guild_id {
         runtime.op_state().borrow_mut().put(gid.clone());
+    }
+    if custom_bot_scope {
+        runtime
+            .op_state()
+            .borrow_mut()
+            .put(crate::ops::CustomBotScope);
     }
 
     JsRuntimeState {

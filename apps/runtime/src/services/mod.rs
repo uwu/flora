@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod build;
+pub mod custom_bots;
 pub mod deployments;
 pub mod discord_rest;
 pub mod kv;

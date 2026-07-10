@@ -5,7 +5,15 @@ use crate::services::scope_cache::ScopeCache;
 
 use super::FloraError;
 
+/// Marker inserted into custom-bot isolates. Their own Discord token is the security boundary, so
+/// they may act across every guild and DM channel that bot account can access.
+#[derive(Clone, Copy)]
+pub struct CustomBotScope;
+
 pub fn ensure_guild_scope(state: &OpState, guild_id: GuildId) -> Result<(), FloraError> {
+    if state.has::<CustomBotScope>() {
+        return Ok(());
+    }
     let runtime_guild_id = runtime_guild_id_from_state(state)?;
     if runtime_guild_id != guild_id {
         return Err(FloraError::scope_forbidden(
@@ -25,6 +33,9 @@ pub async fn ensure_channel_scope(
     scope_cache: &ScopeCache,
     channel_id: ChannelId,
 ) -> Result<(), FloraError> {
+    if runtime_guild_id.get() == 0 {
+        return Ok(());
+    }
     let channel_guild_id = scope_cache.resolve_channel(channel_id).await?;
     let Some(channel_guild_id) = channel_guild_id else {
         return Err(FloraError::scope_forbidden(
@@ -46,6 +57,9 @@ pub async fn ensure_thread_scope(
     scope_cache: &ScopeCache,
     thread_id: ThreadId,
 ) -> Result<(), FloraError> {
+    if runtime_guild_id.get() == 0 {
+        return Ok(());
+    }
     ensure_channel_scope(
         runtime_guild_id,
         scope_cache,
@@ -59,6 +73,9 @@ pub async fn ensure_webhook_scope(
     scope_cache: &ScopeCache,
     webhook_id: WebhookId,
 ) -> Result<(), FloraError> {
+    if runtime_guild_id.get() == 0 {
+        return Ok(());
+    }
     let webhook_guild_id = scope_cache.resolve_webhook(webhook_id).await?;
     let Some(webhook_guild_id) = webhook_guild_id else {
         return Err(FloraError::scope_forbidden(
@@ -76,6 +93,9 @@ pub async fn ensure_webhook_scope(
 }
 
 fn runtime_guild_id(state: &OpState) -> Result<GuildId, FloraError> {
+    if state.has::<CustomBotScope>() {
+        return Ok(GuildId::new(0));
+    }
     let runtime_guild_id = state
         .try_borrow::<String>()
         .ok_or_else(|| FloraError::scope_forbidden("guild context not available"))?;

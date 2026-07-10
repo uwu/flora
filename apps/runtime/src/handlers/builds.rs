@@ -10,14 +10,30 @@ use serde::{Deserialize, Serialize};
 use tracing::error;
 use utoipa::{OpenApi, ToSchema};
 
+use crate::services::custom_bots::CUSTOM_BOT_DEPLOYMENT_PREFIX;
 use crate::{
     handlers::{
-        auth::{ensure_guild_admin, require_identity},
+        auth::{IdentityContext, ensure_guild_admin, require_identity},
+        custom_bots::{ensure_feature_enabled, ensure_scope_owner},
         error::ApiError,
         response::ApiJson,
     },
     state::AppState,
 };
+
+async fn ensure_build_scope_access(
+    state: &AppState,
+    identity: &IdentityContext,
+    scope_id: &str,
+) -> Result<(), ApiError> {
+    if scope_id.starts_with(CUSTOM_BOT_DEPLOYMENT_PREFIX) {
+        ensure_feature_enabled(state, identity).await?;
+        ensure_scope_owner(state, identity, scope_id).await?;
+        Ok(())
+    } else {
+        ensure_guild_admin(state, identity, scope_id).await
+    }
+}
 
 #[derive(OpenApi)]
 #[openapi(
@@ -144,7 +160,7 @@ pub async fn create_build_handler(
     let project_zip =
         project_zip.ok_or_else(|| ApiError::bad_request("`project_zip` is required"))?;
 
-    ensure_guild_admin(&state, &identity, &guild_id).await?;
+    ensure_build_scope_access(&state, &identity, &guild_id).await?;
 
     let result = state
         .build_service
@@ -193,7 +209,7 @@ pub async fn get_build_handler(
         })?;
     let build = build.ok_or_else(|| ApiError::not_found(format!("build {build_id} not found")))?;
 
-    ensure_guild_admin(&state, &identity, &build.guild_id).await?;
+    ensure_build_scope_access(&state, &identity, &build.guild_id).await?;
 
     Ok(ApiJson(Json(BuildStatusResponse {
         build_id: build.build_id,
@@ -231,7 +247,7 @@ pub async fn stream_build_logs_handler(
         })?;
     let build = build.ok_or_else(|| ApiError::not_found(format!("build {build_id} not found")))?;
 
-    ensure_guild_admin(&state, &identity, &build.guild_id).await?;
+    ensure_build_scope_access(&state, &identity, &build.guild_id).await?;
 
     let response = state
         .build_service
