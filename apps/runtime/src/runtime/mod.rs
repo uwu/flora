@@ -14,6 +14,7 @@ use crate::{
         deployments::Deployment,
         discord_rest::{DiscordRest, RestConfig},
         kv::KvService,
+        orchestrator::FeatureAuthorizationRequest,
         scope_cache::ScopeCache,
         secrets::SecretService,
     },
@@ -154,6 +155,25 @@ impl BotRuntime {
             self.guild_routes.lock().remove(guild_id);
         }
         result
+    }
+
+    /// Atomically create or replace the singleton trusted orchestrator isolate.
+    pub async fn deploy_orchestrator_script(&self, deployment: Deployment) -> Result<(), AnyError> {
+        self.workers[0].deploy_orchestrator(deployment).await
+    }
+
+    /// Remove the singleton trusted orchestrator isolate.
+    pub async fn undeploy_orchestrator_script(&self) -> Result<(), AnyError> {
+        self.workers[0].undeploy_orchestrator().await
+    }
+
+    /// Ask the trusted orchestrator whether a user may access a Flora feature.
+    pub async fn authorize_feature(
+        &self,
+        request: FeatureAuthorizationRequest,
+    ) -> Result<bool, AnyError> {
+        let request = serde_json::to_value(request)?;
+        self.workers[0].authorize_feature(request).await
     }
 
     pub async fn migrate_guild_runtime(

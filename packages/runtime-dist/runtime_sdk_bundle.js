@@ -779,6 +779,19 @@ var flora = (function (exports) {
   }
   const kv = { store }
   //#endregion
+  //#region src/sdk/orchestrator.ts
+  /** Register the policy function used by Flora's trusted singleton orchestrator runtime. */
+  function defineOrchestrator(definition) {
+    if (globalThis.__floraRuntimeKind !== 'orchestrator')
+      throw new Error('defineOrchestrator can only be used by the trusted orchestrator deployment')
+    if (typeof definition?.authorizeFeature !== 'function')
+      throw new TypeError('defineOrchestrator requires an authorizeFeature function')
+    if (globalThis.__floraAuthorizeFeature)
+      throw new Error('defineOrchestrator may only be called once')
+    globalThis.__floraAuthorizeFeature = async (request) =>
+      Boolean(await definition.authorizeFeature(request))
+  }
+  //#endregion
   //#region src/sdk/rest.ts
   const ops = Deno.core.ops
   /**
@@ -867,6 +880,7 @@ var flora = (function (exports) {
   exports.channelSelect = channelSelect
   exports.container = container
   exports.createBot = createBot
+  exports.defineOrchestrator = defineOrchestrator
   exports.embed = embed
   exports.file = file
   exports.fileUpload = fileUpload
@@ -908,6 +922,7 @@ var flora = (function (exports) {
   global.container = global.flora.container
   global.ContainerBuilder = global.flora.ContainerBuilder
   global.createBot = global.flora.createBot
+  global.defineOrchestrator = global.flora.defineOrchestrator
   global.embed = global.flora.embed
   global.EmbedBuilder = global.flora.EmbedBuilder
   global.file = global.flora.file

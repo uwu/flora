@@ -29,4 +29,6 @@ pub struct AppState {
     pub http: Arc<Http>,
     /// Bearer token for operator-only endpoints.
     pub operator_secret: Option<String>,
+    /// Discord user ID allowed to manage the singleton orchestrator deployment.
+    pub orchestrator_operator_user_id: Option<String>,
 }

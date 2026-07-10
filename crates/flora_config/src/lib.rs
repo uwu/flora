@@ -26,6 +26,9 @@ pub struct AppConfig {
     /// API server config.
     #[config(nested)]
     pub api: ApiConfig,
+    /// Trusted JavaScript orchestrator configuration.
+    #[config(nested)]
+    pub orchestrator: OrchestratorConfig,
     /// Build service configuration.
     #[config(nested)]
     pub build_service: BuildServiceConfig,
@@ -149,6 +152,15 @@ pub struct ApiConfig {
     /// Optional bearer token for operator-only endpoints such as metrics.
     #[config(env = "API_OPERATOR_SECRET")]
     pub operator_secret: Option<String>,
+}
+
+/// Trusted JavaScript orchestrator configuration.
+#[derive(Debug, Config)]
+pub struct OrchestratorConfig {
+    /// Discord user ID allowed to create and update the singleton orchestrator deployment.
+    /// When omitted, the orchestrator deployment API is disabled.
+    #[config(env = "ORCHESTRATOR_OPERATOR_USER_ID")]
+    pub operator_user_id: Option<String>,
 }
 
 /// Secrets configuration.

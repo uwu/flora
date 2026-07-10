@@ -226,6 +226,14 @@
 # Can also be specified via environment variable `API_OPERATOR_SECRET`.
 # operator_secret =
 
+# Trusted JavaScript orchestrator configuration.
+[orchestrator]
+# Discord user ID allowed to create and update the singleton orchestrator deployment.
+# When omitted, the orchestrator deployment API is disabled.
+#
+# Can also be specified via environment variable `ORCHESTRATOR_OPERATOR_USER_ID`.
+# operator_user_id =
+
 # Build service configuration.
 [build_service]
 # Base URL of the internal build service.

@@ -8,7 +8,7 @@ use tracing::{info, warn};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::bundler::DeploymentFile;
+use crate::{bundler::DeploymentFile, services::orchestrator::ORCHESTRATOR_DEPLOYMENT_ID};
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct DeploymentSourceMapFile {
@@ -568,8 +568,10 @@ impl DeploymentService {
             r#"
             SELECT guild_id, entry, files, source_map, bundle, created_at, updated_at
             FROM deployments
+            WHERE guild_id <> $1
             "#,
         )
+        .bind(ORCHESTRATOR_DEPLOYMENT_ID)
         .fetch_all(&self.db_pool)
         .await?;
 
@@ -578,6 +580,15 @@ impl DeploymentService {
             deployments.push(to_deployment(row)?);
         }
         Ok(deployments)
+    }
+
+    pub async fn delete_deployment(&self, guild_id: &str) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM deployments WHERE guild_id = $1")
+            .bind(guild_id)
+            .execute(&self.db_pool)
+            .await?;
+        self.invalidate_cached_deployment(guild_id).await?;
+        Ok(result.rows_affected() > 0)
     }
 
     pub fn summarize_changes(

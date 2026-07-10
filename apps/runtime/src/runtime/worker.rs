@@ -101,6 +101,7 @@ fn worker_thread(
     rt.block_on(async move {
         let mut guild_runtimes: HashMap<String, JsRuntimeState> = HashMap::new();
         let mut default_runtime: Option<JsRuntimeState> = None;
+        let mut orchestrator_runtime: Option<JsRuntimeState> = None;
         let mut cron_interval = tokio::time::interval(Duration::from_secs(1));
         let default_secrets = SecretsRuntimeData::empty();
 
@@ -199,6 +200,44 @@ fn worker_thread(
                             let _ = respond_to.send(result);
                         }
 
+                        WorkerCommand::DeployOrchestrator { deployment, respond_to } => {
+                            let result = deploy_orchestrator_to_worker(
+                                &mut orchestrator_runtime,
+                                &http,
+                                &kv,
+                                deployment,
+                                worker_id,
+                                &limits,
+                                cron_registry.clone(),
+                            )
+                            .await;
+                            if let Err(ref err) = result {
+                                error!(target: "flora:runtime", worker_id, ?err, "failed to deploy orchestrator");
+                            }
+                            let _ = respond_to.send(result);
+                        }
+
+                        WorkerCommand::UndeployOrchestrator { respond_to } => {
+                            if let Some(runtime) = orchestrator_runtime.take() {
+                                drop_runtime_state(runtime);
+                            }
+                            let _ = respond_to.send(Ok(()));
+                        }
+
+                        WorkerCommand::AuthorizeFeature { request, respond_to } => {
+                            let result = match orchestrator_runtime.as_mut() {
+                                Some(runtime) => authorize_feature_in_runtime(
+                                    runtime,
+                                    request,
+                                    worker_id,
+                                    &limits,
+                                )
+                                .await,
+                                None => Ok(false),
+                            };
+                            let _ = respond_to.send(result);
+                        }
+
                         WorkerCommand::DispatchEvent { guild_id, event, payload, respond_to } => {
                             let guild_id_for_log = guild_id.clone();
                             let result = dispatch_to_worker(
@@ -284,6 +323,9 @@ fn worker_thread(
         }
 
         if let Some(runtime) = default_runtime.take() {
+            drop_runtime_state(runtime);
+        }
+        if let Some(runtime) = orchestrator_runtime.take() {
             drop_runtime_state(runtime);
         }
         for (_, runtime) in guild_runtimes.drain() {
@@ -624,6 +666,186 @@ pub(super) async fn deploy_guild_to_worker(
             Err(AnyError::msg(message))
         }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn deploy_orchestrator_to_worker(
+    orchestrator_runtime: &mut Option<JsRuntimeState>,
+    http: &Arc<DiscordRest>,
+    kv: &KvService,
+    deployment: Deployment,
+    worker_id: usize,
+    limits: &RuntimeLimits,
+    cron_registry: SharedCronRegistry,
+) -> Result<(), AnyError> {
+    let mut saved_runtime = orchestrator_runtime.take();
+
+    let result = async {
+        let mut runtime = new_js_runtime(
+            http.clone(),
+            kv.clone(),
+            SecretsRuntimeData::empty(),
+            Some(deployment.guild_id.clone()),
+            cron_registry,
+        );
+
+        runtime.runtime_mut().execute_script(
+            "flora:orchestrator_context",
+            "globalThis.__floraRuntimeKind = 'orchestrator';",
+        )?;
+        runtime
+            .runtime_mut()
+            .execute_script("flora:bootstrap", RUNTIME_PRELUDE)?;
+        run_event_loop_with_timeout(
+            runtime.runtime_mut(),
+            PollEventLoopOptions::default(),
+            limits.boot_timeout,
+            worker_id,
+            "bootstrap",
+        )
+        .await?;
+
+        {
+            let context = runtime.runtime().main_context();
+            let mut v8_guard = runtime.runtime_mut().v8_guard();
+            runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(
+                &context,
+                v8_guard.isolate(),
+            )?);
+        }
+
+        load_script_source(
+            runtime.runtime_mut(),
+            SDK_BUNDLE_PATH.to_string().into(),
+            SDK_BUNDLE.to_string(),
+            SDK_BUNDLE_PATH.to_string(),
+            worker_id,
+            limits,
+        )
+        .await?;
+
+        let module_specifier = ModuleSpecifier::parse("file:///orchestrator/bundle.js")?;
+        load_es_module_source(
+            runtime.runtime_mut(),
+            module_specifier,
+            deployment.bundle,
+            deployment
+                .source_map
+                .as_ref()
+                .map(|source_map| source_map.contents.as_str()),
+            worker_id,
+            limits,
+        )
+        .await?;
+
+        ensure_orchestrator_handler(&mut runtime)?;
+        Ok::<JsRuntimeState, AnyError>(runtime)
+    }
+    .await;
+
+    match result {
+        Ok(runtime) => {
+            if let Some(old) = saved_runtime.take() {
+                drop_runtime_state(old);
+                metrics().isolate_restarted();
+            }
+            *orchestrator_runtime = Some(runtime);
+            info!(target: "flora:runtime", worker_id, "orchestrator deployment loaded");
+            Ok(())
+        }
+        Err(err) => {
+            *orchestrator_runtime = saved_runtime;
+            Err(AnyError::msg(user_visible_error_message(
+                &err,
+                limits.show_internal_stack_frames,
+            )))
+        }
+    }
+}
+
+fn ensure_orchestrator_handler(runtime: &mut JsRuntimeState) -> Result<(), AnyError> {
+    let context = runtime.runtime().main_context();
+    let mut v8_guard = runtime.runtime_mut().v8_guard();
+    v8::scope_with_context!(scope, v8_guard.isolate(), &context);
+    let context = v8::Local::new(scope, &context);
+    let name = v8::String::new(scope, "__floraAuthorizeFeature")
+        .ok_or_else(|| AnyError::msg("failed to create orchestrator handler name"))?;
+    let value = context
+        .global(scope)
+        .get(scope, name.into())
+        .ok_or_else(|| AnyError::msg("orchestrator authorization handler is missing"))?;
+    if !value.is_function() {
+        return Err(AnyError::msg(
+            "orchestrator must call defineOrchestrator({ authorizeFeature })",
+        ));
+    }
+    Ok(())
+}
+
+async fn authorize_feature_in_runtime(
+    runtime: &mut JsRuntimeState,
+    request: Value,
+    worker_id: usize,
+    limits: &RuntimeLimits,
+) -> Result<bool, AnyError> {
+    let _secret_scope = SecretScope::enter(runtime.secrets.clone());
+    let context = runtime.runtime().main_context();
+    let promise = {
+        let mut v8_guard = runtime.runtime_mut().v8_guard();
+        let isolate = v8_guard.isolate();
+        v8::scope_with_context!(scope, isolate, &context);
+        let context = v8::Local::new(scope, &context);
+        let global = context.global(scope);
+        let name = v8::String::new(scope, "__floraAuthorizeFeature")
+            .ok_or_else(|| AnyError::msg("failed to create orchestrator handler name"))?;
+        let handler = global
+            .get(scope, name.into())
+            .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+            .ok_or_else(|| AnyError::msg("orchestrator authorization handler is missing"))?;
+        let request = serde_v8::to_v8(scope, request)?;
+        let result = handler
+            .call(scope, global.into(), &[request])
+            .ok_or_else(|| AnyError::msg("orchestrator authorization call failed"))?;
+        let promise = v8::Local::<v8::Promise>::try_from(result)
+            .map_err(|_| AnyError::msg("orchestrator authorization must return a promise"))?;
+        Global::new(scope, promise)
+    };
+
+    let result = with_timeout(
+        limits.dispatch_timeout,
+        async {
+            runtime
+                .runtime_mut()
+                .run_event_loop(PollEventLoopOptions::default())
+                .await
+                .map_err(AnyError::from)?;
+
+            let context = runtime.runtime().main_context();
+            let mut v8_guard = runtime.runtime_mut().v8_guard();
+            v8::scope_with_context!(scope, v8_guard.isolate(), &context);
+            let promise = v8::Local::new(scope, &promise);
+            if promise.state() == v8::PromiseState::Rejected {
+                return Err(AnyError::msg(
+                    promise.result(scope).to_rust_string_lossy(scope),
+                ));
+            }
+            let value = promise.result(scope);
+            serde_v8::from_v8::<bool>(scope, value).map_err(AnyError::from)
+        },
+        "orchestrator_authorization",
+    )
+    .await;
+
+    if result.as_ref().is_err_and(|err| err.is::<RuntimeTimeout>()) {
+        metrics().timeout_error();
+        terminate_runtime(
+            runtime.runtime_mut(),
+            worker_id,
+            "orchestrator_authorization",
+        )
+        .await;
+    }
+    result
 }
 
 fn undeploy_guild_from_worker(

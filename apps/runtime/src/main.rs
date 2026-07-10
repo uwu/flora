@@ -12,6 +12,7 @@ use flora::{
         build::BuildServiceClient,
         deployments::DeploymentService,
         kv::KvService,
+        orchestrator::ORCHESTRATOR_DEPLOYMENT_ID,
         secrets::SecretService,
         tokens::TokenService,
     },
@@ -154,6 +155,15 @@ async fn main() -> Result<()> {
         }
     }
 
+    if let Some(orchestrator) = deployment_service
+        .get_persisted_deployment(ORCHESTRATOR_DEPLOYMENT_ID)
+        .await?
+    {
+        if let Err(err) = runtime.deploy_orchestrator_script(orchestrator).await {
+            error!("Failed to load orchestrator deployment: {:?}", err);
+        }
+    }
+
     let intents = GatewayIntents::all();
 
     let handler = Arc::new(DiscordHandler {
@@ -178,6 +188,7 @@ async fn main() -> Result<()> {
         build_service,
         http: http.clone(),
         operator_secret: config.api.operator_secret,
+        orchestrator_operator_user_id: config.orchestrator.operator_user_id,
     };
 
     let api_router = create_router()

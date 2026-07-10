@@ -38,6 +38,20 @@ pub(super) enum WorkerCommand {
         guild_id: String,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
+    /// Create or atomically replace the singleton trusted orchestrator isolate.
+    DeployOrchestrator {
+        deployment: Deployment,
+        respond_to: oneshot::Sender<Result<(), AnyError>>,
+    },
+    /// Remove the singleton trusted orchestrator isolate.
+    UndeployOrchestrator {
+        respond_to: oneshot::Sender<Result<(), AnyError>>,
+    },
+    /// Evaluate a feature authorization request in the trusted orchestrator isolate.
+    AuthorizeFeature {
+        request: Value,
+        respond_to: oneshot::Sender<Result<bool, AnyError>>,
+    },
     /// Dispatch an event to a specific guild's runtime.
     DispatchEvent {
         guild_id: Option<String>,
@@ -128,6 +142,30 @@ impl Worker {
         let (tx, rx) = oneshot::channel();
         self.send_cmd(WorkerCommand::UndeployGuild {
             guild_id,
+            respond_to: tx,
+        })?;
+        rx.await.map_err(|_| AnyError::msg("worker stopped"))?
+    }
+
+    pub(super) async fn deploy_orchestrator(&self, deployment: Deployment) -> Result<(), AnyError> {
+        let (tx, rx) = oneshot::channel();
+        self.send_cmd(WorkerCommand::DeployOrchestrator {
+            deployment,
+            respond_to: tx,
+        })?;
+        rx.await.map_err(|_| AnyError::msg("worker stopped"))?
+    }
+
+    pub(super) async fn undeploy_orchestrator(&self) -> Result<(), AnyError> {
+        let (tx, rx) = oneshot::channel();
+        self.send_cmd(WorkerCommand::UndeployOrchestrator { respond_to: tx })?;
+        rx.await.map_err(|_| AnyError::msg("worker stopped"))?
+    }
+
+    pub(super) async fn authorize_feature(&self, request: Value) -> Result<bool, AnyError> {
+        let (tx, rx) = oneshot::channel();
+        self.send_cmd(WorkerCommand::AuthorizeFeature {
+            request,
             respond_to: tx,
         })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?

@@ -83,6 +83,8 @@ declare global {
 
   var __floraGuildId: string | undefined
 
+  var __floraRuntimeKind: 'orchestrator' | undefined
+
   function on<E extends keyof FloraEventMap>(
     event: E,
     handler: (ctx: FloraEventMap[E]) => void | Promise<void>
@@ -516,6 +518,16 @@ declare global {
   }
 
   const kv: { store: (name: string) => KvStore }
+
+  function defineOrchestrator(definition: {
+    authorizeFeature: (request: FeatureAuthorizationRequest) => boolean | Promise<boolean>
+  }): void
+
+  type FeatureAuthorizationRequest = { feature: string; userId: string; metadata?: unknown }
+
+  type OrchestratorDefinition = {
+    authorizeFeature: (request: FeatureAuthorizationRequest) => boolean | Promise<boolean>
+  }
 
   const rest: {
     sendMessage: (args: RawSendMessage) => Promise<JsonValue>

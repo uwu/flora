@@ -16,6 +16,7 @@ pub mod health;
 pub mod kv;
 pub mod logs;
 pub mod metrics;
+pub mod orchestrator;
 pub mod response;
 pub mod secrets;
 pub mod tokens;
@@ -34,6 +35,7 @@ pub fn create_router() -> Router<AppState> {
             (path = "/secrets", api = secrets::SecretsApi),
             (path = "/health", api = health::HealthApi),
             (path = "/metrics", api = metrics::MetricsApi),
+            (path = "/orchestrator", api = orchestrator::OrchestratorApi),
             (path = "/logs", api = logs::LogsApi)
         ),
         tags(
@@ -52,6 +54,7 @@ pub fn create_router() -> Router<AppState> {
         .nest("/deployments", deployments::router())
         .nest("/secrets", secrets::router())
         .nest("/kv", kv::router())
+        .nest("/orchestrator", orchestrator::router())
         .route("/health", get(health::health_check))
         .route("/metrics", get(metrics::get_metrics))
         .route("/metrics/json", get(metrics::get_metrics_json))

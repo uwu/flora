@@ -54,6 +54,7 @@ export interface Secrets {
 declare global {
   var __floraHandlers: Record<string, Function[]>
   var __floraGuildId: string | undefined
+  var __floraRuntimeKind: 'orchestrator' | undefined
   function on<E extends keyof FloraEventMap>(event: E, handler: FloraEventHandler<E>): void
   function __floraDispatch(event: string, payload: unknown): Promise<void>
   function registerSlashCommands(commands: FlattenedSlashCommand[]): Promise<void> | undefined

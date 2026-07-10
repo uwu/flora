@@ -268,7 +268,7 @@ async fn resolve_token_username(state: &AppState, guild_id: &str, user_id: &str)
     }
 }
 
-fn validate_request(request: &DeploymentRequest) -> Result<(), ApiError> {
+pub(crate) fn validate_request(request: &DeploymentRequest) -> Result<(), ApiError> {
     if request.entry.trim().is_empty() {
         return Err(ApiError::bad_request("`entry` must not be empty"));
     }
