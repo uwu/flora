@@ -10,18 +10,17 @@
     "@flora-internal/design-system": "workspace:*",
     "@uwu/flora-branding": "workspace:*",
     "vitepress": "2.0.0-alpha.16",
-    "vue": "^3.5.29"
+    "vue": "catalog:"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "1.2.95",
+    "@iconify-json/lucide": "catalog:",
     "@iconify-json/radix-icons": "catalog:",
     "@iconify-json/simple-icons": "catalog:",
-    "@radix-ui/colors": "catalog:",
     "@types/node": "catalog:",
     "oxc-minify": "0.116.0",
     "sass": "^1.97.2",
     "typescript": "catalog:",
-    "unocss": "^66.5.12",
+    "unocss": "catalog:",
     "wrangler": "^4.58.0"
   }
 }

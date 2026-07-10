@@ -13,12 +13,12 @@
     "vue": "catalog:"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "1.2.111",
+    "@iconify-json/lucide": "catalog:",
     "@types/node": "catalog:",
-    "@unocss/reset": "^66.5.12",
+    "@unocss/reset": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
     "typescript": "catalog:",
-    "unocss": "^66.5.12",
+    "unocss": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vue-tsc": "catalog:"

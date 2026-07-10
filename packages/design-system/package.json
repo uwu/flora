@@ -42,7 +42,7 @@
     "@types/node": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
     "typescript": "catalog:",
-    "unocss": "^66.5.12",
+    "unocss": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vue": "catalog:",

@@ -34,8 +34,8 @@
     "c12": "^3.3.2",
     "citty": "^0.2.1",
     "conf": "^15.1.0",
-    "consola": "^3.4.2",
-    "fflate": "^0.8.2",
+    "consola": "catalog:",
+    "fflate": "catalog:",
     "ignore": "^7.0.5",
     "rolldown": "^0.15.1",
     "tinyglobby": "^0.2.15"
@@ -43,9 +43,8 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@typescript/native-preview": "catalog:",
-    "bumpp": "^11.0.0",
+    "bumpp": "catalog:",
     "typescript": "catalog:",
-    "vite-plus": "catalog:",
-    "vitest": "catalog:"
+    "vite-plus": "catalog:"
   }
 }

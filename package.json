@@ -7,7 +7,6 @@
     "ready": "vp fmt && vp lint && vp run test -r && vp run build -r"
   },
   "devDependencies": {
-    "@uwu/flora-cli": "workspace:*",
     "vite-plus": "catalog:"
   },
   "engines": {

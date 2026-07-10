@@ -13,17 +13,17 @@
     "@lucide/vue": "catalog:",
     "@uwu/flora-branding": "workspace:*",
     "@vueuse/core": "catalog:",
-    "vue": "^3.5.39"
+    "vue": "catalog:"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "1.2.111",
-    "@types/node": "^24.13.2",
-    "@unocss/reset": "^66.5.12",
-    "@vitejs/plugin-vue": "^6.0.7",
+    "@iconify-json/lucide": "catalog:",
+    "@types/node": "catalog:",
+    "@unocss/reset": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
     "@vue/tsconfig": "^0.9.1",
     "typescript": "~6.0.2",
-    "unocss": "^66.5.12",
-    "vite": "^8.1.1",
-    "vue-tsc": "^3.3.5"
+    "unocss": "catalog:",
+    "vite": "catalog:",
+    "vue-tsc": "catalog:"
   }
 }

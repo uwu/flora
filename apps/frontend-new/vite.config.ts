@@ -1,6 +1,6 @@
 import path from 'node:path'
 import fs from 'node:fs'
-import type { Plugin } from 'vite'
+import { defineConfig, type Plugin, type PluginOption } from 'vite'
 import UnoCSS from 'unocss/vite'
 import vue from '@vitejs/plugin-vue'
 
@@ -33,27 +33,37 @@ function browserLogPlugin(): Plugin {
   }
 }
 
-const unoPlugins = UnoCSS() as unknown as unknown[]
-const plugins: unknown[] = [vue() as unknown, ...unoPlugins, browserLogPlugin() as unknown]
+const unoPlugins = UnoCSS() as unknown as PluginOption[]
 
-export default {
-  plugins,
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src')
-    }
-  },
-  server: {
-    allowedHosts: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true
-      },
-      '/__dev': {
-        target: 'http://localhost:3000',
-        changeOrigin: true
+export default defineConfig(({ command, mode }) => {
+  const isDev = command === 'serve' && mode === 'development'
+  const plugins: PluginOption[] = [
+    vue() as unknown as PluginOption,
+    ...unoPlugins,
+    ...(isDev ? [browserLogPlugin()] : [])
+  ]
+
+  return {
+    plugins,
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src')
       }
-    }
+    },
+    ...(isDev && {
+      server: {
+        allowedHosts: true,
+        proxy: {
+          '/api': {
+            target: 'http://localhost:3000',
+            changeOrigin: true
+          },
+          '/__dev': {
+            target: 'http://localhost:3000',
+            changeOrigin: true
+          }
+        }
+      }
+    })
   }
-}
+})
