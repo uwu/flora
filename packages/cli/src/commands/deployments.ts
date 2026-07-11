@@ -134,7 +134,7 @@ export async function deploy(
     throw new Error(`Deployment apply failed (${deployRes.status}): ${body}`)
   }
 
-  logger.success(botArg ? `Deployed custom bot ${botArg}` : `Deployed guild ${build.guild_id}`)
+  logger.success(botArg ? `Deployed User Bot ${botArg}` : `Deployed server ${build.guild_id}`)
   logger.info(`${colors.cyan('•')} ${colors.cyan('entry:')} ${build.entry}`)
   logger.info(`${colors.gray('•')} ${colors.gray('updated:')} ${new Date().toISOString()}`)
 }

@@ -39,7 +39,7 @@ where
     type Response = S::Response;
     type Error = S::Error;
     type Future = Map<
-        Join<TaskLocalFuture<Instant, Instrumented<S::Future>>, Ready<PendingLogMessage>>,
+        Join<TaskLocalFuture<RequestContext, Instrumented<S::Future>>, Ready<PendingLogMessage>>,
         fn((<S::Future as Future>::Output, PendingLogMessage)) -> <S::Future as Future>::Output,
     >;
 
@@ -49,6 +49,10 @@ where
 
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         let request_id = Uuid::new_v4();
+        let request_context = RequestContext {
+            request_id,
+            instance: req.uri().path().to_string(),
+        };
         let span = tracing::info_span!("web", "request_id" = request_id.to_string().as_str());
 
         let log_message = PendingLogMessage {
@@ -65,7 +69,7 @@ where
         };
 
         futures_util::future::join(
-            REQ_TIMESTAMP.scope(log_message.start, self.0.call(req).instrument(span)),
+            REQUEST_CONTEXT.scope(request_context, self.0.call(req).instrument(span)),
             futures_util::future::ready(log_message),
         )
         .map(|(response, pending_log_message)| {
@@ -81,7 +85,13 @@ where
 }
 
 tokio::task_local! {
-    pub static REQ_TIMESTAMP: Instant;
+    pub static REQUEST_CONTEXT: RequestContext;
+}
+
+#[derive(Clone)]
+pub struct RequestContext {
+    pub request_id: Uuid,
+    pub instance: String,
 }
 
 pub struct PendingLogMessage {

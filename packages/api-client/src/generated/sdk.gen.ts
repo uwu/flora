@@ -5,33 +5,58 @@ import { client } from './client.gen'
 import type {
   CallbackHandlerData,
   CallbackHandlerErrors,
+  CallbackHandlerResponses,
   CreateBuildHandlerData,
   CreateBuildHandlerErrors,
   CreateBuildHandlerResponses,
+  CreateCustomBotData,
+  CreateCustomBotErrors,
+  CreateCustomBotResponses,
   CreateStoreHandlerData,
   CreateStoreHandlerErrors,
   CreateStoreHandlerResponses,
   CreateTokenHandlerData,
   CreateTokenHandlerErrors,
   CreateTokenHandlerResponses,
+  DeleteCustomBotData,
+  DeleteCustomBotErrors,
+  DeleteCustomBotResponses,
   DeleteKeyHandlerData,
   DeleteKeyHandlerErrors,
   DeleteKeyHandlerResponses,
+  DeleteOrchestratorData,
+  DeleteOrchestratorErrors,
+  DeleteOrchestratorResponses,
   DeleteSecretHandlerData,
   DeleteSecretHandlerErrors,
   DeleteSecretHandlerResponses,
+  DeleteServerCustomBotData,
+  DeleteServerCustomBotErrors,
+  DeleteServerCustomBotResponses,
   DeleteStoreHandlerData,
   DeleteStoreHandlerErrors,
   DeleteStoreHandlerResponses,
   DeleteTokenHandlerData,
   DeleteTokenHandlerErrors,
   DeleteTokenHandlerResponses,
+  DeployCustomBotData,
+  DeployCustomBotErrors,
+  DeployCustomBotResponses,
+  DeployOrchestratorData,
+  DeployOrchestratorErrors,
+  DeployOrchestratorResponses,
   ExportGuildHandlerData,
   ExportGuildHandlerErrors,
   ExportGuildHandlerResponses,
   GetBuildHandlerData,
   GetBuildHandlerErrors,
   GetBuildHandlerResponses,
+  GetCustomBotData,
+  GetCustomBotDeploymentData,
+  GetCustomBotDeploymentErrors,
+  GetCustomBotDeploymentResponses,
+  GetCustomBotErrors,
+  GetCustomBotResponses,
   GetDeploymentHandlerData,
   GetDeploymentHandlerErrors,
   GetDeploymentHandlerResponses,
@@ -41,20 +66,27 @@ import type {
   GetGuildLogsData,
   GetGuildLogsErrors,
   GetGuildLogsResponses,
-  GetLogsData,
-  GetLogsErrors,
-  GetLogsResponses,
   GetMetricsData,
   GetMetricsErrors,
   GetMetricsJsonData,
   GetMetricsJsonErrors,
   GetMetricsJsonResponses,
   GetMetricsResponses,
+  GetOrchestratorDeploymentData,
+  GetOrchestratorDeploymentErrors,
+  GetOrchestratorDeploymentResponses,
+  GetServerCustomBotData,
+  GetServerCustomBotErrors,
+  GetServerCustomBotResponses,
   GetValueHandlerData,
   GetValueHandlerErrors,
   GetValueHandlerResponses,
   HealthCheckData,
+  HealthCheckErrors,
   HealthCheckResponses,
+  ListCustomBotsData,
+  ListCustomBotsErrors,
+  ListCustomBotsResponses,
   ListDeploymentHistoryHandlerData,
   ListDeploymentHistoryHandlerErrors,
   ListDeploymentHistoryHandlerResponses,
@@ -78,6 +110,7 @@ import type {
   ListTokensHandlerResponses,
   LoginHandlerData,
   LoginHandlerErrors,
+  LoginHandlerResponses,
   MeHandlerData,
   MeHandlerErrors,
   MeHandlerResponses,
@@ -87,12 +120,21 @@ import type {
   SetValueHandlerData,
   SetValueHandlerErrors,
   SetValueHandlerResponses,
+  StreamBuildLogsHandlerData,
+  StreamBuildLogsHandlerErrors,
+  StreamBuildLogsHandlerResponses,
+  StreamGuildLogsData,
+  StreamGuildLogsErrors,
+  StreamGuildLogsResponses,
   UpsertDeploymentHandlerData,
   UpsertDeploymentHandlerErrors,
   UpsertDeploymentHandlerResponses,
   UpsertSecretHandlerData,
   UpsertSecretHandlerErrors,
-  UpsertSecretHandlerResponses
+  UpsertSecretHandlerResponses,
+  UpsertServerCustomBotData,
+  UpsertServerCustomBotErrors,
+  UpsertServerCustomBotResponses
 } from './types.gen'
 
 export type Options<
@@ -114,29 +156,35 @@ export type Options<
 }
 
 /**
- * Handle Discord OAuth callback, mint a session cookie, and redirect to the frontend dashboard.
+ * Complete Discord authentication
+ *
+ * Validates the OAuth state cookie, exchanges the Discord authorization code, creates a flora session, sets the session cookie, and redirects to the dashboard. Invalid, mismatched, or expired state is rejected.
  */
 export const callbackHandler = <ThrowOnError extends boolean = false>(
   options: Options<CallbackHandlerData, ThrowOnError>
 ) =>
-  (options.client ?? client).get<unknown, CallbackHandlerErrors, ThrowOnError>({
+  (options.client ?? client).get<CallbackHandlerResponses, CallbackHandlerErrors, ThrowOnError>({
     url: '/auth/callback',
     ...options
   })
 
 /**
- * Begin Discord OAuth flow and set a short-lived state cookie.
+ * Start Discord authentication
+ *
+ * Creates a short-lived OAuth state value, stores it in a secure cookie, and redirects the browser to Discord. The callback must return the same state value before a flora session is created.
  */
 export const loginHandler = <ThrowOnError extends boolean = false>(
   options?: Options<LoginHandlerData, ThrowOnError>
 ) =>
-  (options?.client ?? client).get<unknown, LoginHandlerErrors, ThrowOnError>({
+  (options?.client ?? client).get<LoginHandlerResponses, LoginHandlerErrors, ThrowOnError>({
     url: '/auth/login',
     ...options
   })
 
 /**
- * Return the currently authenticated user.
+ * Get the authenticated user
+ *
+ * Returns the Discord identity associated with the current session or API token. Session-only profile fields may be empty when authentication uses a long-lived API token.
  */
 export const meHandler = <ThrowOnError extends boolean = false>(
   options?: Options<MeHandlerData, ThrowOnError>
@@ -171,6 +219,107 @@ export const getBuildHandler = <ThrowOnError extends boolean = false>(
   (options.client ?? client).get<GetBuildHandlerResponses, GetBuildHandlerErrors, ThrowOnError>({
     url: '/builds/{build_id}',
     ...options
+  })
+
+/**
+ * Stream build logs
+ *
+ * Streams build output as Server-Sent Events until the upstream build stream closes. The authenticated caller must have access to the build's guild or User Bot scope.
+ */
+export const streamBuildLogsHandler = <ThrowOnError extends boolean = false>(
+  options: Options<StreamBuildLogsHandlerData, ThrowOnError, unknown>
+) =>
+  (options.client ?? client).sse.get<
+    StreamBuildLogsHandlerResponses,
+    StreamBuildLogsHandlerErrors,
+    ThrowOnError
+  >({ url: '/builds/{build_id}/logs', ...options })
+
+/**
+ * List User Bots
+ *
+ * Returns every User Bot owned by the authenticated user, including deployment and gateway status. The User Bots feature must be enabled for the account.
+ */
+export const listCustomBots = <ThrowOnError extends boolean = false>(
+  options?: Options<ListCustomBotsData, ThrowOnError>
+) =>
+  (options?.client ?? client).get<ListCustomBotsResponses, ListCustomBotsErrors, ThrowOnError>({
+    url: '/custom-bots/',
+    ...options
+  })
+
+/**
+ * Create a User Bot
+ *
+ * Validates a Discord bot token, encrypts it at rest, and creates a User Bot owned by the authenticated user. The plaintext token is never returned. A deployment must be uploaded separately before the gateway starts.
+ */
+export const createCustomBot = <ThrowOnError extends boolean = false>(
+  options: Options<CreateCustomBotData, ThrowOnError>
+) =>
+  (options.client ?? client).post<CreateCustomBotResponses, CreateCustomBotErrors, ThrowOnError>({
+    url: '/custom-bots/',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  })
+
+/**
+ * Delete a User Bot
+ *
+ * Stops the User Bot gateway, removes its active deployment, and deletes its encrypted token metadata. The operation is restricted to the owning user.
+ */
+export const deleteCustomBot = <ThrowOnError extends boolean = false>(
+  options: Options<DeleteCustomBotData, ThrowOnError>
+) =>
+  (options.client ?? client).delete<DeleteCustomBotResponses, DeleteCustomBotErrors, ThrowOnError>({
+    url: '/custom-bots/{bot_id}',
+    ...options
+  })
+
+/**
+ * Get a User Bot
+ *
+ * Returns metadata and runtime status for a User Bot owned by the authenticated user. Tokens and other encrypted credentials are never included.
+ */
+export const getCustomBot = <ThrowOnError extends boolean = false>(
+  options: Options<GetCustomBotData, ThrowOnError>
+) =>
+  (options.client ?? client).get<GetCustomBotResponses, GetCustomBotErrors, ThrowOnError>({
+    url: '/custom-bots/{bot_id}',
+    ...options
+  })
+
+/**
+ * Get a User Bot deployment
+ *
+ * Returns the active deployment source and bundle for a User Bot owned by the authenticated user. Returns a not-found problem when the bot has not been deployed.
+ */
+export const getCustomBotDeployment = <ThrowOnError extends boolean = false>(
+  options: Options<GetCustomBotDeploymentData, ThrowOnError>
+) =>
+  (options.client ?? client).get<
+    GetCustomBotDeploymentResponses,
+    GetCustomBotDeploymentErrors,
+    ThrowOnError
+  >({ url: '/custom-bots/{bot_id}/deployment', ...options })
+
+/**
+ * Deploy a User Bot
+ *
+ * Builds or accepts the supplied bundle, atomically replaces the User Bot isolate, records a deployment revision, and starts its Discord gateway. If deployment fails, the previous runtime and persisted deployment are restored.
+ */
+export const deployCustomBot = <ThrowOnError extends boolean = false>(
+  options: Options<DeployCustomBotData, ThrowOnError>
+) =>
+  (options.client ?? client).post<DeployCustomBotResponses, DeployCustomBotErrors, ThrowOnError>({
+    url: '/custom-bots/{bot_id}/deployment',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
   })
 
 /**
@@ -265,7 +414,9 @@ export const rollbackDeploymentHandler = <ThrowOnError extends boolean = false>(
   >({ url: '/deployments/{guild_id}/rollback/{revision_id}', ...options })
 
 /**
- * List guilds where the user is an admin and the bot is present.
+ * List manageable guilds
+ *
+ * Returns Discord guilds where the authenticated user has Administrator or Manage Server permission and @Flora is currently installed. Requires an interactive Discord session.
  */
 export const listGuildsHandler = <ThrowOnError extends boolean = false>(
   options?: Options<ListGuildsHandlerData, ThrowOnError>
@@ -277,12 +428,14 @@ export const listGuildsHandler = <ThrowOnError extends boolean = false>(
   >({ url: '/guilds/', ...options })
 
 /**
- * Check API liveness.
+ * Check API health
+ *
+ * Returns a lightweight liveness response when the HTTP process is accepting requests. This endpoint does not verify Discord, database, cache, or worker readiness.
  */
 export const healthCheck = <ThrowOnError extends boolean = false>(
   options?: Options<HealthCheckData, ThrowOnError>
 ) =>
-  (options?.client ?? client).get<HealthCheckResponses, unknown, ThrowOnError>({
+  (options?.client ?? client).get<HealthCheckResponses, HealthCheckErrors, ThrowOnError>({
     url: '/health/',
     ...options
   })
@@ -406,19 +559,6 @@ export const setValueHandler = <ThrowOnError extends boolean = false>(
   })
 
 /**
- * List logs
- *
- * Returns recent log entries visible to the authenticated user.
- */
-export const getLogs = <ThrowOnError extends boolean = false>(
-  options?: Options<GetLogsData, ThrowOnError>
-) =>
-  (options?.client ?? client).get<GetLogsResponses, GetLogsErrors, ThrowOnError>({
-    url: '/logs',
-    ...options
-  })
-
-/**
  * List guild logs
  *
  * Returns recent log entries for a specific guild.
@@ -432,7 +572,21 @@ export const getGuildLogs = <ThrowOnError extends boolean = false>(
   })
 
 /**
- * Get metrics in Prometheus exposition format.
+ * Stream runtime logs
+ *
+ * Streams new runtime log entries as Server-Sent Events. The caller must manage the guild or own the addressed User Bot runtime scope. Existing entries are available from the non-streaming logs endpoint.
+ */
+export const streamGuildLogs = <ThrowOnError extends boolean = false>(
+  options: Options<StreamGuildLogsData, ThrowOnError, unknown>
+) =>
+  (options.client ?? client).sse.get<StreamGuildLogsResponses, StreamGuildLogsErrors, ThrowOnError>(
+    { url: '/logs/{guild_id}/stream', ...options }
+  )
+
+/**
+ * Get Prometheus metrics
+ *
+ * Returns runtime metrics in Prometheus exposition format. Requires the configured operator bearer token and is intended for monitoring infrastructure.
  */
 export const getMetrics = <ThrowOnError extends boolean = false>(
   options?: Options<GetMetricsData, ThrowOnError>
@@ -443,7 +597,9 @@ export const getMetrics = <ThrowOnError extends boolean = false>(
   })
 
 /**
- * Get metrics as JSON.
+ * Get metrics as JSON
+ *
+ * Returns the current runtime metrics snapshot as JSON. Requires the configured operator bearer token and is intended for operator diagnostics.
  */
 export const getMetricsJson = <ThrowOnError extends boolean = false>(
   options?: Options<GetMetricsJsonData, ThrowOnError>
@@ -451,6 +607,55 @@ export const getMetricsJson = <ThrowOnError extends boolean = false>(
   (options?.client ?? client).get<GetMetricsJsonResponses, GetMetricsJsonErrors, ThrowOnError>({
     url: '/metrics/json',
     ...options
+  })
+
+/**
+ * Delete the orchestrator deployment
+ *
+ * Removes the trusted orchestrator deployment and restores deny-by-default feature authorization. Existing User Bot and Server Custom Bot gateways are reconciled immediately without deleting their encrypted configuration.
+ */
+export const deleteOrchestrator = <ThrowOnError extends boolean = false>(
+  options?: Options<DeleteOrchestratorData, ThrowOnError>
+) =>
+  (options?.client ?? client).delete<
+    DeleteOrchestratorResponses,
+    DeleteOrchestratorErrors,
+    ThrowOnError
+  >({ url: '/orchestrator/deployment', ...options })
+
+/**
+ * Get the orchestrator deployment
+ *
+ * Returns the active trusted orchestrator deployment. Only the configured Discord operator may access this endpoint; the deployment may contain sensitive feature-policy source.
+ */
+export const getOrchestratorDeployment = <ThrowOnError extends boolean = false>(
+  options?: Options<GetOrchestratorDeploymentData, ThrowOnError>
+) =>
+  (options?.client ?? client).get<
+    GetOrchestratorDeploymentResponses,
+    GetOrchestratorDeploymentErrors,
+    ThrowOnError
+  >({ url: '/orchestrator/deployment', ...options })
+
+/**
+ * Deploy the orchestrator
+ *
+ * Validates and atomically replaces the trusted orchestrator isolate, persists a deployment revision, and immediately reconciles User Bot and Server Custom Bot gateways against the new feature policy. A failed deployment leaves the previous orchestrator active.
+ */
+export const deployOrchestrator = <ThrowOnError extends boolean = false>(
+  options: Options<DeployOrchestratorData, ThrowOnError>
+) =>
+  (options.client ?? client).post<
+    DeployOrchestratorResponses,
+    DeployOrchestratorErrors,
+    ThrowOnError
+  >({
+    url: '/orchestrator/deployment',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
   })
 
 /**
@@ -495,6 +700,55 @@ export const upsertSecretHandler = <ThrowOnError extends boolean = false>(
     ThrowOnError
   >({
     url: '/secrets/{guild_id}/{name}',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  })
+
+/**
+ * Remove a Server Custom Bot
+ *
+ * Stops the guild-owned gateway, deletes its encrypted token metadata, and returns the guild's existing deployment to @Flora. The caller must manage the guild.
+ */
+export const deleteServerCustomBot = <ThrowOnError extends boolean = false>(
+  options: Options<DeleteServerCustomBotData, ThrowOnError>
+) =>
+  (options.client ?? client).delete<
+    DeleteServerCustomBotResponses,
+    DeleteServerCustomBotErrors,
+    ThrowOnError
+  >({ url: '/server-custom-bots/{guild_id}', ...options })
+
+/**
+ * Get a Server Custom Bot
+ *
+ * Returns the Server Custom Bot configured for a guild, or null when the guild uses @Flora. The caller must manage the guild and the feature must be enabled by the orchestrator.
+ */
+export const getServerCustomBot = <ThrowOnError extends boolean = false>(
+  options: Options<GetServerCustomBotData, ThrowOnError>
+) =>
+  (options.client ?? client).get<
+    GetServerCustomBotResponses,
+    GetServerCustomBotErrors,
+    ThrowOnError
+  >({ url: '/server-custom-bots/{guild_id}', ...options })
+
+/**
+ * Configure a Server Custom Bot
+ *
+ * Validates that the supplied Discord bot token can access the guild, encrypts the token at rest, and routes the guild's existing flora deployment through that identity. Repeating the request replaces the token and gateway while preserving the guild deployment.
+ */
+export const upsertServerCustomBot = <ThrowOnError extends boolean = false>(
+  options: Options<UpsertServerCustomBotData, ThrowOnError>
+) =>
+  (options.client ?? client).put<
+    UpsertServerCustomBotResponses,
+    UpsertServerCustomBotErrors,
+    ThrowOnError
+  >({
+    url: '/server-custom-bots/{guild_id}',
     ...options,
     headers: {
       'Content-Type': 'application/json',

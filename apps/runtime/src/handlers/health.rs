@@ -11,6 +11,8 @@ pub struct HealthApi;
     get,
     path = "/",
     tag = "Health",
+    summary = "Check API health",
+    description = "Returns a lightweight liveness response when the HTTP process is accepting requests. This endpoint does not verify Discord, database, cache, or worker readiness.",
     responses(
         (status = 200, description = "API is healthy", body = String)
     )

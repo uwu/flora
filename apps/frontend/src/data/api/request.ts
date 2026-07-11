@@ -1,7 +1,9 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 
 type ApiError = {
-  message?: string
+  title?: string
+  detail?: string
+  request_id?: string
 }
 
 export async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -10,7 +12,8 @@ export async function requestJson<T>(path: string, init?: RequestInit): Promise<
     let message = `Request failed (${response.status})`
     try {
       const body = (await response.json()) as ApiError
-      if (body.message) message = body.message
+      if (body.detail) message = body.detail
+      else if (body.title) message = body.title
     } catch {
       // ignore JSON parse errors
     }

@@ -102,7 +102,7 @@ const dm = await customBot.createDm('123456789012345678')
 await rest.sendMessage({ channelId: dm.id, content: 'Hello from Flora' })
 ```
 
-Repository projects for custom bots should extend the dedicated configuration:
+Repository projects for User Bots should extend the dedicated configuration:
 
 ```json
 {

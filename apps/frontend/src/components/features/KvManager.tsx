@@ -161,7 +161,7 @@ export function KvManager({ guildId }: { guildId: string }) {
   const storeSummary = useMemo(() => {
     if (!activeStore) return 'Select a store to view keys.'
     if (!keysQuery.data) return 'Loading keys…'
-    if (keysQuery.data.listComplete) return `${keys.length} keys loaded`
+    if (keysQuery.data.list_complete) return `${keys.length} keys loaded`
     return `${keys.length} keys loaded (more available)`
   }, [activeStore, keys.length, keysQuery.data])
 

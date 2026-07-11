@@ -21,7 +21,7 @@ use crate::{
 #[openapi(
     paths(get_server_custom_bot, upsert_server_custom_bot, delete_server_custom_bot),
     components(schemas(ServerCustomBotResponse, UpsertServerCustomBotRequest)),
-    tags((name = "server-custom-bots", description = "Guild-owned Discord identities"))
+    tags((name = "Server Custom Bots", description = "Guild-owned Discord identities for existing flora deployments"))
 )]
 pub struct ServerCustomBotsApi;
 
@@ -66,8 +66,8 @@ async fn authorize(
         .await
         .unwrap_or(false);
     if !allowed {
-        return Err(ApiError::forbidden(
-            "server custom bots are not enabled for this guild",
+        return Err(ApiError::feature_disabled(
+            "Server Custom Bots are not enabled for this server. Ask a flora operator to enable the feature before trying again",
         ));
     }
     Ok(identity)
@@ -85,7 +85,15 @@ fn response(state: &AppState, bot: ServerCustomBot) -> ServerCustomBotResponse {
     }
 }
 
-#[utoipa::path(get, path = "/{guild_id}", tag = "server-custom-bots", params(("guild_id" = String, Path)), responses((status = 200, body = Option<ServerCustomBotResponse>)))]
+#[utoipa::path(
+    get,
+    path = "/{guild_id}",
+    tag = "Server Custom Bots",
+    summary = "Get a Server Custom Bot",
+    description = "Returns the Server Custom Bot configured for a guild, or null when the guild uses @Flora. The caller must manage the guild and the feature must be enabled by the orchestrator.",
+    params(("guild_id" = String, Path, description = "Guild ID")),
+    responses((status = 200, description = "Configured Server Custom Bot, or null when none is configured", body = Option<ServerCustomBotResponse>))
+)]
 pub async fn get_server_custom_bot(
     Path(guild_id): Path<String>,
     State(state): State<AppState>,
@@ -100,7 +108,16 @@ pub async fn get_server_custom_bot(
     Ok(ApiJson(Json(bot.map(|bot| response(&state, bot)))))
 }
 
-#[utoipa::path(put, path = "/{guild_id}", tag = "server-custom-bots", params(("guild_id" = String, Path)), request_body = UpsertServerCustomBotRequest, responses((status = 200, body = ServerCustomBotResponse)))]
+#[utoipa::path(
+    put,
+    path = "/{guild_id}",
+    tag = "Server Custom Bots",
+    summary = "Configure a Server Custom Bot",
+    description = "Validates that the supplied Discord bot token can access the guild, encrypts the token at rest, and routes the guild's existing flora deployment through that identity. Repeating the request replaces the token and gateway while preserving the guild deployment.",
+    params(("guild_id" = String, Path, description = "Guild ID")),
+    request_body = UpsertServerCustomBotRequest,
+    responses((status = 200, description = "Configured Server Custom Bot", body = ServerCustomBotResponse))
+)]
 pub async fn upsert_server_custom_bot(
     Path(guild_id): Path<String>,
     State(state): State<AppState>,
@@ -142,7 +159,15 @@ pub async fn upsert_server_custom_bot(
     Ok(ApiJson(Json(response(&state, bot))))
 }
 
-#[utoipa::path(delete, path = "/{guild_id}", tag = "server-custom-bots", params(("guild_id" = String, Path)), responses((status = 200)))]
+#[utoipa::path(
+    delete,
+    path = "/{guild_id}",
+    tag = "Server Custom Bots",
+    summary = "Remove a Server Custom Bot",
+    description = "Stops the guild-owned gateway, deletes its encrypted token metadata, and returns the guild's existing deployment to @Flora. The caller must manage the guild.",
+    params(("guild_id" = String, Path, description = "Guild ID")),
+    responses((status = 200, description = "Server Custom Bot removed and @Flora restored"))
+)]
 pub async fn delete_server_custom_bot(
     Path(guild_id): Path<String>,
     State(state): State<AppState>,

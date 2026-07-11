@@ -74,6 +74,8 @@ pub struct CallbackQuery {
     get,
     path = "/login",
     tag = "Auth",
+    summary = "Start Discord authentication",
+    description = "Creates a short-lived OAuth state value, stores it in a secure cookie, and redirects the browser to Discord. The callback must return the same state value before a flora session is created.",
     responses(
         (status = 302, description = "Redirect to Discord")
     )
@@ -99,6 +101,8 @@ pub async fn login_handler(State(state): State<AppState>) -> Result<ApiRedirect,
     get,
     path = "/callback",
     tag = "Auth",
+    summary = "Complete Discord authentication",
+    description = "Validates the OAuth state cookie, exchanges the Discord authorization code, creates a flora session, sets the session cookie, and redirects to the dashboard. Invalid, mismatched, or expired state is rejected.",
     params(
         ("code" = String, Query, description = "Discord authorization code"),
         ("state" = String, Query, description = "Opaque state value returned by Discord")
@@ -172,6 +176,8 @@ pub async fn callback_handler(
     get,
     path = "/me",
     tag = "Auth",
+    summary = "Get the authenticated user",
+    description = "Returns the Discord identity associated with the current session or API token. Session-only profile fields may be empty when authentication uses a long-lived API token.",
     responses(
         (status = 200, description = "Session is valid", body = AuthResponse),
         (status = 401, description = "No active session", body = crate::handlers::error::ErrorResponse)
@@ -279,7 +285,9 @@ pub async fn ensure_guild_admin(
             .await
             .map_err(ApiError::internal)?;
         let Some(guild) = guilds.into_iter().find(|g| g.id == guild_id) else {
-            return Err(ApiError::forbidden("User is not in guild"));
+            return Err(ApiError::forbidden(
+                "Your Discord account is not a member of this server",
+            ));
         };
 
         let perms = guild
@@ -290,7 +298,9 @@ pub async fn ensure_guild_admin(
             .unwrap_or_default();
 
         if !has_admin_permissions(perms) {
-            return Err(ApiError::forbidden("Admin permission required"));
+            return Err(ApiError::forbidden(
+                "You need the Discord Administrator or Manage Server permission to perform this operation",
+            ));
         }
 
         let guild_id_num: u64 = guild_id
@@ -300,7 +310,7 @@ pub async fn ensure_guild_admin(
             .http
             .get_guild(guild_id_num.into())
             .await
-            .map_err(|_| ApiError::forbidden("Bot not in guild"))?;
+            .map_err(|_| ApiError::forbidden("@Flora is not installed in this server"))?;
 
         return Ok(());
     }
@@ -318,7 +328,12 @@ pub async fn ensure_guild_admin(
             .http
             .get_member(guild_id_num.into(), user_id_num.into())
             .await
-            .map_err(|err| ApiError::forbidden(format!("Member fetch failed: {err}")))?;
+            .map_err(|err| {
+                error!(target: "flora:api", ?err, guild_id, user_id = identity.user_id, "failed to fetch Discord member");
+                ApiError::forbidden(
+                    "Your Discord membership could not be verified. Confirm that you belong to this server and try again",
+                )
+            })?;
 
         let permissions = if let Some(perms) = member.permissions {
             perms.bits()
@@ -327,7 +342,12 @@ pub async fn ensure_guild_admin(
                 .http
                 .get_guild(guild_id_num.into())
                 .await
-                .map_err(|err| ApiError::forbidden(format!("Guild fetch failed: {err}")))?;
+                .map_err(|err| {
+                    error!(target: "flora:api", ?err, guild_id, "failed to fetch Discord server");
+                    ApiError::forbidden(
+                        "This server could not be verified. Confirm that the bot is installed and try again",
+                    )
+                })?;
             guild.member_permissions(&member).bits()
         };
 
@@ -337,7 +357,9 @@ pub async fn ensure_guild_admin(
     };
 
     let Some(member) = member else {
-        return Err(ApiError::forbidden("Bot not in guild or user not a member"));
+        return Err(ApiError::forbidden(
+            "@Flora is not installed in this server, or your Discord account is not a member",
+        ));
     };
 
     let perms = member
@@ -347,7 +369,9 @@ pub async fn ensure_guild_admin(
     if has_admin_permissions(perms) {
         Ok(())
     } else {
-        Err(ApiError::forbidden("Admin permission required"))
+        Err(ApiError::forbidden(
+            "You need the Discord Administrator or Manage Server permission to perform this operation",
+        ))
     }
 }
 

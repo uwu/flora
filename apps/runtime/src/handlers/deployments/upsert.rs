@@ -482,7 +482,6 @@ mod tests {
     use super::{DeploymentRequest, parse_deploy_source, validate_request};
     use crate::{
         bundler::DeploymentFile,
-        handlers::error::ApiError,
         services::deployments::{DeploymentSource, DeploymentSourceMapFile},
     };
     use axum::http::{HeaderMap, HeaderValue};
@@ -498,7 +497,10 @@ mod tests {
         };
 
         let result = validate_request(&request);
-        assert!(matches!(result, Err(ApiError::BadRequest { .. })));
+        assert_eq!(
+            result.unwrap_err().status(),
+            axum::http::StatusCode::BAD_REQUEST
+        );
     }
 
     #[test]
@@ -515,7 +517,10 @@ mod tests {
         };
 
         let result = validate_request(&request);
-        assert!(matches!(result, Err(ApiError::BadRequest { .. })));
+        assert_eq!(
+            result.unwrap_err().status(),
+            axum::http::StatusCode::BAD_REQUEST
+        );
     }
 
     #[test]

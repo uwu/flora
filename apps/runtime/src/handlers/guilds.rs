@@ -38,6 +38,8 @@ pub struct GuildResponse {
     get,
     path = "/",
     tag = "Guilds",
+    summary = "List manageable guilds",
+    description = "Returns Discord guilds where the authenticated user has Administrator or Manage Server permission and @Flora is currently installed. Requires an interactive Discord session.",
     responses(
         (status = 200, description = "Guilds available for deployment", body = [GuildResponse]),
         (status = 401, description = "Not authenticated", body = crate::handlers::error::ErrorResponse)

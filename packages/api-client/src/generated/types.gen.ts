@@ -88,6 +88,14 @@ export type CreateBuildResponse = {
   status: string
 }
 
+export type CreateCustomBotRequest = {
+  label?: string | null
+  /**
+   * Discord bot token. The token is validated, encrypted, and never returned.
+   */
+  token: string
+}
+
 export type CreateStoreRequest = {
   guild_id: string
   store_name: string
@@ -109,6 +117,27 @@ export type CreateTokenRequest = {
  */
 export type CreateTokenResponse = {
   token: string
+}
+
+export type CustomBotDeploymentResponse = {
+  bundle?: string | null
+  created_at: string
+  entry: string
+  files?: Array<DeploymentFile> | null
+  source_map?: null | DeploymentSourceMapFile
+  updated_at: string
+}
+
+export type CustomBotResponse = {
+  application_id: string
+  bot_user_id: string
+  bot_username: string
+  created_at: string
+  has_deployment: boolean
+  id: string
+  label?: string | null
+  running: boolean
+  updated_at: string
 }
 
 export type DeleteKeyParams = {
@@ -218,16 +247,6 @@ export type DeploymentSource = 'cli' | 'webui' | 'bootstrap' | 'api' | 'unknown'
 export type DeploymentSourceMapFile = {
   contents: string
   path: string
-}
-
-/**
- * Canonical error envelope returned by the HTTP API.
- */
-export type ErrorResponse = {
-  /**
-   * Human readable error message.
-   */
-  message: string
 }
 
 export type ExportGuildParams = {
@@ -340,6 +359,57 @@ export type MetricsSnapshot = {
   timeout_errors: number
 }
 
+export type OrchestratorDeploymentResponse = {
+  bundle?: string | null
+  created_at: string
+  entry: string
+  files?: Array<DeploymentFile> | null
+  source_map?: null | DeploymentSourceMapFile
+  updated_at: string
+}
+
+export type ProblemDetails = {
+  /**
+   * Actionable explanation of this specific failure occurrence.
+   */
+  detail: string
+  /**
+   * Request path identifying where this failure occurred.
+   */
+  instance: string
+  /**
+   * Correlation identifier also returned in the `X-Request-ID` header.
+   */
+  request_id: string
+  /**
+   * HTTP status code returned for this failure occurrence.
+   */
+  status: number
+  /**
+   * Stable, human-readable summary of the failure category.
+   */
+  title: string
+  /**
+   * Stable relative URI identifying the category of failure.
+   */
+  type: string
+  /**
+   * Field-level validation failures, when applicable.
+   */
+  violations?: Array<ProblemViolation>
+}
+
+export type ProblemViolation = {
+  /**
+   * Identifies the invalid request field using its JSON or parameter path.
+   */
+  field: string
+  /**
+   * Explains how to correct the invalid field.
+   */
+  message: string
+}
+
 /**
  * Information about a single KV key.
  */
@@ -364,6 +434,16 @@ export type RawKvKeyInfo = {
 export type SecretMetadataResponse = {
   allowed_hosts: Array<string>
   name: string
+}
+
+export type ServerCustomBotResponse = {
+  application_id: string
+  bot_user_id: string
+  bot_username: string
+  created_at: string
+  guild_id: string
+  running: boolean
+  updated_at: string
 }
 
 export type SetValueParams = {
@@ -418,6 +498,13 @@ export type UpsertSecretRequest = {
   value: string
 }
 
+export type UpsertServerCustomBotRequest = {
+  /**
+   * Discord bot token. It is validated, encrypted, and never returned.
+   */
+  token: string
+}
+
 export type CallbackHandlerData = {
   body?: never
   path?: never
@@ -436,53 +523,25 @@ export type CallbackHandlerData = {
 
 export type CallbackHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Invalid or expired state
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type CallbackHandlerError = CallbackHandlerErrors[keyof CallbackHandlerErrors]
+
+export type CallbackHandlerResponses = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type CallbackHandlerResponse = CallbackHandlerResponses[keyof CallbackHandlerResponses]
 
 export type LoginHandlerData = {
   body?: never
@@ -493,53 +552,21 @@ export type LoginHandlerData = {
 
 export type LoginHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type LoginHandlerError = LoginHandlerErrors[keyof LoginHandlerErrors]
+
+export type LoginHandlerResponses = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type LoginHandlerResponse = LoginHandlerResponses[keyof LoginHandlerResponses]
 
 export type MeHandlerData = {
   body?: never
@@ -550,61 +577,22 @@ export type MeHandlerData = {
 
 export type MeHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * No active session
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type MeHandlerError = MeHandlerErrors[keyof MeHandlerErrors]
 
 export type MeHandlerResponses = {
   /**
-   * Response envelope for /auth/me.
+   * Session is valid
    */
-  200: {
-    user: AuthUser
-  }
+  200: AuthResponse
 }
 
 export type MeHandlerResponse = MeHandlerResponses[keyof MeHandlerResponses]
@@ -618,68 +606,30 @@ export type CreateBuildHandlerData = {
 
 export type CreateBuildHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Invalid request
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  400: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not authenticated
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Forbidden
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  403: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type CreateBuildHandlerError = CreateBuildHandlerErrors[keyof CreateBuildHandlerErrors]
 
 export type CreateBuildHandlerResponses = {
   /**
-   * Response returned when a build is created.
+   * Build queued
    */
-  200: {
-    /**
-     * Build identifier.
-     */
-    build_id: string
-    /**
-     * Current build status string.
-     */
-    status: string
-  }
+  200: CreateBuildResponse
 }
 
 export type CreateBuildHandlerResponse =
@@ -699,96 +649,228 @@ export type GetBuildHandlerData = {
 
 export type GetBuildHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not authenticated
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Build not found
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  404: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type GetBuildHandlerError = GetBuildHandlerErrors[keyof GetBuildHandlerErrors]
 
 export type GetBuildHandlerResponses = {
   /**
-   * Current build status and output.
+   * Build status
    */
-  200: {
-    artifact?: null | BuildArtifactResponse
-    /**
-     * Build identifier.
-     */
-    build_id: string
-    /**
-     * Entry file path used for the build.
-     */
-    entry: string
-    /**
-     * Error detail when the build fails.
-     */
-    error?: string | null
-    /**
-     * Build completion time in RFC3339 (UTC).
-     */
-    finished_at?: string | null
-    /**
-     * Guild ID the build targets.
-     */
-    guild_id: string
-    /**
-     * Build logs, newest last.
-     */
-    logs: Array<string>
-    /**
-     * Build start time in RFC3339 (UTC).
-     */
-    started_at?: string | null
-    /**
-     * Current build status string.
-     */
-    status: string
-  }
+  200: BuildStatusResponse
 }
 
 export type GetBuildHandlerResponse = GetBuildHandlerResponses[keyof GetBuildHandlerResponses]
+
+export type StreamBuildLogsHandlerData = {
+  body?: never
+  path: {
+    /**
+     * Build ID
+     */
+    build_id: string
+  }
+  query?: never
+  url: '/builds/{build_id}/logs'
+}
+
+export type StreamBuildLogsHandlerErrors = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type StreamBuildLogsHandlerError =
+  StreamBuildLogsHandlerErrors[keyof StreamBuildLogsHandlerErrors]
+
+export type StreamBuildLogsHandlerResponses = {
+  /**
+   * Server-Sent Event stream containing build output
+   */
+  200: unknown
+}
+
+export type ListCustomBotsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/custom-bots/'
+}
+
+export type ListCustomBotsErrors = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type ListCustomBotsError = ListCustomBotsErrors[keyof ListCustomBotsErrors]
+
+export type ListCustomBotsResponses = {
+  /**
+   * User Bots owned by the authenticated user
+   */
+  200: Array<CustomBotResponse>
+}
+
+export type ListCustomBotsResponse = ListCustomBotsResponses[keyof ListCustomBotsResponses]
+
+export type CreateCustomBotData = {
+  body: CreateCustomBotRequest
+  path?: never
+  query?: never
+  url: '/custom-bots/'
+}
+
+export type CreateCustomBotErrors = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type CreateCustomBotError = CreateCustomBotErrors[keyof CreateCustomBotErrors]
+
+export type CreateCustomBotResponses = {
+  /**
+   * User Bot created
+   */
+  200: CustomBotResponse
+}
+
+export type CreateCustomBotResponse = CreateCustomBotResponses[keyof CreateCustomBotResponses]
+
+export type DeleteCustomBotData = {
+  body?: never
+  path: {
+    /**
+     * User Bot ID
+     */
+    bot_id: string
+  }
+  query?: never
+  url: '/custom-bots/{bot_id}'
+}
+
+export type DeleteCustomBotErrors = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type DeleteCustomBotError = DeleteCustomBotErrors[keyof DeleteCustomBotErrors]
+
+export type DeleteCustomBotResponses = {
+  /**
+   * User Bot deleted
+   */
+  200: unknown
+}
+
+export type GetCustomBotData = {
+  body?: never
+  path: {
+    /**
+     * User Bot ID
+     */
+    bot_id: string
+  }
+  query?: never
+  url: '/custom-bots/{bot_id}'
+}
+
+export type GetCustomBotErrors = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type GetCustomBotError = GetCustomBotErrors[keyof GetCustomBotErrors]
+
+export type GetCustomBotResponses = {
+  /**
+   * User Bot metadata and status
+   */
+  200: CustomBotResponse
+}
+
+export type GetCustomBotResponse = GetCustomBotResponses[keyof GetCustomBotResponses]
+
+export type GetCustomBotDeploymentData = {
+  body?: never
+  path: {
+    /**
+     * User Bot ID
+     */
+    bot_id: string
+  }
+  query?: never
+  url: '/custom-bots/{bot_id}/deployment'
+}
+
+export type GetCustomBotDeploymentErrors = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type GetCustomBotDeploymentError =
+  GetCustomBotDeploymentErrors[keyof GetCustomBotDeploymentErrors]
+
+export type GetCustomBotDeploymentResponses = {
+  /**
+   * Active User Bot deployment
+   */
+  200: CustomBotDeploymentResponse
+}
+
+export type GetCustomBotDeploymentResponse =
+  GetCustomBotDeploymentResponses[keyof GetCustomBotDeploymentResponses]
+
+export type DeployCustomBotData = {
+  body: DeploymentRequest
+  path: {
+    /**
+     * User Bot ID
+     */
+    bot_id: string
+  }
+  query?: never
+  url: '/custom-bots/{bot_id}/deployment'
+}
+
+export type DeployCustomBotErrors = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type DeployCustomBotError = DeployCustomBotErrors[keyof DeployCustomBotErrors]
+
+export type DeployCustomBotResponses = {
+  /**
+   * Active User Bot deployment
+   */
+  200: CustomBotDeploymentResponse
+}
+
+export type DeployCustomBotResponse = DeployCustomBotResponses[keyof DeployCustomBotResponses]
 
 export type ListDeploymentsHandlerData = {
   body?: never
@@ -799,50 +881,13 @@ export type ListDeploymentsHandlerData = {
 
 export type ListDeploymentsHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type ListDeploymentsHandlerError =
@@ -850,14 +895,9 @@ export type ListDeploymentsHandlerError =
 
 export type ListDeploymentsHandlerResponses = {
   /**
-   * Successful response
+   * Deployments list
    */
-  200: Array<{
-    created_at: string
-    entry: string
-    guild_id: string
-    updated_at: string
-  }>
+  200: Array<DeploymentListItem>
 }
 
 export type ListDeploymentsHandlerResponse =
@@ -882,85 +922,26 @@ export type GetDeploymentHandlerData = {
 
 export type GetDeploymentHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Deployment not found
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  404: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type GetDeploymentHandlerError = GetDeploymentHandlerErrors[keyof GetDeploymentHandlerErrors]
 
 export type GetDeploymentHandlerResponses = {
   /**
-   * Deployment snapshot stored for a guild.
+   * Deployment found
    */
-  200: {
-    /**
-     * Bundled output when stored, if included.
-     */
-    bundle?: string | null
-    /**
-     * Snapshot creation time in RFC3339 (UTC).
-     */
-    created_at: string
-    /**
-     * Entry file path used for the deployment.
-     */
-    entry: string
-    /**
-     * Raw files when the deployment was uploaded as sources.
-     */
-    files?: Array<DeploymentFile> | null
-    /**
-     * Guild ID for the deployment.
-     */
-    guild_id: string
-    source_map?: null | DeploymentSourceMapFile
-    /**
-     * Snapshot update time in RFC3339 (UTC).
-     */
-    updated_at: string
-  }
+  200: DeploymentResponse
 }
 
 export type GetDeploymentHandlerResponse =
@@ -980,50 +961,13 @@ export type UpsertDeploymentHandlerData = {
 
 export type UpsertDeploymentHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type UpsertDeploymentHandlerError =
@@ -1031,35 +975,9 @@ export type UpsertDeploymentHandlerError =
 
 export type UpsertDeploymentHandlerResponses = {
   /**
-   * Deployment snapshot stored for a guild.
+   * Deployment stored
    */
-  200: {
-    /**
-     * Bundled output when stored, if included.
-     */
-    bundle?: string | null
-    /**
-     * Snapshot creation time in RFC3339 (UTC).
-     */
-    created_at: string
-    /**
-     * Entry file path used for the deployment.
-     */
-    entry: string
-    /**
-     * Raw files when the deployment was uploaded as sources.
-     */
-    files?: Array<DeploymentFile> | null
-    /**
-     * Guild ID for the deployment.
-     */
-    guild_id: string
-    source_map?: null | DeploymentSourceMapFile
-    /**
-     * Snapshot update time in RFC3339 (UTC).
-     */
-    updated_at: string
-  }
+  200: DeploymentResponse
 }
 
 export type UpsertDeploymentHandlerResponse =
@@ -1096,50 +1014,17 @@ export type ListDeploymentHistoryHandlerData = {
 
 export type ListDeploymentHistoryHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Invalid cursor
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  400: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type ListDeploymentHistoryHandlerError =
@@ -1147,27 +1032,9 @@ export type ListDeploymentHistoryHandlerError =
 
 export type ListDeploymentHistoryHandlerResponses = {
   /**
-   * Successful response
+   * Revision history
    */
-  200: Array<{
-    actor: DeploymentActorResponse
-    base_revision_id?: string | null
-    build_id?: string | null
-    bundle?: string | null
-    change_summary?: null | DeploymentChangeSummary
-    deploy_source: DeploymentSource
-    /**
-     * Deployment time in RFC3339 (UTC).
-     */
-    deployed_at: string
-    entry: string
-    error_message?: string | null
-    files?: Array<DeploymentFile> | null
-    guild_id: string
-    id: string
-    source_map?: null | DeploymentSourceMapFile
-    status: DeploymentRevisionStatus
-  }>
+  200: Array<DeploymentRevisionResponse>
 }
 
 export type ListDeploymentHistoryHandlerResponse =
@@ -1196,50 +1063,17 @@ export type GetDeploymentRevisionHandlerData = {
 
 export type GetDeploymentRevisionHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Revision not found
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  404: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type GetDeploymentRevisionHandlerError =
@@ -1247,27 +1081,9 @@ export type GetDeploymentRevisionHandlerError =
 
 export type GetDeploymentRevisionHandlerResponses = {
   /**
-   * Successful response
+   * Revision found
    */
-  200: {
-    actor: DeploymentActorResponse
-    base_revision_id?: string | null
-    build_id?: string | null
-    bundle?: string | null
-    change_summary?: null | DeploymentChangeSummary
-    deploy_source: DeploymentSource
-    /**
-     * Deployment time in RFC3339 (UTC).
-     */
-    deployed_at: string
-    entry: string
-    error_message?: string | null
-    files?: Array<DeploymentFile> | null
-    guild_id: string
-    id: string
-    source_map?: null | DeploymentSourceMapFile
-    status: DeploymentRevisionStatus
-  }
+  200: DeploymentRevisionResponse
 }
 
 export type GetDeploymentRevisionHandlerResponse =
@@ -1291,50 +1107,17 @@ export type RollbackDeploymentHandlerData = {
 
 export type RollbackDeploymentHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Revision not found
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  404: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type RollbackDeploymentHandlerError =
@@ -1342,27 +1125,9 @@ export type RollbackDeploymentHandlerError =
 
 export type RollbackDeploymentHandlerResponses = {
   /**
-   * Successful response
+   * Rollback created
    */
-  200: {
-    actor: DeploymentActorResponse
-    base_revision_id?: string | null
-    build_id?: string | null
-    bundle?: string | null
-    change_summary?: null | DeploymentChangeSummary
-    deploy_source: DeploymentSource
-    /**
-     * Deployment time in RFC3339 (UTC).
-     */
-    deployed_at: string
-    entry: string
-    error_message?: string | null
-    files?: Array<DeploymentFile> | null
-    guild_id: string
-    id: string
-    source_map?: null | DeploymentSourceMapFile
-    status: DeploymentRevisionStatus
-  }
+  200: DeploymentRevisionResponse
 }
 
 export type RollbackDeploymentHandlerResponse =
@@ -1377,64 +1142,22 @@ export type ListGuildsHandlerData = {
 
 export type ListGuildsHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not authenticated
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type ListGuildsHandlerError = ListGuildsHandlerErrors[keyof ListGuildsHandlerErrors]
 
 export type ListGuildsHandlerResponses = {
   /**
-   * Successful response
+   * Guilds available for deployment
    */
-  200: Array<{
-    icon?: string | null
-    id: string
-    name: string
-    permissions: number
-  }>
+  200: Array<GuildResponse>
 }
 
 export type ListGuildsHandlerResponse = ListGuildsHandlerResponses[keyof ListGuildsHandlerResponses]
@@ -1445,6 +1168,15 @@ export type HealthCheckData = {
   query?: never
   url: '/health/'
 }
+
+export type HealthCheckErrors = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type HealthCheckError = HealthCheckErrors[keyof HealthCheckErrors]
 
 export type HealthCheckResponses = {
   /**
@@ -1469,61 +1201,34 @@ export type ExportGuildHandlerData = {
 
 export type ExportGuildHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not authenticated
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not guild admin
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  403: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * No stores found for guild
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  404: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type ExportGuildHandlerError = ExportGuildHandlerErrors[keyof ExportGuildHandlerErrors]
 
 export type ExportGuildHandlerResponses = {
   /**
-   * Successful response
+   * Export created successfully
    */
-  200: {
-    backup_id: string
-  }
+  200: ExportGuildResponse
 }
 
 export type ExportGuildHandlerResponse =
@@ -1540,65 +1245,30 @@ export type ListStoresHandlerData = {
 
 export type ListStoresHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not authenticated
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not guild admin
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  403: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type ListStoresHandlerError = ListStoresHandlerErrors[keyof ListStoresHandlerErrors]
 
 export type ListStoresHandlerResponses = {
   /**
-   * Successful response
+   * List of stores
    */
-  200: Array<{
-    created_at: string
-    guild_id: string
-    id: string
-    store_name: string
-    updated_at: string
-  }>
+  200: Array<KvStore>
 }
 
 export type ListStoresHandlerResponse = ListStoresHandlerResponses[keyof ListStoresHandlerResponses]
@@ -1612,61 +1282,34 @@ export type CreateStoreHandlerData = {
 
 export type CreateStoreHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Bad request
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  400: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not authenticated
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not guild admin
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  403: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type CreateStoreHandlerError = CreateStoreHandlerErrors[keyof CreateStoreHandlerErrors]
 
 export type CreateStoreHandlerResponses = {
   /**
-   * Successful response
+   * Store created successfully
    */
-  200: {
-    store: KvStore
-  }
+  200: CreateStoreResponse
 }
 
 export type CreateStoreHandlerResponse =
@@ -1690,50 +1333,25 @@ export type DeleteStoreHandlerData = {
 
 export type DeleteStoreHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not authenticated
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not guild admin
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  403: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Store not found
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  404: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type DeleteStoreHandlerError = DeleteStoreHandlerErrors[keyof DeleteStoreHandlerErrors]
@@ -1767,72 +1385,34 @@ export type ListKeysHandlerData = {
 
 export type ListKeysHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not authenticated
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not guild admin
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  403: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Store not found
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  404: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type ListKeysHandlerError = ListKeysHandlerErrors[keyof ListKeysHandlerErrors]
 
 export type ListKeysHandlerResponses = {
   /**
-   * Result of listing keys in a KV store.
+   * List of keys
    */
-  200: {
-    /**
-     * Cursor for fetching the next page of results.
-     */
-    cursor?: string | null
-    /**
-     * The keys returned by this list operation.
-     */
-    keys: Array<RawKvKeyInfo>
-    /**
-     * Whether all matching keys have been returned.
-     */
-    listComplete: boolean
-  }
+  200: ListKeysResponse
 }
 
 export type ListKeysHandlerResponse = ListKeysHandlerResponses[keyof ListKeysHandlerResponses]
@@ -1859,50 +1439,25 @@ export type DeleteKeyHandlerData = {
 
 export type DeleteKeyHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not authenticated
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not guild admin
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  403: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Store not found
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  404: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type DeleteKeyHandlerError = DeleteKeyHandlerErrors[keyof DeleteKeyHandlerErrors]
@@ -1936,61 +1491,34 @@ export type GetValueHandlerData = {
 
 export type GetValueHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not authenticated
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not guild admin
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  403: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Store or key not found
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  404: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type GetValueHandlerError = GetValueHandlerErrors[keyof GetValueHandlerErrors]
 
 export type GetValueHandlerResponses = {
   /**
-   * Successful response
+   * Value retrieved
    */
-  200: {
-    value?: string | null
-  }
+  200: GetValueResponse
 }
 
 export type GetValueHandlerResponse = GetValueHandlerResponses[keyof GetValueHandlerResponses]
@@ -2017,156 +1545,41 @@ export type SetValueHandlerData = {
 
 export type SetValueHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Value exceeds 1MB limit
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  400: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not authenticated
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Not guild admin
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  403: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Store not found
    */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  404: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Internal server error
    */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  500: ProblemDetails
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
 }
 
 export type SetValueHandlerError = SetValueHandlerErrors[keyof SetValueHandlerErrors]
 
 export type SetValueHandlerResponses = {
   /**
-   * Successful response
+   * Value set successfully
    */
-  200: {
-    success: boolean
-  }
+  200: SetValueResponse
 }
 
 export type SetValueHandlerResponse = SetValueHandlerResponses[keyof SetValueHandlerResponses]
-
-export type GetLogsData = {
-  body?: never
-  path?: never
-  query?: {
-    /**
-     * Maximum number of log entries to return (default 100, max 1000).
-     */
-    limit?: number
-  }
-  url: '/logs'
-}
-
-export type GetLogsErrors = {
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-}
-
-export type GetLogsError = GetLogsErrors[keyof GetLogsErrors]
-
-export type GetLogsResponses = {
-  /**
-   * Successful response
-   */
-  200: Array<{
-    /**
-     * Guild ID if applicable.
-     */
-    guild_id?: string | null
-    /**
-     * Log level (trace, debug, info, warn, error).
-     */
-    level: string
-    /**
-     * Log message.
-     */
-    message: string
-    /**
-     * Target/module that produced the log.
-     */
-    target: string
-    /**
-     * Timestamp in milliseconds since Unix epoch.
-     */
-    timestamp: number
-  }>
-}
-
-export type GetLogsResponse = GetLogsResponses[keyof GetLogsResponses]
 
 export type GetGuildLogsData = {
   body?: never
@@ -2187,83 +1600,49 @@ export type GetGuildLogsData = {
 
 export type GetGuildLogsErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type GetGuildLogsError = GetGuildLogsErrors[keyof GetGuildLogsErrors]
 
 export type GetGuildLogsResponses = {
   /**
-   * Successful response
+   * Recent log entries for guild
    */
-  200: Array<{
-    /**
-     * Guild ID if applicable.
-     */
-    guild_id?: string | null
-    /**
-     * Log level (trace, debug, info, warn, error).
-     */
-    level: string
-    /**
-     * Log message.
-     */
-    message: string
-    /**
-     * Target/module that produced the log.
-     */
-    target: string
-    /**
-     * Timestamp in milliseconds since Unix epoch.
-     */
-    timestamp: number
-  }>
+  200: Array<LogEntry>
 }
 
 export type GetGuildLogsResponse = GetGuildLogsResponses[keyof GetGuildLogsResponses]
+
+export type StreamGuildLogsData = {
+  body?: never
+  path: {
+    /**
+     * Guild ID or User Bot runtime scope ID
+     */
+    guild_id: string
+  }
+  query?: never
+  url: '/logs/{guild_id}/stream'
+}
+
+export type StreamGuildLogsErrors = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type StreamGuildLogsError = StreamGuildLogsErrors[keyof StreamGuildLogsErrors]
+
+export type StreamGuildLogsResponses = {
+  /**
+   * Server-Sent Event stream containing runtime log entries
+   */
+  200: unknown
+}
 
 export type GetMetricsData = {
   body?: never
@@ -2274,57 +1653,24 @@ export type GetMetricsData = {
 
 export type GetMetricsErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Operator bearer token required
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Forbidden
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  403: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type GetMetricsError = GetMetricsErrors[keyof GetMetricsErrors]
 
 export type GetMetricsResponses = {
   /**
-   * Successful response
+   * Prometheus metrics
    */
   200: unknown
 }
@@ -2338,77 +1684,113 @@ export type GetMetricsJsonData = {
 
 export type GetMetricsJsonErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Operator bearer token required
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Forbidden
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  403: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type GetMetricsJsonError = GetMetricsJsonErrors[keyof GetMetricsJsonErrors]
 
 export type GetMetricsJsonResponses = {
   /**
-   * Snapshot of metrics at a point in time.
+   * Metrics as JSON
    */
-  200: {
-    avg_latency_us: number
-    dispatch_errors: number
-    dispatch_total: number
-    isolate_count: number
-    isolate_restarts: number
-    migration_quiesce_duration_us: number
-    migration_success: number
-    migration_timeout: number
-    oom_errors: number
-    p50_latency_us: number
-    p95_latency_us: number
-    p99_latency_us: number
-    runtime_restarts: number
-    timeout_errors: number
-  }
+  200: MetricsSnapshot
 }
 
 export type GetMetricsJsonResponse = GetMetricsJsonResponses[keyof GetMetricsJsonResponses]
+
+export type DeleteOrchestratorData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/orchestrator/deployment'
+}
+
+export type DeleteOrchestratorErrors = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type DeleteOrchestratorError = DeleteOrchestratorErrors[keyof DeleteOrchestratorErrors]
+
+export type DeleteOrchestratorResponses = {
+  /**
+   * Orchestrator deleted
+   */
+  200: unknown
+}
+
+export type GetOrchestratorDeploymentData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/orchestrator/deployment'
+}
+
+export type GetOrchestratorDeploymentErrors = {
+  /**
+   * No orchestrator deployment
+   */
+  404: ProblemDetails
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type GetOrchestratorDeploymentError =
+  GetOrchestratorDeploymentErrors[keyof GetOrchestratorDeploymentErrors]
+
+export type GetOrchestratorDeploymentResponses = {
+  /**
+   * Active orchestrator deployment
+   */
+  200: OrchestratorDeploymentResponse
+}
+
+export type GetOrchestratorDeploymentResponse =
+  GetOrchestratorDeploymentResponses[keyof GetOrchestratorDeploymentResponses]
+
+export type DeployOrchestratorData = {
+  body: DeploymentRequest
+  path?: never
+  query?: never
+  url: '/orchestrator/deployment'
+}
+
+export type DeployOrchestratorErrors = {
+  /**
+   * Invalid deployment
+   */
+  400: ProblemDetails
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type DeployOrchestratorError = DeployOrchestratorErrors[keyof DeployOrchestratorErrors]
+
+export type DeployOrchestratorResponses = {
+  /**
+   * Orchestrator deployed
+   */
+  200: OrchestratorDeploymentResponse
+}
+
+export type DeployOrchestratorResponse =
+  DeployOrchestratorResponses[keyof DeployOrchestratorResponses]
 
 export type ListSecretsHandlerData = {
   body?: never
@@ -2424,62 +1806,22 @@ export type ListSecretsHandlerData = {
 
 export type ListSecretsHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Unauthorized
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type ListSecretsHandlerError = ListSecretsHandlerErrors[keyof ListSecretsHandlerErrors]
 
 export type ListSecretsHandlerResponses = {
   /**
-   * Successful response
+   * List of secret names
    */
-  200: Array<{
-    allowed_hosts: Array<string>
-    name: string
-  }>
+  200: Array<SecretMetadataResponse>
 }
 
 export type ListSecretsHandlerResponse =
@@ -2503,61 +1845,22 @@ export type DeleteSecretHandlerData = {
 
 export type DeleteSecretHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Unauthorized
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type DeleteSecretHandlerError = DeleteSecretHandlerErrors[keyof DeleteSecretHandlerErrors]
 
 export type DeleteSecretHandlerResponses = {
   /**
-   * Successful response
+   * Secret deleted
    */
-  200: {
-    deleted: boolean
-  }
+  200: DeleteSecretResponse
 }
 
 export type DeleteSecretHandlerResponse =
@@ -2581,66 +1884,118 @@ export type UpsertSecretHandlerData = {
 
 export type UpsertSecretHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Unauthorized
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type UpsertSecretHandlerError = UpsertSecretHandlerErrors[keyof UpsertSecretHandlerErrors]
 
 export type UpsertSecretHandlerResponses = {
   /**
-   * Metadata response; values are never returned.
+   * Secret stored
    */
-  200: {
-    allowed_hosts: Array<string>
-    name: string
-  }
+  200: SecretMetadataResponse
 }
 
 export type UpsertSecretHandlerResponse =
   UpsertSecretHandlerResponses[keyof UpsertSecretHandlerResponses]
+
+export type DeleteServerCustomBotData = {
+  body?: never
+  path: {
+    /**
+     * Guild ID
+     */
+    guild_id: string
+  }
+  query?: never
+  url: '/server-custom-bots/{guild_id}'
+}
+
+export type DeleteServerCustomBotErrors = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type DeleteServerCustomBotError =
+  DeleteServerCustomBotErrors[keyof DeleteServerCustomBotErrors]
+
+export type DeleteServerCustomBotResponses = {
+  /**
+   * Server Custom Bot removed and @Flora restored
+   */
+  200: unknown
+}
+
+export type GetServerCustomBotData = {
+  body?: never
+  path: {
+    /**
+     * Guild ID
+     */
+    guild_id: string
+  }
+  query?: never
+  url: '/server-custom-bots/{guild_id}'
+}
+
+export type GetServerCustomBotErrors = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type GetServerCustomBotError = GetServerCustomBotErrors[keyof GetServerCustomBotErrors]
+
+export type GetServerCustomBotResponses = {
+  /**
+   * Configured Server Custom Bot, or null when none is configured
+   */
+  200: null | ServerCustomBotResponse
+}
+
+export type GetServerCustomBotResponse =
+  GetServerCustomBotResponses[keyof GetServerCustomBotResponses]
+
+export type UpsertServerCustomBotData = {
+  body: UpsertServerCustomBotRequest
+  path: {
+    /**
+     * Guild ID
+     */
+    guild_id: string
+  }
+  query?: never
+  url: '/server-custom-bots/{guild_id}'
+}
+
+export type UpsertServerCustomBotErrors = {
+  /**
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
+   */
+  default: ProblemDetails
+}
+
+export type UpsertServerCustomBotError =
+  UpsertServerCustomBotErrors[keyof UpsertServerCustomBotErrors]
+
+export type UpsertServerCustomBotResponses = {
+  /**
+   * Configured Server Custom Bot
+   */
+  200: ServerCustomBotResponse
+}
+
+export type UpsertServerCustomBotResponse =
+  UpsertServerCustomBotResponses[keyof UpsertServerCustomBotResponses]
 
 export type ListTokensHandlerData = {
   body?: never
@@ -2651,76 +2006,22 @@ export type ListTokensHandlerData = {
 
 export type ListTokensHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Unauthorized
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type ListTokensHandlerError = ListTokensHandlerErrors[keyof ListTokensHandlerErrors]
 
 export type ListTokensHandlerResponses = {
   /**
-   * Successful response
+   * Tokens listed
    */
-  200: Array<{
-    /**
-     * Token creation time in RFC3339 (UTC).
-     */
-    created_at: string
-    /**
-     * Optional user-facing label for the token.
-     */
-    label?: string | null
-    /**
-     * Last usage time in RFC3339 (UTC), if available.
-     */
-    last_used_at?: string | null
-    /**
-     * Token identifier.
-     */
-    token_id: string
-  }>
+  200: Array<TokenResponse>
 }
 
 export type ListTokensHandlerResponse = ListTokensHandlerResponses[keyof ListTokensHandlerResponses]
@@ -2734,61 +2035,22 @@ export type CreateTokenHandlerData = {
 
 export type CreateTokenHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Unauthorized
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type CreateTokenHandlerError = CreateTokenHandlerErrors[keyof CreateTokenHandlerErrors]
 
 export type CreateTokenHandlerResponses = {
   /**
-   * Token creation response (includes plaintext token).
+   * Token created
    */
-  200: {
-    token: string
-  }
+  200: CreateTokenResponse
 }
 
 export type CreateTokenHandlerResponse =
@@ -2808,59 +2070,22 @@ export type DeleteTokenHandlerData = {
 
 export type DeleteTokenHandlerErrors = {
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Unauthorized
    */
-  400: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  401: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * Token not found
    */
-  401: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  404: ProblemDetails
   /**
-   * Canonical error envelope returned by the HTTP API.
+   * The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.
    */
-  403: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  404: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
-  /**
-   * Canonical error envelope returned by the HTTP API.
-   */
-  500: {
-    /**
-     * Human readable error message.
-     */
-    message: string
-  }
+  default: ProblemDetails
 }
 
 export type DeleteTokenHandlerError = DeleteTokenHandlerErrors[keyof DeleteTokenHandlerErrors]
 
 export type DeleteTokenHandlerResponses = {
-  /**
-   * Successful response
-   */
-  200: unknown
   /**
    * Token deleted
    */

@@ -6,10 +6,7 @@ use axum::{
 };
 use cookie::Cookie;
 use serde::Serialize;
-use utoipa::{
-    IntoResponses, ToSchema,
-    openapi::{RefOr, content::ContentBuilder, response::ResponseBuilder},
-};
+use utoipa::{IntoResponses, openapi::RefOr};
 
 /// JSON wrapper that also carries utoipa response metadata.
 #[derive(Debug)]
@@ -32,16 +29,10 @@ impl<T> From<Json<T>> for ApiJson<T> {
 
 impl<T> IntoResponses for ApiJson<T>
 where
-    T: ToSchema + Serialize,
+    T: Serialize,
 {
     fn responses() -> BTreeMap<String, RefOr<utoipa::openapi::response::Response>> {
-        let content = ContentBuilder::new().schema(Some(T::schema())).build();
-        let response = ResponseBuilder::new()
-            .description("Successful response")
-            .content("application/json", content)
-            .build();
-
-        BTreeMap::from([("200".to_string(), RefOr::T(response))])
+        BTreeMap::new()
     }
 }
 
@@ -63,11 +54,7 @@ impl IntoResponse for ApiText {
 
 impl IntoResponses for ApiText {
     fn responses() -> BTreeMap<String, RefOr<utoipa::openapi::response::Response>> {
-        let response = ResponseBuilder::new()
-            .description("Successful response")
-            .content("text/plain", ContentBuilder::new().build())
-            .build();
-        BTreeMap::from([("200".to_string(), RefOr::T(response))])
+        BTreeMap::new()
     }
 }
 
@@ -84,10 +71,7 @@ impl IntoResponse for ApiRedirect {
 
 impl IntoResponses for ApiRedirect {
     fn responses() -> BTreeMap<String, RefOr<utoipa::openapi::response::Response>> {
-        let response = ResponseBuilder::new()
-            .description("Redirect response")
-            .build();
-        BTreeMap::from([("302".to_string(), RefOr::T(response))])
+        BTreeMap::new()
     }
 }
 
@@ -95,6 +79,21 @@ impl IntoResponses for ApiRedirect {
 pub struct ApiRedirectWithCookies {
     pub response: Response,
     pub cookies: Vec<Cookie<'static>>,
+}
+
+/// Response wrapper for Server-Sent Event streams.
+pub struct ApiEventStream(pub Response);
+
+impl IntoResponse for ApiEventStream {
+    fn into_response(self) -> Response {
+        self.0
+    }
+}
+
+impl IntoResponses for ApiEventStream {
+    fn responses() -> BTreeMap<String, RefOr<utoipa::openapi::response::Response>> {
+        BTreeMap::new()
+    }
 }
 
 impl IntoResponse for ApiRedirectWithCookies {
@@ -113,9 +112,6 @@ impl IntoResponse for ApiRedirectWithCookies {
 
 impl IntoResponses for ApiRedirectWithCookies {
     fn responses() -> BTreeMap<String, RefOr<utoipa::openapi::response::Response>> {
-        let response = ResponseBuilder::new()
-            .description("Redirect response with cookies")
-            .build();
-        BTreeMap::from([("302".to_string(), RefOr::T(response))])
+        BTreeMap::new()
     }
 }

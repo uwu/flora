@@ -45,7 +45,7 @@ use crate::{
         CustomBotDeploymentResponse,
         DeploymentRequest
     )),
-    tags((name = "custom-bots", description = "User-owned Discord bots"))
+    tags((name = "User Bots", description = "User-owned Discord applications with independent flora deployments"))
 )]
 pub struct CustomBotsApi;
 
@@ -129,8 +129,8 @@ pub async fn ensure_feature_enabled(
         .await
         .unwrap_or(false);
     if !allowed {
-        return Err(ApiError::forbidden(
-            "custom bots are not enabled for this user",
+        return Err(ApiError::feature_disabled(
+            "User Bots are not enabled for your account. Ask a flora operator to enable the feature before trying again",
         ));
     }
     Ok(())
@@ -158,7 +158,9 @@ async fn ensure_bot_owner(
         .map_err(ApiError::internal)?
         .ok_or_else(|| ApiError::not_found("custom bot not found"))?;
     if bot.owner_user_id != identity.user_id {
-        return Err(ApiError::forbidden("custom bot belongs to another user"));
+        return Err(ApiError::forbidden(
+            "This User Bot belongs to another account and cannot be managed by the current user",
+        ));
     }
     Ok(bot)
 }
@@ -184,7 +186,14 @@ async fn response(state: &AppState, bot: CustomBot) -> Result<CustomBotResponse,
     })
 }
 
-#[utoipa::path(get, path = "/", tag = "custom-bots", responses((status = 200, body = Vec<CustomBotResponse>)))]
+#[utoipa::path(
+    get,
+    path = "/",
+    tag = "User Bots",
+    summary = "List User Bots",
+    description = "Returns every User Bot owned by the authenticated user, including deployment and gateway status. The User Bots feature must be enabled for the account.",
+    responses((status = 200, description = "User Bots owned by the authenticated user", body = Vec<CustomBotResponse>))
+)]
 pub async fn list_custom_bots(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -202,7 +211,15 @@ pub async fn list_custom_bots(
     Ok(ApiJson(Json(responses)))
 }
 
-#[utoipa::path(post, path = "/", tag = "custom-bots", request_body = CreateCustomBotRequest, responses((status = 200, body = CustomBotResponse)))]
+#[utoipa::path(
+    post,
+    path = "/",
+    tag = "User Bots",
+    summary = "Create a User Bot",
+    description = "Validates a Discord bot token, encrypts it at rest, and creates a User Bot owned by the authenticated user. The plaintext token is never returned. A deployment must be uploaded separately before the gateway starts.",
+    request_body = CreateCustomBotRequest,
+    responses((status = 200, description = "User Bot created", body = CustomBotResponse))
+)]
 pub async fn create_custom_bot(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -217,7 +234,15 @@ pub async fn create_custom_bot(
     Ok(ApiJson(Json(response(&state, bot).await?)))
 }
 
-#[utoipa::path(get, path = "/{bot_id}", tag = "custom-bots", params(("bot_id" = String, Path)), responses((status = 200, body = CustomBotResponse)))]
+#[utoipa::path(
+    get,
+    path = "/{bot_id}",
+    tag = "User Bots",
+    summary = "Get a User Bot",
+    description = "Returns metadata and runtime status for a User Bot owned by the authenticated user. Tokens and other encrypted credentials are never included.",
+    params(("bot_id" = String, Path, description = "User Bot ID")),
+    responses((status = 200, description = "User Bot metadata and status", body = CustomBotResponse))
+)]
 pub async fn get_custom_bot(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -228,7 +253,15 @@ pub async fn get_custom_bot(
     Ok(ApiJson(Json(response(&state, bot).await?)))
 }
 
-#[utoipa::path(delete, path = "/{bot_id}", tag = "custom-bots", params(("bot_id" = String, Path)), responses((status = 200)))]
+#[utoipa::path(
+    delete,
+    path = "/{bot_id}",
+    tag = "User Bots",
+    summary = "Delete a User Bot",
+    description = "Stops the User Bot gateway, removes its active deployment, and deletes its encrypted token metadata. The operation is restricted to the owning user.",
+    params(("bot_id" = String, Path, description = "User Bot ID")),
+    responses((status = 200, description = "User Bot deleted"))
+)]
 pub async fn delete_custom_bot(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -254,7 +287,15 @@ pub async fn delete_custom_bot(
     Ok(ApiJson(Json(())))
 }
 
-#[utoipa::path(get, path = "/{bot_id}/deployment", tag = "custom-bots", params(("bot_id" = String, Path)), responses((status = 200, body = CustomBotDeploymentResponse)))]
+#[utoipa::path(
+    get,
+    path = "/{bot_id}/deployment",
+    tag = "User Bots",
+    summary = "Get a User Bot deployment",
+    description = "Returns the active deployment source and bundle for a User Bot owned by the authenticated user. Returns a not-found problem when the bot has not been deployed.",
+    params(("bot_id" = String, Path, description = "User Bot ID")),
+    responses((status = 200, description = "Active User Bot deployment", body = CustomBotDeploymentResponse))
+)]
 pub async fn get_custom_bot_deployment(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -271,7 +312,16 @@ pub async fn get_custom_bot_deployment(
     Ok(ApiJson(Json(deployment.into())))
 }
 
-#[utoipa::path(post, path = "/{bot_id}/deployment", tag = "custom-bots", params(("bot_id" = String, Path)), request_body = DeploymentRequest, responses((status = 200, body = CustomBotDeploymentResponse)))]
+#[utoipa::path(
+    post,
+    path = "/{bot_id}/deployment",
+    tag = "User Bots",
+    summary = "Deploy a User Bot",
+    description = "Builds or accepts the supplied bundle, atomically replaces the User Bot isolate, records a deployment revision, and starts its Discord gateway. If deployment fails, the previous runtime and persisted deployment are restored.",
+    params(("bot_id" = String, Path, description = "User Bot ID")),
+    request_body = DeploymentRequest,
+    responses((status = 200, description = "Active User Bot deployment", body = CustomBotDeploymentResponse))
+)]
 pub async fn deploy_custom_bot(
     State(state): State<AppState>,
     headers: HeaderMap,

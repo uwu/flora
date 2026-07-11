@@ -1,0 +1,3588 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "flora API",
+    "description": "Manages @Flora guild deployments, User Bots, Server Custom Bots, authentication, builds, secrets, key-value stores, logs, and operator orchestration.",
+    "license": {
+      "name": ""
+    },
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "flora API base path"
+    }
+  ],
+  "paths": {
+    "/auth/callback": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Complete Discord authentication",
+        "description": "Validates the OAuth state cookie, exchanges the Discord authorization code, creates a flora session, sets the session cookie, and redirects to the dashboard. Invalid, mismatched, or expired state is rejected.",
+        "operationId": "callback_handler",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "Discord authorization code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "Opaque state value returned by Discord",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Login succeeded, redirecting to dashboard"
+          },
+          "401": {
+            "description": "Invalid or expired state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Start Discord authentication",
+        "description": "Creates a short-lived OAuth state value, stores it in a secure cookie, and redirects the browser to Discord. The callback must return the same state value before a flora session is created.",
+        "operationId": "login_handler",
+        "responses": {
+          "302": {
+            "description": "Redirect to Discord"
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Get the authenticated user",
+        "description": "Returns the Discord identity associated with the current session or API token. Session-only profile fields may be empty when authentication uses a long-lived API token.",
+        "operationId": "me_handler",
+        "responses": {
+          "200": {
+            "description": "Session is valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No active session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/builds/": {
+      "post": {
+        "tags": ["Builds"],
+        "summary": "Create a build",
+        "description": "Queues a server-side build for the provided project archive.",
+        "operationId": "create_build_handler",
+        "responses": {
+          "200": {
+            "description": "Build queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateBuildResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/builds/{build_id}": {
+      "get": {
+        "tags": ["Builds"],
+        "summary": "Get build status",
+        "description": "Returns the current status, logs, and artifacts for a build.",
+        "operationId": "get_build_handler",
+        "parameters": [
+          {
+            "name": "build_id",
+            "in": "path",
+            "description": "Build ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Build status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Build not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/builds/{build_id}/logs": {
+      "get": {
+        "tags": ["Builds"],
+        "summary": "Stream build logs",
+        "description": "Streams build output as Server-Sent Events until the upstream build stream closes. The authenticated caller must have access to the build's guild or User Bot scope.",
+        "operationId": "stream_build_logs_handler",
+        "parameters": [
+          {
+            "name": "build_id",
+            "in": "path",
+            "description": "Build ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-Sent Event stream containing build output",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/custom-bots/": {
+      "get": {
+        "tags": ["User Bots"],
+        "summary": "List User Bots",
+        "description": "Returns every User Bot owned by the authenticated user, including deployment and gateway status. The User Bots feature must be enabled for the account.",
+        "operationId": "list_custom_bots",
+        "responses": {
+          "200": {
+            "description": "User Bots owned by the authenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomBotResponse"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["User Bots"],
+        "summary": "Create a User Bot",
+        "description": "Validates a Discord bot token, encrypts it at rest, and creates a User Bot owned by the authenticated user. The plaintext token is never returned. A deployment must be uploaded separately before the gateway starts.",
+        "operationId": "create_custom_bot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCustomBotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "User Bot created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomBotResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/custom-bots/{bot_id}": {
+      "get": {
+        "tags": ["User Bots"],
+        "summary": "Get a User Bot",
+        "description": "Returns metadata and runtime status for a User Bot owned by the authenticated user. Tokens and other encrypted credentials are never included.",
+        "operationId": "get_custom_bot",
+        "parameters": [
+          {
+            "name": "bot_id",
+            "in": "path",
+            "description": "User Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User Bot metadata and status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomBotResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["User Bots"],
+        "summary": "Delete a User Bot",
+        "description": "Stops the User Bot gateway, removes its active deployment, and deletes its encrypted token metadata. The operation is restricted to the owning user.",
+        "operationId": "delete_custom_bot",
+        "parameters": [
+          {
+            "name": "bot_id",
+            "in": "path",
+            "description": "User Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User Bot deleted"
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/custom-bots/{bot_id}/deployment": {
+      "get": {
+        "tags": ["User Bots"],
+        "summary": "Get a User Bot deployment",
+        "description": "Returns the active deployment source and bundle for a User Bot owned by the authenticated user. Returns a not-found problem when the bot has not been deployed.",
+        "operationId": "get_custom_bot_deployment",
+        "parameters": [
+          {
+            "name": "bot_id",
+            "in": "path",
+            "description": "User Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active User Bot deployment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomBotDeploymentResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["User Bots"],
+        "summary": "Deploy a User Bot",
+        "description": "Builds or accepts the supplied bundle, atomically replaces the User Bot isolate, records a deployment revision, and starts its Discord gateway. If deployment fails, the previous runtime and persisted deployment are restored.",
+        "operationId": "deploy_custom_bot",
+        "parameters": [
+          {
+            "name": "bot_id",
+            "in": "path",
+            "description": "User Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeploymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Active User Bot deployment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomBotDeploymentResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deployments/": {
+      "get": {
+        "tags": ["Deployments"],
+        "summary": "List deployments",
+        "description": "Returns all deployment snapshots the authenticated user has access to.",
+        "operationId": "list_deployments_handler",
+        "responses": {
+          "200": {
+            "description": "Deployments list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeploymentListItem"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deployments/{guild_id}": {
+      "get": {
+        "tags": ["Deployments"],
+        "summary": "Get deployment",
+        "description": "Returns the latest successful deployment snapshot for a guild.",
+        "operationId": "get_deployment_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_bundle",
+            "in": "query",
+            "description": "Include bundled output in response",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deployment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Deployment not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Deployments"],
+        "summary": "Deploy a guild",
+        "description": "Creates or updates the active deployment for a guild, then records a revision.",
+        "operationId": "upsert_deployment_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeploymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Deployment stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deployments/{guild_id}/history": {
+      "get": {
+        "tags": ["Deployments"],
+        "summary": "List deployment history",
+        "description": "Returns deployment revisions for a guild in reverse chronological order.",
+        "operationId": "list_deployment_history_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, max 100",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "cursor_deployed_at",
+            "in": "query",
+            "description": "RFC3339 deployed_at cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor_id",
+            "in": "query",
+            "description": "Revision ID cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_bundle",
+            "in": "query",
+            "description": "Include bundled output in response",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Revision history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeploymentRevisionResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid cursor",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deployments/{guild_id}/revisions/{revision_id}": {
+      "get": {
+        "tags": ["Deployments"],
+        "summary": "Get deployment revision",
+        "description": "Returns details for a specific deployment revision.",
+        "operationId": "get_deployment_revision_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "revision_id",
+            "in": "path",
+            "description": "Revision ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_bundle",
+            "in": "query",
+            "description": "Include bundled output in response",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Revision found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentRevisionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Revision not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deployments/{guild_id}/rollback/{revision_id}": {
+      "post": {
+        "tags": ["Deployments"],
+        "summary": "Rollback deployment",
+        "description": "Deploys a previous successful revision and records a new rollback revision.",
+        "operationId": "rollback_deployment_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "revision_id",
+            "in": "path",
+            "description": "Successful revision ID to rollback to",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rollback created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentRevisionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Revision not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/guilds/": {
+      "get": {
+        "tags": ["Guilds"],
+        "summary": "List manageable guilds",
+        "description": "Returns Discord guilds where the authenticated user has Administrator or Manage Server permission and @Flora is currently installed. Requires an interactive Discord session.",
+        "operationId": "list_guilds_handler",
+        "responses": {
+          "200": {
+            "description": "Guilds available for deployment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GuildResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Check API health",
+        "description": "Returns a lightweight liveness response when the HTTP process is accepting requests. This endpoint does not verify Discord, database, cache, or worker readiness.",
+        "operationId": "health_check",
+        "responses": {
+          "200": {
+            "description": "API is healthy",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kv/export/{guild_id}": {
+      "post": {
+        "tags": ["KV"],
+        "summary": "Export guild stores",
+        "description": "Creates a backup of all stores for a guild and returns a backup ID.",
+        "operationId": "export_guild_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Export created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportGuildResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not guild admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No stores found for guild",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kv/stores": {
+      "get": {
+        "tags": ["KV"],
+        "summary": "List stores",
+        "description": "Returns all key-value stores for the specified guild.",
+        "operationId": "list_stores_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of stores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KvStore"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not guild admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["KV"],
+        "summary": "Create a store",
+        "description": "Creates a new key-value store for the specified guild.",
+        "operationId": "create_store_handler",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Store created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateStoreResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not guild admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kv/stores/{guild_id}/{store_name}": {
+      "delete": {
+        "tags": ["KV"],
+        "summary": "Delete a store",
+        "description": "Deletes a store and all stored keys.",
+        "operationId": "delete_store_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "store_name",
+            "in": "path",
+            "description": "Store name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Store deleted successfully"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not guild admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Store not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kv/{guild_id}/{store_name}": {
+      "get": {
+        "tags": ["KV"],
+        "summary": "List keys",
+        "description": "Returns keys in a store. Use cursor for pagination when list_complete is false.",
+        "operationId": "list_keys_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "store_name",
+            "in": "path",
+            "description": "Store name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": ["string", "null"]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": ["integer", "null"],
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": ["string", "null"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListKeysResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not guild admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Store not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kv/{guild_id}/{store_name}/{key}": {
+      "get": {
+        "tags": ["KV"],
+        "summary": "Get a value",
+        "description": "Returns the stored value or null when the key is missing.",
+        "operationId": "get_value_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "store_name",
+            "in": "path",
+            "description": "Store name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Key to retrieve",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Value retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetValueResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not guild admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Store or key not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["KV"],
+        "summary": "Set a value",
+        "description": "Creates or replaces a value in the store. Optional expiration controls TTL.",
+        "operationId": "set_value_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "store_name",
+            "in": "path",
+            "description": "Store name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Key to set",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetValueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Value set successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetValueResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Value exceeds 1MB limit",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not guild admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Store not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["KV"],
+        "summary": "Delete a key",
+        "description": "Deletes a key from the store if it exists.",
+        "operationId": "delete_key_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "store_name",
+            "in": "path",
+            "description": "Store name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Key to delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Key deleted successfully"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not guild admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Store not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logs/{guild_id}": {
+      "get": {
+        "tags": ["Logs"],
+        "summary": "List guild logs",
+        "description": "Returns recent log entries for a specific guild.",
+        "operationId": "get_guild_logs",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of log entries to return (default 100, max 1000).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent log entries for guild",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LogEntry"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logs/{guild_id}/stream": {
+      "get": {
+        "tags": ["Logs"],
+        "summary": "Stream runtime logs",
+        "description": "Streams new runtime log entries as Server-Sent Events. The caller must manage the guild or own the addressed User Bot runtime scope. Existing entries are available from the non-streaming logs endpoint.",
+        "operationId": "stream_guild_logs",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID or User Bot runtime scope ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-Sent Event stream containing runtime log entries",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": ["Metrics"],
+        "summary": "Get Prometheus metrics",
+        "description": "Returns runtime metrics in Prometheus exposition format. Requires the configured operator bearer token and is intended for monitoring infrastructure.",
+        "operationId": "get_metrics",
+        "responses": {
+          "200": {
+            "description": "Prometheus metrics",
+            "content": {
+              "text/plain": {}
+            }
+          },
+          "401": {
+            "description": "Operator bearer token required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics/json": {
+      "get": {
+        "tags": ["Metrics"],
+        "summary": "Get metrics as JSON",
+        "description": "Returns the current runtime metrics snapshot as JSON. Requires the configured operator bearer token and is intended for operator diagnostics.",
+        "operationId": "get_metrics_json",
+        "responses": {
+          "200": {
+            "description": "Metrics as JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsSnapshot"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Operator bearer token required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orchestrator/deployment": {
+      "get": {
+        "tags": ["Orchestrator"],
+        "summary": "Get the orchestrator deployment",
+        "description": "Returns the active trusted orchestrator deployment. Only the configured Discord operator may access this endpoint; the deployment may contain sensitive feature-policy source.",
+        "operationId": "get_orchestrator_deployment",
+        "responses": {
+          "200": {
+            "description": "Active orchestrator deployment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrchestratorDeploymentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No orchestrator deployment",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Orchestrator"],
+        "summary": "Deploy the orchestrator",
+        "description": "Validates and atomically replaces the trusted orchestrator isolate, persists a deployment revision, and immediately reconciles User Bot and Server Custom Bot gateways against the new feature policy. A failed deployment leaves the previous orchestrator active.",
+        "operationId": "deploy_orchestrator",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeploymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Orchestrator deployed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrchestratorDeploymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid deployment",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Orchestrator"],
+        "summary": "Delete the orchestrator deployment",
+        "description": "Removes the trusted orchestrator deployment and restores deny-by-default feature authorization. Existing User Bot and Server Custom Bot gateways are reconciled immediately without deleting their encrypted configuration.",
+        "operationId": "delete_orchestrator",
+        "responses": {
+          "200": {
+            "description": "Orchestrator deleted"
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/secrets/{guild_id}": {
+      "get": {
+        "tags": ["Secrets"],
+        "summary": "List secrets",
+        "description": "Returns metadata for all secrets stored for a guild. Values are never returned.",
+        "operationId": "list_secrets_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of secret names",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SecretMetadataResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/secrets/{guild_id}/{name}": {
+      "put": {
+        "tags": ["Secrets"],
+        "summary": "Upsert a secret",
+        "description": "Creates or updates a secret value for a guild and refreshes the runtime.",
+        "operationId": "upsert_secret_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "description": "Secret name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertSecretRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Secret stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretMetadataResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Secrets"],
+        "summary": "Delete a secret",
+        "description": "Deletes a secret and refreshes the runtime to remove it.",
+        "operationId": "delete_secret_handler",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "description": "Secret name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Secret deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteSecretResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/server-custom-bots/{guild_id}": {
+      "get": {
+        "tags": ["Server Custom Bots"],
+        "summary": "Get a Server Custom Bot",
+        "description": "Returns the Server Custom Bot configured for a guild, or null when the guild uses @Flora. The caller must manage the guild and the feature must be enabled by the orchestrator.",
+        "operationId": "get_server_custom_bot",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configured Server Custom Bot, or null when none is configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ServerCustomBotResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Server Custom Bots"],
+        "summary": "Configure a Server Custom Bot",
+        "description": "Validates that the supplied Discord bot token can access the guild, encrypts the token at rest, and routes the guild's existing flora deployment through that identity. Repeating the request replaces the token and gateway while preserving the guild deployment.",
+        "operationId": "upsert_server_custom_bot",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertServerCustomBotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Configured Server Custom Bot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerCustomBotResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Server Custom Bots"],
+        "summary": "Remove a Server Custom Bot",
+        "description": "Stops the guild-owned gateway, deletes its encrypted token metadata, and returns the guild's existing deployment to @Flora. The caller must manage the guild.",
+        "operationId": "delete_server_custom_bot",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server Custom Bot removed and @Flora restored"
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tokens/": {
+      "get": {
+        "tags": ["Tokens"],
+        "summary": "List tokens",
+        "description": "Returns metadata for all API tokens owned by the authenticated user.",
+        "operationId": "list_tokens_handler",
+        "responses": {
+          "200": {
+            "description": "Tokens listed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TokenResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Tokens"],
+        "summary": "Create a token",
+        "description": "Creates a new API token for the authenticated user. The plaintext token is returned only once.",
+        "operationId": "create_token_handler",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Token created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tokens/{token_id}": {
+      "delete": {
+        "tags": ["Tokens"],
+        "summary": "Delete a token",
+        "description": "Deletes the specified token. Requests using this token stop authenticating immediately.",
+        "operationId": "delete_token_handler",
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "path",
+            "description": "Token identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Token deleted"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Token not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed. Inspect the HTTP status and Problem Details response for recovery guidance.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthResponse": {
+        "type": "object",
+        "description": "Response envelope for /auth/me.",
+        "required": ["user"],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/AuthUser"
+          }
+        }
+      },
+      "AuthUser": {
+        "type": "object",
+        "description": "API representation of the authenticated user.",
+        "required": ["id", "username"],
+        "properties": {
+          "avatar": {
+            "type": ["string", "null"]
+          },
+          "global_name": {
+            "type": ["string", "null"]
+          },
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "BuildArtifactResponse": {
+        "type": "object",
+        "description": "Build artifact output paths.",
+        "required": ["bundle", "source_map"],
+        "properties": {
+          "bundle": {
+            "type": "string",
+            "description": "Bundled JavaScript output."
+          },
+          "source_map": {
+            "type": "string",
+            "description": "Source map for the bundle."
+          }
+        }
+      },
+      "BuildStatusResponse": {
+        "type": "object",
+        "description": "Current build status and output.",
+        "required": ["build_id", "guild_id", "entry", "status", "logs"],
+        "properties": {
+          "artifact": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BuildArtifactResponse",
+                "description": "Generated build artifacts, if available."
+              }
+            ]
+          },
+          "build_id": {
+            "type": "string",
+            "description": "Build identifier."
+          },
+          "entry": {
+            "type": "string",
+            "description": "Entry file path used for the build."
+          },
+          "error": {
+            "type": ["string", "null"],
+            "description": "Error detail when the build fails."
+          },
+          "finished_at": {
+            "type": ["string", "null"],
+            "description": "Build completion time in RFC3339 (UTC)."
+          },
+          "guild_id": {
+            "type": "string",
+            "description": "Guild ID the build targets."
+          },
+          "logs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Build logs, newest last."
+          },
+          "started_at": {
+            "type": ["string", "null"],
+            "description": "Build start time in RFC3339 (UTC)."
+          },
+          "status": {
+            "type": "string",
+            "description": "Current build status string."
+          }
+        }
+      },
+      "CreateBuildResponse": {
+        "type": "object",
+        "description": "Response returned when a build is created.",
+        "required": ["build_id", "status"],
+        "properties": {
+          "build_id": {
+            "type": "string",
+            "description": "Build identifier."
+          },
+          "status": {
+            "type": "string",
+            "description": "Current build status string."
+          }
+        }
+      },
+      "CreateCustomBotRequest": {
+        "type": "object",
+        "required": ["token"],
+        "properties": {
+          "label": {
+            "type": ["string", "null"]
+          },
+          "token": {
+            "type": "string",
+            "description": "Discord bot token. The token is validated, encrypted, and never returned."
+          }
+        }
+      },
+      "CreateStoreRequest": {
+        "type": "object",
+        "required": ["guild_id", "store_name"],
+        "properties": {
+          "guild_id": {
+            "type": "string"
+          },
+          "store_name": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateStoreResponse": {
+        "type": "object",
+        "required": ["store"],
+        "properties": {
+          "store": {
+            "$ref": "#/components/schemas/KvStore"
+          }
+        }
+      },
+      "CreateTokenRequest": {
+        "type": "object",
+        "description": "Create-token payload.",
+        "properties": {
+          "label": {
+            "type": ["string", "null"]
+          }
+        }
+      },
+      "CreateTokenResponse": {
+        "type": "object",
+        "description": "Token creation response (includes plaintext token).",
+        "required": ["token"],
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        }
+      },
+      "CustomBotDeploymentResponse": {
+        "type": "object",
+        "required": ["entry", "created_at", "updated_at"],
+        "properties": {
+          "bundle": {
+            "type": ["string", "null"]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "entry": {
+            "type": "string"
+          },
+          "files": {
+            "type": ["array", "null"],
+            "items": {
+              "$ref": "#/components/schemas/DeploymentFile"
+            }
+          },
+          "source_map": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DeploymentSourceMapFile"
+              }
+            ]
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "CustomBotResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "bot_user_id",
+          "bot_username",
+          "application_id",
+          "has_deployment",
+          "running",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "bot_user_id": {
+            "type": "string"
+          },
+          "bot_username": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "has_deployment": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": ["string", "null"]
+          },
+          "running": {
+            "type": "boolean"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "DeleteKeyParams": {
+        "type": "object",
+        "required": ["guild_id", "store_name", "key"],
+        "properties": {
+          "guild_id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "store_name": {
+            "type": "string"
+          }
+        }
+      },
+      "DeleteSecretResponse": {
+        "type": "object",
+        "required": ["deleted"],
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DeleteStoreParams": {
+        "type": "object",
+        "required": ["guild_id", "store_name"],
+        "properties": {
+          "guild_id": {
+            "type": "string"
+          },
+          "store_name": {
+            "type": "string"
+          }
+        }
+      },
+      "DeploymentActorResponse": {
+        "type": "object",
+        "required": ["actor_type"],
+        "properties": {
+          "actor_type": {
+            "$ref": "#/components/schemas/DeploymentActorType"
+          },
+          "user_id": {
+            "type": ["string", "null"]
+          },
+          "username": {
+            "type": ["string", "null"]
+          }
+        }
+      },
+      "DeploymentActorType": {
+        "type": "string",
+        "enum": ["session", "token", "system"]
+      },
+      "DeploymentChangeSummary": {
+        "type": "object",
+        "required": ["added_files", "removed_files", "modified_files"],
+        "properties": {
+          "added_files": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "modified_files": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "removed_files": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "DeploymentFile": {
+        "type": "object",
+        "required": ["path", "contents"],
+        "properties": {
+          "contents": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "DeploymentListItem": {
+        "type": "object",
+        "required": ["guild_id", "entry", "created_at", "updated_at"],
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "entry": {
+            "type": "string"
+          },
+          "guild_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "DeploymentRequest": {
+        "type": "object",
+        "required": ["entry"],
+        "properties": {
+          "build_id": {
+            "type": ["string", "null"]
+          },
+          "bundle": {
+            "type": ["string", "null"]
+          },
+          "entry": {
+            "type": "string"
+          },
+          "files": {
+            "type": ["array", "null"],
+            "items": {
+              "$ref": "#/components/schemas/DeploymentFile"
+            }
+          },
+          "source_map": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DeploymentSourceMapFile"
+              }
+            ]
+          }
+        }
+      },
+      "DeploymentResponse": {
+        "type": "object",
+        "description": "Deployment snapshot stored for a guild.",
+        "required": ["guild_id", "created_at", "updated_at", "entry"],
+        "properties": {
+          "bundle": {
+            "type": ["string", "null"],
+            "description": "Bundled output when stored, if included."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Snapshot creation time in RFC3339 (UTC)."
+          },
+          "entry": {
+            "type": "string",
+            "description": "Entry file path used for the deployment."
+          },
+          "files": {
+            "type": ["array", "null"],
+            "items": {
+              "$ref": "#/components/schemas/DeploymentFile"
+            },
+            "description": "Raw files when the deployment was uploaded as sources."
+          },
+          "guild_id": {
+            "type": "string",
+            "description": "Guild ID for the deployment."
+          },
+          "source_map": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DeploymentSourceMapFile",
+                "description": "Source map included with the bundle, if provided."
+              }
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "Snapshot update time in RFC3339 (UTC)."
+          }
+        }
+      },
+      "DeploymentRevisionResponse": {
+        "type": "object",
+        "required": ["id", "guild_id", "entry", "status", "deployed_at", "deploy_source", "actor"],
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/DeploymentActorResponse"
+          },
+          "base_revision_id": {
+            "type": ["string", "null"]
+          },
+          "build_id": {
+            "type": ["string", "null"]
+          },
+          "bundle": {
+            "type": ["string", "null"]
+          },
+          "change_summary": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DeploymentChangeSummary"
+              }
+            ]
+          },
+          "deploy_source": {
+            "$ref": "#/components/schemas/DeploymentSource"
+          },
+          "deployed_at": {
+            "type": "string",
+            "description": "Deployment time in RFC3339 (UTC)."
+          },
+          "entry": {
+            "type": "string"
+          },
+          "error_message": {
+            "type": ["string", "null"]
+          },
+          "files": {
+            "type": ["array", "null"],
+            "items": {
+              "$ref": "#/components/schemas/DeploymentFile"
+            }
+          },
+          "guild_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "source_map": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DeploymentSourceMapFile"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeploymentRevisionStatus"
+          }
+        }
+      },
+      "DeploymentRevisionStatus": {
+        "type": "string",
+        "enum": ["success", "failed"]
+      },
+      "DeploymentSource": {
+        "type": "string",
+        "enum": ["cli", "webui", "bootstrap", "api", "unknown"]
+      },
+      "DeploymentSourceMapFile": {
+        "type": "object",
+        "required": ["path", "contents"],
+        "properties": {
+          "contents": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ExportGuildParams": {
+        "type": "object",
+        "required": ["guild_id"],
+        "properties": {
+          "guild_id": {
+            "type": "string"
+          }
+        }
+      },
+      "ExportGuildResponse": {
+        "type": "object",
+        "required": ["backup_id"],
+        "properties": {
+          "backup_id": {
+            "type": "string"
+          }
+        }
+      },
+      "GetValueParams": {
+        "type": "object",
+        "required": ["guild_id", "store_name", "key"],
+        "properties": {
+          "guild_id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "store_name": {
+            "type": "string"
+          }
+        }
+      },
+      "GetValueResponse": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": ["string", "null"]
+          }
+        }
+      },
+      "GuildResponse": {
+        "type": "object",
+        "description": "Guild info exposed by the API.",
+        "required": ["id", "name", "permissions"],
+        "properties": {
+          "icon": {
+            "type": ["string", "null"]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "KvStore": {
+        "type": "object",
+        "required": ["id", "guild_id", "store_name", "created_at", "updated_at"],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "guild_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "store_name": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ListKeysParams": {
+        "type": "object",
+        "required": ["guild_id", "store_name"],
+        "properties": {
+          "guild_id": {
+            "type": "string"
+          },
+          "store_name": {
+            "type": "string"
+          }
+        }
+      },
+      "ListKeysQuery": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": ["string", "null"]
+          },
+          "limit": {
+            "type": ["integer", "null"],
+            "format": "int32",
+            "minimum": 0
+          },
+          "prefix": {
+            "type": ["string", "null"]
+          }
+        }
+      },
+      "ListKeysResponse": {
+        "type": "object",
+        "required": ["keys", "list_complete"],
+        "properties": {
+          "cursor": {
+            "type": ["string", "null"]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RawKvKeyInfo"
+            }
+          },
+          "list_complete": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ListStoresQuery": {
+        "type": "object",
+        "required": ["guild_id"],
+        "properties": {
+          "guild_id": {
+            "type": "string"
+          }
+        }
+      },
+      "LogEntry": {
+        "type": "object",
+        "description": "A log entry captured from the runtime.",
+        "required": ["timestamp", "level", "target", "message"],
+        "properties": {
+          "guild_id": {
+            "type": ["string", "null"],
+            "description": "Guild ID if applicable."
+          },
+          "level": {
+            "type": "string",
+            "description": "Log level (trace, debug, info, warn, error)."
+          },
+          "message": {
+            "type": "string",
+            "description": "Log message."
+          },
+          "target": {
+            "type": "string",
+            "description": "Target/module that produced the log."
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Timestamp in milliseconds since Unix epoch."
+          }
+        }
+      },
+      "LogsQuery": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of log entries to return (default 100, max 1000).",
+            "minimum": 0
+          }
+        }
+      },
+      "MetricsSnapshot": {
+        "type": "object",
+        "description": "Snapshot of metrics at a point in time.",
+        "required": [
+          "isolate_count",
+          "dispatch_total",
+          "dispatch_errors",
+          "timeout_errors",
+          "oom_errors",
+          "isolate_restarts",
+          "runtime_restarts",
+          "migration_success",
+          "migration_timeout",
+          "migration_quiesce_duration_us",
+          "avg_latency_us",
+          "p50_latency_us",
+          "p95_latency_us",
+          "p99_latency_us"
+        ],
+        "properties": {
+          "avg_latency_us": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "dispatch_errors": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "dispatch_total": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "isolate_count": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "isolate_restarts": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "migration_quiesce_duration_us": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "migration_success": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "migration_timeout": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "oom_errors": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "p50_latency_us": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "p95_latency_us": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "p99_latency_us": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "runtime_restarts": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "timeout_errors": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "OrchestratorDeploymentResponse": {
+        "type": "object",
+        "required": ["entry", "created_at", "updated_at"],
+        "properties": {
+          "bundle": {
+            "type": ["string", "null"]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "entry": {
+            "type": "string"
+          },
+          "files": {
+            "type": ["array", "null"],
+            "items": {
+              "$ref": "#/components/schemas/DeploymentFile"
+            }
+          },
+          "source_map": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DeploymentSourceMapFile"
+              }
+            ]
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "required": ["type", "title", "status", "detail", "instance", "request_id"],
+        "properties": {
+          "detail": {
+            "type": "string",
+            "description": "Actionable explanation of this specific failure occurrence."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request path identifying where this failure occurred."
+          },
+          "request_id": {
+            "type": "string",
+            "description": "Correlation identifier also returned in the `X-Request-ID` header."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code returned for this failure occurrence.",
+            "minimum": 0
+          },
+          "title": {
+            "type": "string",
+            "description": "Stable, human-readable summary of the failure category."
+          },
+          "type": {
+            "type": "string",
+            "description": "Stable relative URI identifying the category of failure."
+          },
+          "violations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProblemViolation"
+            },
+            "description": "Field-level validation failures, when applicable."
+          }
+        }
+      },
+      "ProblemViolation": {
+        "type": "object",
+        "required": ["field", "message"],
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "Identifies the invalid request field using its JSON or parameter path."
+          },
+          "message": {
+            "type": "string",
+            "description": "Explains how to correct the invalid field."
+          }
+        }
+      },
+      "RawKvKeyInfo": {
+        "type": "object",
+        "description": "Information about a single KV key.",
+        "required": ["name"],
+        "properties": {
+          "expiration": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Unix timestamp (seconds) when this key expires."
+          },
+          "metadata": {
+            "description": "Arbitrary JSON metadata attached to the key."
+          },
+          "name": {
+            "type": "string",
+            "description": "The key's name."
+          }
+        }
+      },
+      "SecretMetadataResponse": {
+        "type": "object",
+        "description": "Metadata response; values are never returned.",
+        "required": ["name", "allowed_hosts"],
+        "properties": {
+          "allowed_hosts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "ServerCustomBotResponse": {
+        "type": "object",
+        "required": [
+          "guild_id",
+          "bot_user_id",
+          "bot_username",
+          "application_id",
+          "running",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "bot_user_id": {
+            "type": "string"
+          },
+          "bot_username": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "guild_id": {
+            "type": "string"
+          },
+          "running": {
+            "type": "boolean"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "SetValueParams": {
+        "type": "object",
+        "required": ["guild_id", "store_name", "key"],
+        "properties": {
+          "guild_id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "store_name": {
+            "type": "string"
+          }
+        }
+      },
+      "SetValueRequest": {
+        "type": "object",
+        "required": ["value"],
+        "properties": {
+          "expiration": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Unix timestamp in seconds when the key expires, or null for no expiry."
+          },
+          "metadata": {
+            "description": "Optional JSON metadata attached to the key."
+          },
+          "value": {
+            "type": "string",
+            "description": "Raw value to store."
+          }
+        }
+      },
+      "SetValueResponse": {
+        "type": "object",
+        "required": ["success"],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TokenResponse": {
+        "type": "object",
+        "description": "Token metadata returned for list endpoints.",
+        "required": ["token_id", "created_at"],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "description": "Token creation time in RFC3339 (UTC)."
+          },
+          "label": {
+            "type": ["string", "null"],
+            "description": "Optional user-facing label for the token."
+          },
+          "last_used_at": {
+            "type": ["string", "null"],
+            "description": "Last usage time in RFC3339 (UTC), if available."
+          },
+          "token_id": {
+            "type": "string",
+            "description": "Token identifier."
+          }
+        }
+      },
+      "UpsertSecretRequest": {
+        "type": "object",
+        "required": ["value"],
+        "properties": {
+          "allowed_hosts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "UpsertServerCustomBotRequest": {
+        "type": "object",
+        "required": ["token"],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Discord bot token. It is validated, encrypted, and never returned."
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "flora",
+      "description": "flora bot runtime API"
+    },
+    {
+      "name": "Auth",
+      "description": "Discord authentication"
+    },
+    {
+      "name": "Builds",
+      "description": "Server-side build pipeline"
+    },
+    {
+      "name": "User Bots",
+      "description": "User-owned Discord applications with independent flora deployments"
+    },
+    {
+      "name": "Server Custom Bots",
+      "description": "Guild-owned Discord identities for existing flora deployments"
+    },
+    {
+      "name": "Guilds",
+      "description": "Guilds the user can manage"
+    },
+    {
+      "name": "Tokens",
+      "description": "User API tokens"
+    },
+    {
+      "name": "Deployments",
+      "description": "Manage per-guild bot deployments"
+    },
+    {
+      "name": "KV",
+      "description": "Key-value store management endpoints"
+    },
+    {
+      "name": "Secrets",
+      "description": "Manage per-guild secrets"
+    },
+    {
+      "name": "Health",
+      "description": "Health endpoints"
+    },
+    {
+      "name": "Orchestrator",
+      "description": "Trusted operator-owned feature authorization deployment"
+    }
+  ]
+}

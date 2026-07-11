@@ -58,7 +58,7 @@ pub async fn list_deployments_handler(
     for deployment in deployments {
         match ensure_guild_admin(&state, &identity, &deployment.guild_id).await {
             Ok(()) => {}
-            Err(ApiError::Forbidden { .. }) => continue,
+            Err(err) if err.status() == axum::http::StatusCode::FORBIDDEN => continue,
             Err(err) => return Err(err),
         }
 

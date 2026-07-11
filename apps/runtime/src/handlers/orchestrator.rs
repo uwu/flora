@@ -31,7 +31,7 @@ use crate::{
 #[openapi(
     paths(get_orchestrator_deployment, deploy_orchestrator, delete_orchestrator),
     components(schemas(OrchestratorDeploymentResponse, DeploymentRequest)),
-    tags((name = "orchestrator", description = "Trusted singleton orchestrator deployment"))
+    tags((name = "Orchestrator", description = "Trusted operator-owned feature authorization deployment"))
 )]
 pub struct OrchestratorApi;
 
@@ -100,7 +100,9 @@ fn actor(identity: &IdentityContext) -> (Option<String>, Option<String>, Deploym
 #[utoipa::path(
     get,
     path = "/deployment",
-    tag = "orchestrator",
+    tag = "Orchestrator",
+    summary = "Get the orchestrator deployment",
+    description = "Returns the active trusted orchestrator deployment. Only the configured Discord operator may access this endpoint; the deployment may contain sensitive feature-policy source.",
     responses(
         (status = 200, description = "Active orchestrator deployment", body = OrchestratorDeploymentResponse),
         (status = 404, description = "No orchestrator deployment", body = crate::handlers::error::ErrorResponse)
@@ -123,7 +125,9 @@ pub async fn get_orchestrator_deployment(
 #[utoipa::path(
     post,
     path = "/deployment",
-    tag = "orchestrator",
+    tag = "Orchestrator",
+    summary = "Deploy the orchestrator",
+    description = "Validates and atomically replaces the trusted orchestrator isolate, persists a deployment revision, and immediately reconciles User Bot and Server Custom Bot gateways against the new feature policy. A failed deployment leaves the previous orchestrator active.",
     request_body = DeploymentRequest,
     responses(
         (status = 200, description = "Orchestrator deployed", body = OrchestratorDeploymentResponse),
@@ -275,7 +279,9 @@ pub async fn deploy_orchestrator(
 #[utoipa::path(
     delete,
     path = "/deployment",
-    tag = "orchestrator",
+    tag = "Orchestrator",
+    summary = "Delete the orchestrator deployment",
+    description = "Removes the trusted orchestrator deployment and restores deny-by-default feature authorization. Existing User Bot and Server Custom Bot gateways are reconciled immediately without deleting their encrypted configuration.",
     responses((status = 200, description = "Orchestrator deleted"))
 )]
 pub async fn delete_orchestrator(

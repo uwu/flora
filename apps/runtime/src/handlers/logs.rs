@@ -4,7 +4,10 @@ use axum::{
     Json,
     extract::{Path, Query, State},
     http::HeaderMap,
-    response::sse::{Event, KeepAlive, Sse},
+    response::{
+        IntoResponse,
+        sse::{Event, KeepAlive, Sse},
+    },
 };
 use serde::Deserialize;
 use std::convert::Infallible;
@@ -17,7 +20,7 @@ use crate::{
         auth::{ensure_guild_admin, require_identity},
         custom_bots::{ensure_feature_enabled, ensure_scope_owner},
         error::ApiError,
-        response::ApiJson,
+        response::{ApiEventStream, ApiJson},
     },
     log_sink::{self, LogEntry},
     state::AppState,
@@ -38,7 +41,10 @@ async fn ensure_log_scope_access(
 }
 
 #[derive(OpenApi)]
-#[openapi(paths(get_guild_logs), components(schemas(LogEntry, LogsQuery)))]
+#[openapi(
+    paths(get_guild_logs, stream_guild_logs),
+    components(schemas(LogEntry, LogsQuery))
+)]
 pub struct LogsApi;
 
 #[derive(Debug, Deserialize, IntoParams, ToSchema)]
@@ -81,13 +87,22 @@ pub async fn get_guild_logs(
 }
 
 /// Stream logs for a specific guild via Server-Sent Events.
-///
-/// Note: This endpoint is not documented in OpenAPI due to SSE response type limitations.
+#[utoipa::path(
+    get,
+    path = "/{guild_id}/stream",
+    params(("guild_id" = String, Path, description = "Guild ID or User Bot runtime scope ID")),
+    summary = "Stream runtime logs",
+    description = "Streams new runtime log entries as Server-Sent Events. The caller must manage the guild or own the addressed User Bot runtime scope. Existing entries are available from the non-streaming logs endpoint.",
+    responses(
+        (status = 200, description = "Server-Sent Event stream containing runtime log entries", content_type = "text/event-stream")
+    ),
+    tag = "Logs"
+)]
 pub async fn stream_guild_logs(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(guild_id): Path<String>,
-) -> Result<Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>>, ApiError> {
+) -> Result<ApiEventStream, ApiError> {
     let identity = require_identity(&state, &headers).await?;
     ensure_log_scope_access(&state, &identity, &guild_id).await?;
     let receiver = log_sink::log_sink().subscribe();
@@ -107,5 +122,9 @@ pub async fn stream_guild_logs(
         }
     });
 
-    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
+    Ok(ApiEventStream(
+        Sse::new(stream)
+            .keep_alive(KeepAlive::default())
+            .into_response(),
+    ))
 }

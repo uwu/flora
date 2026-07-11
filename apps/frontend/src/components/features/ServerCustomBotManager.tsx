@@ -32,7 +32,7 @@ export function ServerCustomBotManager({ guildId }: { guildId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className='flex items-center gap-2'>
-          <Bot className='size-4' /> Server bot identity
+          <Bot className='size-4' /> Server Custom Bots
         </CardTitle>
         <CardDescription>
           Run this server&apos;s existing Flora deployment through a Discord application owned by
@@ -60,7 +60,7 @@ export function ServerCustomBotManager({ guildId }: { guildId: string }) {
               size='sm'
               disabled={remove.isPending}
               onClick={() => {
-                if (window.confirm('Remove this server bot and restore central @Flora?'))
+                if (window.confirm('Remove this Server Custom Bot and restore @Flora?'))
                   remove.mutate()
               }}
             >
@@ -79,7 +79,7 @@ export function ServerCustomBotManager({ guildId }: { guildId: string }) {
           />
           <Button type='submit' disabled={!token.trim() || save.isPending}>
             <KeyRound />{' '}
-            {save.isPending ? 'Validating…' : bot.data ? 'Replace token' : 'Use server bot'}
+            {save.isPending ? 'Validating…' : bot.data ? 'Replace token' : 'Use Server Custom Bot'}
           </Button>
         </form>
 
@@ -89,7 +89,7 @@ export function ServerCustomBotManager({ guildId }: { guildId: string }) {
         {bot.error && (
           <p className='text-sm text-muted-foreground'>
             {bot.error.message.includes('not enabled')
-              ? 'Server custom bots have not been enabled for this guild.'
+              ? 'Server Custom Bots have not been enabled for this server.'
               : bot.error.message}
           </p>
         )}

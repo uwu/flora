@@ -25,7 +25,7 @@ Deployments are replaced atomically. If the new script fails to load or does not
 access by default.
 
 The custom-bot feature asks the orchestrator with `feature: 'custom_bots'`. Redeploying the
-orchestrator immediately reconciles existing custom bot gateways, so removing a user from the
+orchestrator immediately reconciles existing User Bot gateways, so removing a user from the
 policy stops their bot isolates and Discord clients.
 
 Guild-owned bot identities use `feature: 'server_custom_bots'` and include the target guild in

@@ -16,7 +16,7 @@ use crate::{
         auth::{IdentityContext, ensure_guild_admin, require_identity},
         custom_bots::{ensure_feature_enabled, ensure_scope_owner},
         error::ApiError,
-        response::ApiJson,
+        response::{ApiEventStream, ApiJson},
     },
     state::AppState,
 };
@@ -37,7 +37,7 @@ async fn ensure_build_scope_access(
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(create_build_handler, get_build_handler),
+    paths(create_build_handler, get_build_handler, stream_build_logs_handler),
     components(schemas(CreateBuildResponse, BuildStatusResponse)),
     tags((name = "Builds", description = "Server-side build pipeline"))
 )]
@@ -227,14 +227,23 @@ pub async fn get_build_handler(
     })))
 }
 
-/// Stream build logs via SSE.
-///
-/// Note: Not documented in OpenAPI due to SSE response type limitations.
+/// Stream build logs via Server-Sent Events.
+#[utoipa::path(
+    get,
+    path = "/{build_id}/logs",
+    tag = "Builds",
+    summary = "Stream build logs",
+    description = "Streams build output as Server-Sent Events until the upstream build stream closes. The authenticated caller must have access to the build's guild or User Bot scope.",
+    params(("build_id" = String, Path, description = "Build ID")),
+    responses(
+        (status = 200, description = "Server-Sent Event stream containing build output", content_type = "text/event-stream")
+    )
+)]
 pub async fn stream_build_logs_handler(
     Path(build_id): Path<String>,
     State(state): State<AppState>,
     headers: HeaderMap,
-) -> Result<Response, ApiError> {
+) -> Result<ApiEventStream, ApiError> {
     let identity = require_identity(&state, &headers).await?;
 
     let build = state
@@ -260,10 +269,12 @@ pub async fn stream_build_logs_handler(
 
     let stream = response.bytes_stream();
 
-    Ok(Response::builder()
-        .header("content-type", "text/event-stream")
-        .header("cache-control", "no-cache")
-        .header("connection", "keep-alive")
-        .body(Body::from_stream(stream))
-        .unwrap())
+    Ok(ApiEventStream(
+        Response::builder()
+            .header("content-type", "text/event-stream")
+            .header("cache-control", "no-cache")
+            .header("connection", "keep-alive")
+            .body(Body::from_stream(stream))
+            .unwrap(),
+    ))
 }

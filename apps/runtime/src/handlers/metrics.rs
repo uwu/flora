@@ -24,6 +24,8 @@ pub struct MetricsApi;
 #[utoipa::path(
     get,
     path = "",
+    summary = "Get Prometheus metrics",
+    description = "Returns runtime metrics in Prometheus exposition format. Requires the configured operator bearer token and is intended for monitoring infrastructure.",
     responses(
         (status = 200, description = "Prometheus metrics", content_type = "text/plain"),
         (status = 401, description = "Operator bearer token required", body = crate::handlers::error::ErrorResponse),
@@ -48,6 +50,8 @@ pub async fn get_metrics(
 #[utoipa::path(
     get,
     path = "/json",
+    summary = "Get metrics as JSON",
+    description = "Returns the current runtime metrics snapshot as JSON. Requires the configured operator bearer token and is intended for operator diagnostics.",
     responses(
         (status = 200, description = "Metrics as JSON", body = metrics::MetricsSnapshot),
         (status = 401, description = "Operator bearer token required", body = crate::handlers::error::ErrorResponse),

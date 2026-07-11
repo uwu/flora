@@ -8,9 +8,9 @@ TypeScript CLI for flora runtime management.
 vp run build
 ```
 
-## Deploy a custom bot
+## Deploy a User Bot
 
-Use the custom bot ID shown in the Flora dashboard:
+Use the User Bot ID shown in the Flora dashboard:
 
 ```bash
 flora deploy --bot YOUR_CUSTOM_BOT_ID

@@ -45,10 +45,11 @@ export function CustomBotManager() {
     <Card>
       <CardHeader>
         <CardTitle className='flex items-center gap-2'>
-          <Bot className='size-4' /> Custom bots
+          <Bot className='size-4' /> User Bots
         </CardTitle>
         <CardDescription>
-          Run user-owned Discord bots with DMs, global commands, and isolated Flora deployments.
+          Run Discord bots owned by your account with DMs, global commands, and isolated Flora
+          deployments.
         </CardDescription>
       </CardHeader>
       <CardContent className='space-y-5'>
@@ -78,7 +79,7 @@ export function CustomBotManager() {
         {bots.error && (
           <p className='text-sm text-muted-foreground'>
             {bots.error.message.includes('not enabled')
-              ? 'Custom bots have not been enabled for your account.'
+              ? 'User Bots have not been enabled for your account.'
               : bots.error.message}
           </p>
         )}

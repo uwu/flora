@@ -34,7 +34,7 @@ const STARTER_FILES = {
   ]
 })
 
-console.log('custom bot loaded', customBot.id)
+console.log('User Bot loaded', customBot.id)
 `
 }
 
@@ -104,8 +104,8 @@ export function CustomBotEditorPage() {
   return (
     <>
       <Seo
-        title='Custom bot editor'
-        description='Edit and deploy a user-owned Flora bot.'
+        title='User Bot editor'
+        description='Edit and deploy a User Bot owned by your account.'
         path={`/bots/${botId}/editor`}
         noindex
       />
@@ -122,7 +122,7 @@ export function CustomBotEditorPage() {
               </Button>
               <Bot className='size-4' />
               <div className='min-w-0 flex-1'>
-                <p className='truncate text-sm font-medium'>Custom bot editor</p>
+                <p className='truncate text-sm font-medium'>User Bot editor</p>
                 {status && <p className='truncate text-xs text-muted-foreground'>{status}</p>}
               </div>
               <Button size='sm' onClick={() => void deploy()} disabled={deploying || !botId}>
