@@ -108,7 +108,11 @@ pub async fn rollback_deployment_handler(
         updated_at: now,
     };
 
-    if let Err(err) = state.runtime.deploy_guild_script(deployment.clone()).await {
+    if let Err(err) = state
+        .server_custom_bot_gateway
+        .deploy_guild_script(deployment.clone())
+        .await
+    {
         let error_message = Some(err.to_string());
         state
             .deployments

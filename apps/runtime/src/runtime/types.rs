@@ -31,6 +31,7 @@ pub(super) enum WorkerCommand {
     /// Deploy a guild's script (creates/replaces guild isolate).
     DeployGuild {
         deployment: Deployment,
+        rest: Arc<DiscordRest>,
         respond_to: oneshot::Sender<Result<(), AnyError>>,
     },
     /// Remove a guild's script runtime.
@@ -153,10 +154,15 @@ impl Worker {
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?
     }
 
-    pub(super) async fn deploy_guild(&self, deployment: Deployment) -> Result<(), AnyError> {
+    pub(super) async fn deploy_guild(
+        &self,
+        deployment: Deployment,
+        rest: Arc<DiscordRest>,
+    ) -> Result<(), AnyError> {
         let (tx, rx) = oneshot::channel();
         self.send_cmd(WorkerCommand::DeployGuild {
             deployment,
+            rest,
             respond_to: tx,
         })?;
         rx.await.map_err(|_| AnyError::msg("worker stopped"))?

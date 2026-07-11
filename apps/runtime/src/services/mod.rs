@@ -7,4 +7,5 @@ pub mod kv;
 pub mod orchestrator;
 pub mod scope_cache;
 pub mod secrets;
+pub mod server_custom_bots;
 pub mod tokens;

@@ -117,6 +117,16 @@ impl BotRuntime {
 
     /// Deploy a guild's script to the appropriate worker.
     pub async fn deploy_guild_script(&self, deployment: Deployment) -> Result<(), AnyError> {
+        self.deploy_guild_script_with_rest(deployment, self.rest.clone())
+            .await
+    }
+
+    /// Deploy a guild isolate using a guild-specific Discord identity.
+    pub async fn deploy_guild_script_with_rest(
+        &self,
+        deployment: Deployment,
+        rest: Arc<DiscordRest>,
+    ) -> Result<(), AnyError> {
         let guild_id = deployment.guild_id.clone();
         let (worker_idx, inserted_route) = {
             let mut routes = self.guild_routes.lock();
@@ -135,7 +145,9 @@ impl BotRuntime {
             worker_idx,
             "routing guild deployment to worker"
         );
-        let result = self.workers[worker_idx].deploy_guild(deployment).await;
+        let result = self.workers[worker_idx]
+            .deploy_guild(deployment, rest)
+            .await;
         if result.is_err() && inserted_route {
             let mut routes = self.guild_routes.lock();
             if routes.get(&guild_id).copied() == Some(worker_idx) {

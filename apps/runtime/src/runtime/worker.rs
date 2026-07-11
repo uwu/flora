@@ -166,7 +166,7 @@ fn worker_thread(
                             let _ = respond_to.send(result);
                         }
 
-                        WorkerCommand::DeployGuild { deployment, respond_to } => {
+                        WorkerCommand::DeployGuild { deployment, rest, respond_to } => {
                             let guild_id = deployment.guild_id.clone();
                             {
                                 let mut reg = cron_registry.lock();
@@ -174,7 +174,7 @@ fn worker_thread(
                             }
                             let result = deploy_guild_to_worker(
                                 &mut guild_runtimes,
-                                &http,
+                                &rest,
                                 &kv,
                                 &secrets,
                                 deployment,

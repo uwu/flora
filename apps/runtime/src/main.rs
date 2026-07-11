@@ -8,6 +8,7 @@ use flora::{
     handlers::create_router,
     layers::logger::LoggingMiddleware,
     runtime::BotRuntime,
+    server_custom_bot_gateway::ServerCustomBotGatewayManager,
     services::{
         auth::{AuthConfig, AuthService},
         build::BuildServiceClient,
@@ -16,6 +17,7 @@ use flora::{
         kv::KvService,
         orchestrator::ORCHESTRATOR_DEPLOYMENT_ID,
         secrets::SecretService,
+        server_custom_bots::ServerCustomBotService,
         tokens::TokenService,
     },
     state::AppState,
@@ -107,6 +109,8 @@ async fn main() -> Result<()> {
     let secret_service = SecretService::new(db_pool.clone(), config.secrets.master_key.clone())?;
     let custom_bot_service =
         CustomBotService::new(db_pool.clone(), config.secrets.master_key.clone())?;
+    let server_custom_bot_service =
+        ServerCustomBotService::new(db_pool.clone(), config.secrets.master_key.clone())?;
     let auth_task = cache_client.clone().init().await?;
     let auth_service = AuthService::new(
         AuthConfig {
@@ -181,6 +185,17 @@ async fn main() -> Result<()> {
     if let Err(err) = custom_bot_gateway.reconcile_all().await {
         error!("Failed to reconcile custom bots: {:?}", err);
     }
+    let server_custom_bot_gateway = ServerCustomBotGatewayManager::new(
+        runtime.clone(),
+        deployment_service.clone(),
+        server_custom_bot_service.clone(),
+        cache_client.clone(),
+        custom_bot_rest_timeout_ms,
+        custom_bot_guild_concurrency,
+    );
+    if let Err(err) = server_custom_bot_gateway.reconcile_all().await {
+        error!("Failed to reconcile server custom bots: {:?}", err);
+    }
 
     let intents = GatewayIntents::all();
 
@@ -191,6 +206,8 @@ async fn main() -> Result<()> {
         application_id: Arc::new(std::sync::RwLock::new(Some(app_info.id))),
         deployments: deployment_service.clone(),
         custom_bot_id: None,
+        bound_guild_id: None,
+        server_bot_guilds: server_custom_bot_gateway.registry(),
     });
 
     let mut client = Client::builder(token, intents)
@@ -202,6 +219,8 @@ async fn main() -> Result<()> {
         deployments: deployment_service.clone(),
         custom_bots: custom_bot_service,
         custom_bot_gateway,
+        server_custom_bots: server_custom_bot_service,
+        server_custom_bot_gateway,
         auth: auth_service.clone(),
         tokens: token_service.clone(),
         kv: kv_service.clone(),

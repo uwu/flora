@@ -214,7 +214,7 @@ pub async fn restore_runtime_deployment(
 ) -> Result<(), ApiError> {
     match previous_deployment {
         Some(deployment) => state
-            .runtime
+            .server_custom_bot_gateway
             .deploy_guild_script(deployment)
             .await
             .map_err(|err| {
@@ -406,7 +406,11 @@ pub async fn upsert_deployment_handler(
         updated_at: now,
     };
 
-    if let Err(err) = state.runtime.deploy_guild_script(deployment.clone()).await {
+    if let Err(err) = state
+        .server_custom_bot_gateway
+        .deploy_guild_script(deployment.clone())
+        .await
+    {
         let error_message = Some(err.to_string());
         state
             .deployments

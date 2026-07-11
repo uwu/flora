@@ -8,6 +8,7 @@ pub mod log_sink;
 pub mod metrics;
 pub mod ops;
 pub mod runtime;
+pub mod server_custom_bot_gateway;
 pub mod services;
 pub mod state;
 pub mod transpile;

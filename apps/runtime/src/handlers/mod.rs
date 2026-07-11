@@ -20,6 +20,7 @@ pub mod metrics;
 pub mod orchestrator;
 pub mod response;
 pub mod secrets;
+pub mod server_custom_bots;
 pub mod tokens;
 
 /// Build the top-level router with API routes and interactive docs.
@@ -30,6 +31,7 @@ pub fn create_router() -> Router<AppState> {
             (path = "/auth", api = auth::AuthApi),
             (path = "/builds", api = builds::BuildApi),
             (path = "/custom-bots", api = custom_bots::CustomBotsApi),
+            (path = "/server-custom-bots", api = server_custom_bots::ServerCustomBotsApi),
             (path = "/guilds", api = guilds::GuildApi),
             (path = "/tokens", api = tokens::TokenApi),
             (path = "/deployments", api = deployments::DeploymentApi),
@@ -52,6 +54,7 @@ pub fn create_router() -> Router<AppState> {
         .nest("/auth", auth::router())
         .nest("/builds", builds::router())
         .nest("/custom-bots", custom_bots::router())
+        .nest("/server-custom-bots", server_custom_bots::router())
         .nest("/guilds", guilds::router())
         .nest("/tokens", tokens::router())
         .nest("/deployments", deployments::router())

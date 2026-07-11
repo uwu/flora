@@ -1,6 +1,7 @@
 use crate::{
     bundler::{BundleLimits, DeploymentFile, SourceMapMode, bundle_files_with_sourcemap_mode},
     runtime::BotRuntime,
+    server_custom_bot_gateway::ServerBotGuildRegistry,
     services::deployments::{
         CreateDeploymentRevisionInput, Deployment, DeploymentActorType, DeploymentRevisionStatus,
         DeploymentService, DeploymentSource, DeploymentSourceMapFile,
@@ -26,6 +27,10 @@ pub struct DiscordHandler {
     pub deployments: DeploymentService,
     /// Present for a user-owned bot gateway; absent for the central @flora gateway.
     pub custom_bot_id: Option<String>,
+    /// Present for a guild-owned identity; events outside this guild are discarded.
+    pub bound_guild_id: Option<String>,
+    /// Guilds whose events are handled by a server-owned gateway instead of central @flora.
+    pub server_bot_guilds: ServerBotGuildRegistry,
 }
 
 impl DiscordHandler {
@@ -39,9 +44,16 @@ impl DiscordHandler {
             self.runtime
                 .dispatch_custom_bot_event(bot_id, event, payload)
                 .await
-        } else if guild_id.is_some() {
+        } else if let Some(guild_id) = guild_id {
+            if let Some(bound_guild_id) = self.bound_guild_id.as_deref() {
+                if guild_id != bound_guild_id {
+                    return;
+                }
+            } else if self.server_bot_guilds.contains(&guild_id) {
+                return;
+            }
             self.runtime
-                .dispatch_js_event(event, guild_id, payload)
+                .dispatch_js_event(event, Some(guild_id), payload)
                 .await
         } else {
             return;
@@ -68,8 +80,11 @@ impl EventHandler for DiscordHandler {
                 }
                 self.http.set_application_id(ready.application.id);
 
-                if self.custom_bot_id.is_none() {
+                if self.custom_bot_id.is_none() && self.bound_guild_id.is_none() {
                     for guild in &ready.guilds {
+                        if self.server_bot_guilds.contains(&guild.id.get().to_string()) {
+                            continue;
+                        }
                         if let Err(err) = self.bootstrap_default_script(guild.id).await {
                             error!(
                                 "failed to bootstrap default script for guild {}: {:?}",
@@ -96,9 +111,28 @@ impl EventHandler for DiscordHandler {
                     {
                         error!("dispatch_custom_bot_event (ready) error: {:?}", err);
                     }
-                } else if let Err(err) = self.runtime.dispatch_js_event("ready", None, value).await
-                {
-                    error!("dispatch_js_event (ready) error: {:?}", err);
+                } else if let Some(guild_id) = self.bound_guild_id.as_deref() {
+                    if let Err(err) = self
+                        .runtime
+                        .dispatch_js_event("ready", Some(guild_id.to_string()), value)
+                        .await
+                    {
+                        error!("dispatch_js_event (server ready) error: {:?}", err);
+                    }
+                } else {
+                    for guild in &ready.guilds {
+                        let guild_id = guild.id.get().to_string();
+                        if self.server_bot_guilds.contains(&guild_id) {
+                            continue;
+                        }
+                        if let Err(err) = self
+                            .runtime
+                            .dispatch_js_event("ready", Some(guild_id), value.clone())
+                            .await
+                        {
+                            error!("dispatch_js_event (ready) error: {:?}", err);
+                        }
+                    }
                 }
             }
             FullEvent::Message {
@@ -334,6 +368,8 @@ impl EventHandler for DiscordHandler {
             } => {
                 // Bootstrap a starter script when the bot joins a guild and no deployment exists yet.
                 if self.custom_bot_id.is_none()
+                    && self.bound_guild_id.is_none()
+                    && !self.server_bot_guilds.contains(&guild.id.get().to_string())
                     && let Err(err) = self.bootstrap_default_script(guild.id).await
                 {
                     error!(target: "flora:deployments", guild_id = guild.id.get(), ?err, "failed to bootstrap default script on guild create");

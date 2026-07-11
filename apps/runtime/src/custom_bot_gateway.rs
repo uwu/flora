@@ -90,6 +90,8 @@ impl CustomBotGatewayManager {
             application_id: Arc::new(std::sync::RwLock::new(Some(app_info.id))),
             deployments: self.deployments.clone(),
             custom_bot_id: Some(bot_id.to_string()),
+            bound_guild_id: None,
+            server_bot_guilds: Default::default(),
         });
         let intents = GatewayIntents::GUILDS
             | GatewayIntents::GUILD_MESSAGES

@@ -28,6 +28,23 @@ The custom-bot feature asks the orchestrator with `feature: 'custom_bots'`. Rede
 orchestrator immediately reconciles existing custom bot gateways, so removing a user from the
 policy stops their bot isolates and Discord clients.
 
+Guild-owned bot identities use `feature: 'server_custom_bots'` and include the target guild in
+metadata:
+
+```ts
+defineOrchestrator({
+  authorizeFeature({ feature, userId, metadata }) {
+    if (feature !== 'server_custom_bots') return false
+    return metadata?.guildId === '123456789012345678' && userId === '234567890123456789'
+  }
+})
+```
+
+A guild administrator supplies a token for a bot application they own. Flora encrypts the token,
+binds it to that guild, and runs the guild's existing deployment through that identity. DMs and
+events or REST operations for other guilds are rejected. Central `@Flora` stops handling the guild
+while the custom identity is active and resumes when the identity is removed or policy is revoked.
+
 ## Cron scheduler
 
 The runtime includes a per-worker cron scheduler that fires every second to check for due jobs. Cron jobs registered via `cron()` in scripts are:

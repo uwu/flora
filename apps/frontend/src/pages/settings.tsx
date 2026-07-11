@@ -1,4 +1,5 @@
 import { DashboardSidebar } from '@/components/sidebar/app-sidebar'
+import { ServerCustomBotManager } from '@/components/features/ServerCustomBotManager'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { useApp } from '@/contexts/AppContext'
 import { Seo } from '@/lib/seo'
@@ -32,8 +33,8 @@ export function Settings() {
               <div className='ml-auto' />
             </header>
             <div className='flex-1 overflow-y-auto p-4 md:p-6 lg:p-8'>
-              <div className='text-sm text-muted-foreground'>
-                Settings for guild {guildId ?? 'unknown'} coming soon.
+              <div className='mx-auto w-full max-w-4xl'>
+                {guildId && <ServerCustomBotManager guildId={guildId} />}
               </div>
             </div>
           </SidebarInset>
