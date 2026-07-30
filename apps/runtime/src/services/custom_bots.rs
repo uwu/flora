@@ -13,6 +13,10 @@ use uuid::Uuid;
 
 pub const CUSTOM_BOT_DEPLOYMENT_PREFIX: &str = "__flora_custom_bot__:";
 
+#[derive(Debug, thiserror::Error)]
+#[error("account already owns a User Bot")]
+pub struct UserBotLimitReached;
+
 pub fn custom_bot_deployment_id(bot_id: Uuid) -> String {
     format!("{CUSTOM_BOT_DEPLOYMENT_PREFIX}{bot_id}")
 }
@@ -75,6 +79,9 @@ impl CustomBotService {
         label: Option<String>,
         raw_token: &str,
     ) -> Result<CustomBot> {
+        if self.get_for_owner(owner_user_id).await?.is_some() {
+            return Err(UserBotLimitReached.into());
+        }
         let token_text = raw_token.trim();
         if token_text.is_empty() {
             return Err(eyre!("bot token cannot be empty"));
@@ -114,8 +121,31 @@ impl CustomBotService {
         .bind(nonce)
         .fetch_one(&self.db)
         .await
-        .context("store custom bot")?;
+        .map_err(|err| match err {
+            sqlx::Error::Database(database_err)
+                if database_err.code().as_deref() == Some("23505")
+                    && database_err.constraint() == Some("custom_bots_owner_user_id_unique") =>
+            {
+                UserBotLimitReached.into()
+            }
+            other => eyre!(other).wrap_err("store custom bot"),
+        })?;
         Ok(to_custom_bot(row))
+    }
+
+    pub async fn get_for_owner(&self, owner_user_id: &str) -> Result<Option<CustomBot>> {
+        let row = sqlx::query_as::<_, CustomBotRow>(
+            r#"
+            SELECT id, owner_user_id, label, bot_user_id, bot_username, application_id,
+                token_ciphertext, token_nonce, created_at, updated_at
+            FROM custom_bots
+            WHERE owner_user_id = $1
+            "#,
+        )
+        .bind(owner_user_id)
+        .fetch_optional(&self.db)
+        .await?;
+        Ok(row.map(to_custom_bot))
     }
 
     pub async fn list_for_owner(&self, owner_user_id: &str) -> Result<Vec<CustomBot>> {

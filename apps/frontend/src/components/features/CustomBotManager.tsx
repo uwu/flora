@@ -34,6 +34,7 @@ export function CustomBotManager() {
     mutationFn: customBotsApi.delete,
     onSuccess: () => queryClient.invalidateQueries({ queryKey })
   })
+  const hasBot = (bots.data?.length ?? 0) > 0
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault()
@@ -48,32 +49,38 @@ export function CustomBotManager() {
           <Bot className='size-4' /> User Bots
         </CardTitle>
         <CardDescription>
-          Run Discord bots owned by your account with DMs, global commands, and isolated Flora
-          deployments.
+          Run a Discord bot owned by your account with DMs, global commands, and an isolated Flora
+          deployment. One User Bot per account.
         </CardDescription>
       </CardHeader>
       <CardContent className='space-y-5'>
-        <form
-          className='grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]'
-          onSubmit={submit}
-        >
-          <Input
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
-            placeholder='Label (optional)'
-            autoComplete='off'
-          />
-          <Input
-            value={token}
-            onChange={(event) => setToken(event.target.value)}
-            placeholder='Discord bot token'
-            type='password'
-            autoComplete='off'
-          />
-          <Button type='submit' disabled={!token.trim() || createBot.isPending}>
-            <Plus /> {createBot.isPending ? 'Adding…' : 'Add bot'}
-          </Button>
-        </form>
+        {hasBot ? (
+          <p className='text-sm text-muted-foreground'>
+            Your account already has a User Bot. Delete it to create a new one.
+          </p>
+        ) : (
+          <form
+            className='grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]'
+            onSubmit={submit}
+          >
+            <Input
+              value={label}
+              onChange={(event) => setLabel(event.target.value)}
+              placeholder='Label (optional)'
+              autoComplete='off'
+            />
+            <Input
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              placeholder='Discord bot token'
+              type='password'
+              autoComplete='off'
+            />
+            <Button type='submit' disabled={!token.trim() || createBot.isPending}>
+              <Plus /> {createBot.isPending ? 'Adding…' : 'Add bot'}
+            </Button>
+          </form>
+        )}
 
         {createBot.error && <p className='text-sm text-destructive'>{createBot.error.message}</p>}
         {bots.error && (

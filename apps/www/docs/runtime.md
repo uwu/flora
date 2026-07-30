@@ -28,6 +28,10 @@ The custom-bot feature asks the orchestrator with `feature: 'custom_bots'`. Rede
 orchestrator immediately reconciles existing User Bot gateways, so removing a user from the
 policy stops their bot isolates and Discord clients.
 
+Each account may own one User Bot. Creating another is rejected until the existing bot is
+deleted. A guild may likewise configure one Server Custom Bot, and supplying a new token replaces
+the previous identity.
+
 Guild-owned bot identities use `feature: 'server_custom_bots'` and include the target guild in
 metadata:
 

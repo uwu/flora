@@ -324,7 +324,7 @@
       "post": {
         "tags": ["User Bots"],
         "summary": "Create a User Bot",
-        "description": "Validates a Discord bot token, encrypts it at rest, and creates a User Bot owned by the authenticated user. The plaintext token is never returned. A deployment must be uploaded separately before the gateway starts.",
+        "description": "Validates a Discord bot token, encrypts it at rest, and creates a User Bot owned by the authenticated user. Each account may own one User Bot; creating another returns a conflict error until the existing User Bot is deleted. The plaintext token is never returned. A deployment must be uploaded separately before the gateway starts.",
         "operationId": "create_custom_bot",
         "requestBody": {
           "content": {
@@ -343,6 +343,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CustomBotResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Account already owns a User Bot",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }

@@ -19,7 +19,10 @@ use crate::{
         response::ApiJson,
     },
     services::{
-        custom_bots::{CustomBot, custom_bot_deployment_id, custom_bot_id_from_deployment_id},
+        custom_bots::{
+            CustomBot, UserBotLimitReached, custom_bot_deployment_id,
+            custom_bot_id_from_deployment_id,
+        },
         deployments::{
             CreateDeploymentRevisionInput, Deployment, DeploymentActorType,
             DeploymentRevisionStatus, DeploymentService, DeploymentSourceMapFile,
@@ -216,9 +219,12 @@ pub async fn list_custom_bots(
     path = "/",
     tag = "User Bots",
     summary = "Create a User Bot",
-    description = "Validates a Discord bot token, encrypts it at rest, and creates a User Bot owned by the authenticated user. The plaintext token is never returned. A deployment must be uploaded separately before the gateway starts.",
+    description = "Validates a Discord bot token, encrypts it at rest, and creates a User Bot owned by the authenticated user. Each account may own one User Bot; creating another returns a conflict error until the existing User Bot is deleted. The plaintext token is never returned. A deployment must be uploaded separately before the gateway starts.",
     request_body = CreateCustomBotRequest,
-    responses((status = 200, description = "User Bot created", body = CustomBotResponse))
+    responses(
+        (status = 200, description = "User Bot created", body = CustomBotResponse),
+        (status = 409, description = "Account already owns a User Bot", body = crate::handlers::error::ErrorResponse)
+    )
 )]
 pub async fn create_custom_bot(
     State(state): State<AppState>,
@@ -230,7 +236,12 @@ pub async fn create_custom_bot(
         .custom_bots
         .create(&identity.user_id, request.label, &request.token)
         .await
-        .map_err(|err| ApiError::bad_request(err.to_string()))?;
+        .map_err(|err| match err.downcast_ref::<UserBotLimitReached>() {
+            Some(_) => ApiError::conflict(
+                "Your account already has a User Bot. Delete the existing User Bot before creating a new one",
+            ),
+            None => ApiError::bad_request(err.to_string()),
+        })?;
     Ok(ApiJson(Json(response(&state, bot).await?)))
 }
 

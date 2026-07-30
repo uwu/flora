@@ -115,6 +115,15 @@ impl ApiError {
         )
     }
 
+    pub fn conflict<M: Into<String>>(detail: M) -> Self {
+        Self::client(
+            StatusCode::CONFLICT,
+            "/problems/resource-conflict",
+            "Resource conflict",
+            detail,
+        )
+    }
+
     pub fn status(&self) -> StatusCode {
         self.status
     }
