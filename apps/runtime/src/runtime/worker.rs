@@ -420,7 +420,7 @@ async fn run_cron_tick(
 
     {
         let mut reg = cron_registry.lock();
-        for (_gid, jobs) in reg.jobs.iter_mut() {
+        for jobs in reg.jobs.values_mut() {
             for job in jobs.iter_mut() {
                 if job.next_run <= now {
                     if job.skip_if_running && job.is_running {
@@ -503,12 +503,10 @@ async fn dispatch_cron_into_runtime(
     let _secret_scope = SecretScope::enter(js_state.secrets.clone());
 
     let dispatch_fn = js_state
-        .dispatch_fn
-        .as_ref()
-        .ok_or_else(|| AnyError::msg("dispatch function not available"))?
-        .clone();
+        .clone_dispatch_fn()
+        .ok_or_else(|| AnyError::msg("dispatch function not available"))?;
 
-    let context = js_state.runtime().main_context();
+    let context = js_state.runtime_mut().main_context();
     let promise = {
         let mut v8_guard = js_state.runtime_mut().v8_guard();
         let isolate = v8_guard.isolate();
@@ -541,7 +539,7 @@ async fn dispatch_cron_into_runtime(
                 .await
                 .map_err(AnyError::from)?;
 
-            let context = js_state.runtime().main_context();
+            let context = js_state.runtime_mut().main_context();
             let mut v8_guard = js_state.runtime_mut().v8_guard();
             v8::scope_with_context!(scope, v8_guard.isolate(), &context);
             let promise = v8::Local::new(scope, &promise);
@@ -601,12 +599,7 @@ async fn initialize_worker_default(
     )
     .await?;
 
-    let context = runtime.runtime().main_context();
-    let mut v8_guard = runtime.runtime_mut().v8_guard();
-    runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(
-        &context,
-        v8_guard.isolate(),
-    )?);
+    runtime.dispatch_fn = Some(extract_dispatch_fn(&mut runtime)?);
 
     info!(target: "flora:runtime", worker_id, "Default runtime initialized");
     *default_runtime = Some(runtime);
@@ -666,12 +659,7 @@ pub(super) async fn deploy_guild_to_worker(
         )
         .await?;
 
-        {
-            let context = runtime.runtime().main_context();
-            let mut v8_guard = runtime.runtime_mut().v8_guard();
-            runtime.dispatch_fn =
-                Some(extract_dispatch_fn_no_enter_impl(&context, v8_guard.isolate())?);
-        }
+        runtime.dispatch_fn = Some(extract_dispatch_fn(&mut runtime)?);
 
         info!(target: "flora:runtime", worker_id, guild_id, path = SDK_BUNDLE_PATH, "Loading SDK bundle");
         load_script_source(
@@ -698,12 +686,7 @@ pub(super) async fn deploy_guild_to_worker(
         )
         .await?;
 
-        {
-            let context = runtime.runtime().main_context();
-            let mut v8_guard = runtime.runtime_mut().v8_guard();
-            runtime.dispatch_fn =
-                Some(extract_dispatch_fn_no_enter_impl(&context, v8_guard.isolate())?);
-        }
+        runtime.dispatch_fn = Some(extract_dispatch_fn(&mut runtime)?);
 
         Ok::<JsRuntimeState, AnyError>(runtime)
     }
@@ -777,14 +760,7 @@ async fn deploy_orchestrator_to_worker(
         )
         .await?;
 
-        {
-            let context = runtime.runtime().main_context();
-            let mut v8_guard = runtime.runtime_mut().v8_guard();
-            runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(
-                &context,
-                v8_guard.isolate(),
-            )?);
-        }
+        runtime.dispatch_fn = Some(extract_dispatch_fn(&mut runtime)?);
 
         load_script_source(
             runtime.runtime_mut(),
@@ -884,14 +860,7 @@ async fn deploy_custom_bot_to_worker(
         )
         .await?;
 
-        {
-            let context = runtime.runtime().main_context();
-            let mut v8_guard = runtime.runtime_mut().v8_guard();
-            runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(
-                &context,
-                v8_guard.isolate(),
-            )?);
-        }
+        runtime.dispatch_fn = Some(extract_dispatch_fn(&mut runtime)?);
 
         load_script_source(
             runtime.runtime_mut(),
@@ -918,14 +887,7 @@ async fn deploy_custom_bot_to_worker(
         )
         .await?;
 
-        {
-            let context = runtime.runtime().main_context();
-            let mut v8_guard = runtime.runtime_mut().v8_guard();
-            runtime.dispatch_fn = Some(extract_dispatch_fn_no_enter_impl(
-                &context,
-                v8_guard.isolate(),
-            )?);
-        }
+        runtime.dispatch_fn = Some(extract_dispatch_fn(&mut runtime)?);
         Ok::<JsRuntimeState, AnyError>(runtime)
     }
     .await;
@@ -955,8 +917,17 @@ async fn deploy_custom_bot_to_worker(
     }
 }
 
+fn extract_dispatch_fn(runtime: &mut JsRuntimeState) -> Result<Global<v8::Function>, AnyError> {
+    let context = runtime.runtime_mut().main_context();
+    let dispatch_fn = {
+        let mut v8_guard = runtime.runtime_mut().v8_guard();
+        extract_dispatch_fn_no_enter_impl(&context, v8_guard.isolate())?
+    };
+    Ok(dispatch_fn)
+}
+
 fn ensure_orchestrator_handler(runtime: &mut JsRuntimeState) -> Result<(), AnyError> {
-    let context = runtime.runtime().main_context();
+    let context = runtime.runtime_mut().main_context();
     let mut v8_guard = runtime.runtime_mut().v8_guard();
     v8::scope_with_context!(scope, v8_guard.isolate(), &context);
     let context = v8::Local::new(scope, &context);
@@ -981,7 +952,7 @@ async fn authorize_feature_in_runtime(
     limits: &RuntimeLimits,
 ) -> Result<bool, AnyError> {
     let _secret_scope = SecretScope::enter(runtime.secrets.clone());
-    let context = runtime.runtime().main_context();
+    let context = runtime.runtime_mut().main_context();
     let promise = {
         let mut v8_guard = runtime.runtime_mut().v8_guard();
         let isolate = v8_guard.isolate();
@@ -1012,7 +983,7 @@ async fn authorize_feature_in_runtime(
                 .await
                 .map_err(AnyError::from)?;
 
-            let context = runtime.runtime().main_context();
+            let context = runtime.runtime_mut().main_context();
             let mut v8_guard = runtime.runtime_mut().v8_guard();
             v8::scope_with_context!(scope, v8_guard.isolate(), &context);
             let promise = v8::Local::new(scope, &promise);
@@ -1071,11 +1042,7 @@ async fn load_runtime_secrets(
     result.map_err(|err| AnyError::msg(err.to_string()))
 }
 
-pub(super) fn drop_runtime_state(mut runtime: JsRuntimeState) {
-    let isolate = runtime.runtime_mut().v8_isolate();
-    if !isolate.is_current() {
-        unsafe { isolate.enter() };
-    }
+pub(super) fn drop_runtime_state(runtime: JsRuntimeState) {
     drop(runtime);
 }
 
@@ -1135,19 +1102,6 @@ async fn migrate_out_from_worker(
         return Err(AnyError::msg("guild runtime is not idle for migration"));
     }
 
-    #[cfg(debug_assertions)]
-    {
-        let isolate = runtime.runtime_mut().v8_isolate();
-        debug_assert!(
-            !isolate.is_current(),
-            "guild isolate still entered during migration"
-        );
-        debug_assert!(
-            !v8::Locker::is_locked(isolate),
-            "guild isolate locker still held during migration"
-        );
-    }
-
     info!(target: "flora:runtime", worker_id, guild_id, "migrated guild runtime out");
     Ok(MigrationEnvelope::new(runtime, cron_jobs))
 }
@@ -1160,7 +1114,7 @@ fn migrate_in_to_worker(
 ) -> Result<(), MigrationInFailure> {
     let (mut runtime, cron_jobs) = envelope.into_parts();
 
-    let context = runtime.runtime().main_context();
+    let context = runtime.runtime_mut().main_context();
     {
         let mut v8_guard = runtime.runtime_mut().v8_guard();
         v8::scope_with_context!(scope, v8_guard.isolate(), &context);
@@ -1251,12 +1205,10 @@ pub(super) async fn dispatch_into_runtime(
     let start = Instant::now();
     let _secret_scope = SecretScope::enter(js_state.secrets.clone());
     let dispatch_fn = js_state
-        .dispatch_fn
-        .as_ref()
-        .ok_or_else(|| AnyError::msg("Dispatch function not initialized"))?
-        .clone();
+        .clone_dispatch_fn()
+        .ok_or_else(|| AnyError::msg("Dispatch function not initialized"))?;
 
-    let context = js_state.runtime().main_context();
+    let context = js_state.runtime_mut().main_context();
     let (event_value, payload_value) = {
         let mut v8_guard = js_state.runtime_mut().v8_guard();
         let isolate = v8_guard.isolate();

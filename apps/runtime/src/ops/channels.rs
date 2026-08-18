@@ -29,7 +29,7 @@ pub struct RawCreateDm {
     pub user_id: String,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_create_dm(
     state: Rc<RefCell<OpState>>,
@@ -60,7 +60,7 @@ pub async fn op_create_dm(
     serde_json::to_value(channel).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_create_channel(
     state: Rc<RefCell<OpState>>,
@@ -102,7 +102,7 @@ pub struct RawEditChannel {
     pub reason: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_edit_channel(
     state: Rc<RefCell<OpState>>,
@@ -143,7 +143,7 @@ pub struct RawDeleteChannel {
     pub reason: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_delete_channel(
     state: Rc<RefCell<OpState>>,
@@ -184,7 +184,7 @@ pub struct RawCreateThread {
     pub reason: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_create_thread(
     state: Rc<RefCell<OpState>>,
@@ -229,7 +229,7 @@ pub struct RawCreateThreadFromMessage {
     pub reason: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_create_thread_from_message(
     state: Rc<RefCell<OpState>>,
@@ -273,7 +273,7 @@ pub struct RawThreadId {
     pub thread_id: String,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_join_thread(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawThreadId,
@@ -299,7 +299,7 @@ pub async fn op_join_thread(
     Ok(())
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_leave_thread(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawThreadId,
@@ -334,7 +334,7 @@ pub struct RawThreadMember {
     pub user_id: String,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_add_thread_member(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawThreadMember,
@@ -365,7 +365,7 @@ pub async fn op_add_thread_member(
     Ok(())
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_remove_thread_member(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawThreadMember,

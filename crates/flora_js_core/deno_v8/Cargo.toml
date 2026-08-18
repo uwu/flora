@@ -1,0 +1,26 @@
+[package]
+name = "deno_v8"
+version = "0.2.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/denoland/deno"
+description = "JavaScript engine facade for Deno"
+
+[lib]
+path = "lib.rs"
+test = false
+doctest = false
+bench = false
+
+[dependencies]
+rusty_v8 = { version = "=152.1.0", package = "v8", default-features = false, optional = true }
+
+[features]
+default = ["v8"]
+v8 = ["dep:rusty_v8"]
+quickjs = []
+simdutf = ["rusty_v8?/simdutf"]
+use_custom_libcxx = ["rusty_v8?/use_custom_libcxx"]
+v8_enable_pointer_compression = ["rusty_v8?/v8_enable_pointer_compression"]
+v8_enable_sandbox = ["rusty_v8?/v8_enable_sandbox"]
+v8_enable_v8_checks = ["rusty_v8?/v8_enable_v8_checks"]

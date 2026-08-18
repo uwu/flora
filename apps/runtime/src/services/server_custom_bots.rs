@@ -4,7 +4,6 @@ use chacha20poly1305::{
 };
 use chrono::{DateTime, Utc};
 use color_eyre::eyre::{Context, Result, eyre};
-use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use serenity::{all::Token, http::Http};
 use sqlx::{FromRow, Pool, Postgres};
@@ -206,9 +205,10 @@ impl ServerCustomBotService {
     fn encrypt(&self, value: &str) -> Result<(Vec<u8>, Vec<u8>)> {
         let cipher = XChaCha20Poly1305::new(&self.key.into());
         let mut nonce = [0u8; 24];
-        rand::rngs::OsRng.fill_bytes(&mut nonce);
+        rand::fill(&mut nonce);
+        let cipher_nonce = XNonce::from(nonce);
         let ciphertext = cipher
-            .encrypt(XNonce::from_slice(&nonce), value.as_bytes())
+            .encrypt(&cipher_nonce, value.as_bytes())
             .context("encrypt server custom bot token")?;
         Ok((ciphertext, nonce.to_vec()))
     }
@@ -217,8 +217,9 @@ impl ServerCustomBotService {
         let nonce: [u8; 24] = nonce
             .try_into()
             .map_err(|_| eyre!("invalid bot token nonce"))?;
+        let nonce = XNonce::from(nonce);
         let plaintext = XChaCha20Poly1305::new(&self.key.into())
-            .decrypt(XNonce::from_slice(&nonce), ciphertext)
+            .decrypt(&nonce, ciphertext)
             .context("decrypt server custom bot token")?;
         String::from_utf8(plaintext).context("server custom bot token is not utf8")
     }

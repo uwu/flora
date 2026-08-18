@@ -5,7 +5,7 @@ use flora_macros::expose_input;
 use std::{cell::RefCell, rc::Rc};
 use t0x::T0x;
 
-#[op2(async)]
+#[op2]
 #[string]
 pub async fn op_kv_get(
     state: Rc<RefCell<OpState>>,
@@ -33,7 +33,7 @@ pub struct RawKvSetOptions {
     metadata: Option<serde_json::Value>,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_kv_set(
     state: Rc<RefCell<OpState>>,
     #[string] store_name: String,
@@ -56,7 +56,7 @@ pub async fn op_kv_set(
         .map_err(|e| JsErrorBox::generic(e.to_string()))
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_kv_delete(
     state: Rc<RefCell<OpState>>,
     #[string] store_name: String,
@@ -85,7 +85,7 @@ pub struct RawKvListKeysOptions {
     cursor: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_kv_list_keys(
     state: Rc<RefCell<OpState>>,
@@ -108,7 +108,7 @@ pub async fn op_kv_list_keys(
         .map_err(|e| JsErrorBox::generic(e.to_string()))
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_kv_get_with_metadata(
     state: Rc<RefCell<OpState>>,
@@ -127,7 +127,7 @@ pub async fn op_kv_get_with_metadata(
         .map_err(|e| JsErrorBox::generic(e.to_string()))
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_kv_update_metadata(
     state: Rc<RefCell<OpState>>,
     #[string] store_name: String,

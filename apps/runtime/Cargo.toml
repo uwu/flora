@@ -4,16 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-axum.workspace = true
-base64.workspace = true
-chacha20poly1305.workspace = true
-chrono.workspace = true
-color-eyre.workspace = true
-confique.workspace = true
+axum = { workspace = true, features = ["multipart"] }
+base64 = { workspace = true, features = ["alloc"] }
+chacha20poly1305 = { workspace = true, features = ["rand_core"] }
+chrono = { workspace = true, features = ["serde"] }
+color-eyre = { workspace = true, features = ["capture-spantrace", "issue-url"] }
+confique = { workspace = true, features = ["toml"] }
 cookie.workspace = true
 croner.workspace = true
 dashmap.workspace = true
-deno_core.workspace = true
 deno_error.workspace = true
 deno_fetch.workspace = true
 deno_net.workspace = true
@@ -24,8 +23,8 @@ deno_web.workspace = true
 deno_webidl.workspace = true
 dotenvy.workspace = true
 eyre.workspace = true
-flora_config = { path = "../../crates/flora_config" }
-flora_macros = { path = "../../crates/flora_macros" }
+flora_config.workspace = true
+flora_macros.workspace = true
 fred.workspace = true
 futures.workspace = true
 futures-util.workspace = true
@@ -33,38 +32,68 @@ hex.workspace = true
 hmac.workspace = true
 http.workspace = true
 num_cpus.workspace = true
-openssl.workspace = true
-oxc.workspace = true
+openssl = { workspace = true, features = ["vendored"] }
+oxc = { workspace = true, features = ["full", "oxc_regular_expression", "semantic", "transformer"] }
 oxc_sourcemap.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
-reqwest.workspace = true
-serde.workspace = true
+reqwest = { features = ["form", "json", "multipart", "stream"], version = "=0.13.4" }
+serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-serenity.workspace = true
 sha2.workspace = true
-rocksdb.workspace = true
-sqlx.workspace = true
-sys_traits.workspace = true
-t0x.workspace = true
+rocksdb = { workspace = true, features = ["bindgen-runtime"] }
+sqlx = { workspace = true, features = [
+  "chrono",
+  "macros",
+  "postgres",
+  "runtime-tokio",
+  "tls-rustls",
+  "uuid"
+] }
+sys_traits = { workspace = true, features = ["libc", "real"] }
+t0x = { workspace = true, features = ["serde-json-impl"] }
 t0x-macros.workspace = true
 thiserror.workspace = true
 time.workspace = true
-tokio.workspace = true
-tokio-stream.workspace = true
+tokio = { workspace = true, features = ["full"] }
+tokio-stream = { workspace = true, features = ["sync"] }
 static-serve.workspace = true
-tower-http.workspace = true
+tower-http = { workspace = true, features = ["compression-gzip", "fs", "timeout", "trace"] }
 tower-layer.workspace = true
 tower-service.workspace = true
 tracing.workspace = true
 tracing-error.workspace = true
-tracing-subscriber.workspace = true
+tracing-subscriber = { workspace = true, features = ["chrono", "env-filter", "serde", "time"] }
 url.workspace = true
 urlencoding.workspace = true
-utoipa.workspace = true
-utoipa-scalar.workspace = true
-uuid.workspace = true
+utoipa = { workspace = true, features = [
+  "auto_into_responses",
+  "axum_extras",
+  "chrono",
+  "config",
+  "debug",
+  "url",
+  "uuid"
+] }
+utoipa-scalar = { workspace = true, features = ["axum"] }
+uuid = { workspace = true, features = ["v4"] }
+clap.workspace = true
+proc-macro2.workspace = true
+quote.workspace = true
+serenity = { git = "https://github.com/serenity-rs/serenity", rev = "37b9f433ada8b9ccc5f93f04826403b175855f86", version = "0.12.5", default-features = false, features = [
+  "typesize",
+  "temp_cache",
+  "tokio_task_builder",
+  "transport_compression_zstd",
+  "rustls_backend"
+] }
+deno_core = { version = "=0.410.0", features = [
+  "reactor-tokio",
+  "unsafe_use_unprotected_platform",
+  "v8",
+  "v8_use_custom_libcxx"
+], default-features = false }
 
 [dev-dependencies]
-pg-embed = "0.7"
-tempfile = "3"
+pg-embed.workspace = true
+tempfile.workspace = true

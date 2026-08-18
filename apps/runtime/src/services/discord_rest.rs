@@ -1,5 +1,4 @@
 use dashmap::{DashMap, mapref::entry::Entry};
-use rand::Rng;
 use serenity::{Error as SerenityError, http::Http, model::id::GuildId};
 use std::{
     future::Future,
@@ -181,6 +180,6 @@ fn backoff_delay(retries: usize) -> Duration {
     let cap_ms = 2_000u64;
     let scale = 1u64.checked_shl(retries as u32).unwrap_or(u64::MAX);
     let max_ms = base_ms.saturating_mul(scale).min(cap_ms);
-    let jitter = rand::thread_rng().gen_range(0..=max_ms);
+    let jitter = rand::random_range(0..=max_ms);
     Duration::from_millis(jitter)
 }

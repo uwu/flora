@@ -2,14 +2,14 @@ use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
 use serenity::{
-    all::{CommandOptionType, CreateAttachment},
+    all::{AttachmentData, CommandOptionType, CreateAttachment},
     builder::{
         CreateCommand, CreateCommandOption, CreateInteractionResponse,
         CreateInteractionResponseFollowup, CreateInteractionResponseMessage,
         EditInteractionResponse,
     },
     http::Http,
-    model::{channel::MessageFlags, id::InteractionId},
+    model::id::InteractionId,
 };
 use std::{
     cell::RefCell,
@@ -23,7 +23,7 @@ use tracing::info;
 
 use super::message::{
     RawAllowedMentions, RawAttachment, RawEmbed, build_allowed_mentions, build_attachment,
-    build_embed,
+    build_embed, parse_message_flags,
 };
 use super::{
     authz::{ensure_guild_scope, runtime_guild_id_from_state},
@@ -123,7 +123,7 @@ impl CommandHashCache {
     }
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_send_interaction_response(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawInteractionResponse,
@@ -174,7 +174,7 @@ pub struct RawDeferInteractionResponse {
     pub ephemeral: Option<bool>,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_defer_interaction_response(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawDeferInteractionResponse,
@@ -237,7 +237,7 @@ pub struct RawUpdateInteractionResponse {
     pub flags: Option<u64>,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_update_interaction_response(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawUpdateInteractionResponse,
@@ -295,7 +295,7 @@ pub struct RawEditInteractionResponse {
     pub flags: Option<u64>,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_edit_original_interaction_response(
     state: Rc<RefCell<OpState>>,
@@ -337,7 +337,7 @@ pub struct RawDeleteInteractionResponse {
     pub token: String,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_delete_original_interaction_response(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawDeleteInteractionResponse,
@@ -385,7 +385,7 @@ pub struct RawFollowupMessage {
     pub flags: Option<u64>,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_create_followup_message(
     state: Rc<RefCell<OpState>>,
@@ -403,7 +403,7 @@ pub async fn op_create_followup_message(
     serde_json::to_value(message).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_edit_followup_message(
     state: Rc<RefCell<OpState>>,
@@ -439,7 +439,7 @@ pub struct RawDeleteFollowupMessage {
     pub message_id: String,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_delete_followup_message(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawDeleteFollowupMessage,
@@ -458,7 +458,7 @@ pub async fn op_delete_followup_message(
     Ok(())
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_upsert_guild_commands(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawUpsertGuildCommands,
@@ -538,7 +538,7 @@ pub async fn op_upsert_guild_commands(
     }
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_upsert_global_commands(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawUpsertGlobalCommands,
@@ -626,7 +626,7 @@ fn parse_interaction_id(value: &str) -> Result<u64, FloraError> {
 pub(crate) struct BuiltInteractionResponse {
     pub message: CreateInteractionResponseMessage<'static>,
     pub token: String,
-    pub files: Vec<CreateAttachment<'static>>,
+    pub files: Vec<AttachmentData<'static>>,
 }
 
 pub(crate) async fn build_interaction_response(
@@ -675,7 +675,7 @@ pub(crate) async fn build_interaction_response(
     }
 
     if let Some(flags) = args.flags {
-        message = message.flags(MessageFlags::from_bits_truncate(flags));
+        message = message.flags(parse_message_flags(flags)?);
     }
 
     if let Some(attachments) = args.attachments {
@@ -684,7 +684,7 @@ pub(crate) async fn build_interaction_response(
             files.push(build_attachment(http, attachment).await?);
         }
         has_attachments = !files.is_empty();
-        upload_files = files.clone();
+        upload_files = attachment_data(&files);
         message = message.add_files(files);
     }
 
@@ -704,7 +704,7 @@ pub(crate) async fn build_interaction_response(
 pub(crate) struct BuiltInteractionUpdate {
     pub message: CreateInteractionResponseMessage<'static>,
     pub token: String,
-    pub files: Vec<CreateAttachment<'static>>,
+    pub files: Vec<AttachmentData<'static>>,
 }
 
 pub(crate) async fn build_interaction_update(
@@ -747,7 +747,7 @@ pub(crate) async fn build_interaction_update(
     }
 
     if let Some(flags) = args.flags {
-        message = message.flags(MessageFlags::from_bits_truncate(flags));
+        message = message.flags(parse_message_flags(flags)?);
     }
 
     if let Some(attachments) = args.attachments {
@@ -756,7 +756,7 @@ pub(crate) async fn build_interaction_update(
             files.push(build_attachment(http, attachment).await?);
         }
         has_attachments = !files.is_empty();
-        upload_files = files.clone();
+        upload_files = attachment_data(&files);
         message = message.add_files(files);
     }
 
@@ -776,7 +776,7 @@ pub(crate) async fn build_interaction_update(
 pub(crate) struct BuiltEditInteractionResponse {
     pub message: EditInteractionResponse<'static>,
     pub token: String,
-    pub files: Vec<CreateAttachment<'static>>,
+    pub files: Vec<AttachmentData<'static>>,
 }
 
 pub(crate) async fn build_edit_interaction_response(
@@ -813,7 +813,7 @@ pub(crate) async fn build_edit_interaction_response(
     }
 
     if let Some(flags) = args.flags {
-        message = message.flags(MessageFlags::from_bits_truncate(flags));
+        message = message.flags(parse_message_flags(flags)?);
         has_payload = true;
     }
 
@@ -822,7 +822,7 @@ pub(crate) async fn build_edit_interaction_response(
         for attachment in attachments {
             files.push(build_attachment(http, attachment).await?);
         }
-        upload_files = files.clone();
+        upload_files = attachment_data(&files);
         let mut edit = serenity::builder::EditAttachments::new();
         for file in files {
             edit = edit.add(file);
@@ -847,7 +847,7 @@ pub(crate) async fn build_edit_interaction_response(
 pub(crate) struct BuiltFollowupMessage {
     pub message: CreateInteractionResponseFollowup<'static>,
     pub token: String,
-    pub files: Vec<CreateAttachment<'static>>,
+    pub files: Vec<AttachmentData<'static>>,
 }
 
 pub(crate) async fn build_followup_message(
@@ -890,7 +890,7 @@ pub(crate) async fn build_followup_message(
     }
 
     if let Some(flags) = args.flags {
-        message = message.flags(MessageFlags::from_bits_truncate(flags));
+        message = message.flags(parse_message_flags(flags)?);
     }
 
     if let Some(attachments) = args.attachments {
@@ -899,7 +899,7 @@ pub(crate) async fn build_followup_message(
             files.push(build_attachment(http, attachment).await?);
         }
         has_attachments = !files.is_empty();
-        upload_files = files.clone();
+        upload_files = attachment_data(&files);
         message = message.add_files(files);
     }
 
@@ -914,6 +914,10 @@ pub(crate) async fn build_followup_message(
         token: args.token,
         files: upload_files,
     })
+}
+
+fn attachment_data(files: &[CreateAttachment<'static>]) -> Vec<AttachmentData<'static>> {
+    files.iter().cloned().map(Into::into).collect()
 }
 
 #[cfg(test)]

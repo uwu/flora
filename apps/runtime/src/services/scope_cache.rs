@@ -200,12 +200,7 @@ impl ScopeCache {
 
         let now = Instant::now();
         let mut expired_keys = Vec::new();
-        let mut scanned = 0usize;
-        for entry in self.l1.iter() {
-            if scanned >= L1_EXPIRE_SCAN_LIMIT {
-                break;
-            }
-            scanned += 1;
+        for entry in self.l1.iter().take(L1_EXPIRE_SCAN_LIMIT) {
             if entry.value().expires_at <= now {
                 expired_keys.push(*entry.key());
             }

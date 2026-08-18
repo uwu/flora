@@ -8,6 +8,8 @@
 //! 3. Multiple instances can be created sequentially (e.g., in tests) as long as
 //!    they share the same V8 platform initialized once at process startup
 //!    See: https://docs.rs/deno_core/latest/deno_core/struct.JsRuntime.html
+//! 4. Flora enables Deno Core's unprotected-platform feature because Locker
+//!    runtimes are created on one OS thread and may be used or disposed on another.
 //!
 //! Without this, creating multiple instances sequentially causes segfaults
 //! because V8 cannot be reinitialized after disposal.
@@ -22,6 +24,6 @@ static INIT_V8: Once = Once::new();
 /// Safe to call multiple times - only the first call has any effect.
 pub fn init() {
     INIT_V8.call_once(|| {
-        deno_core::JsRuntime::init_platform(None, false);
+        deno_core::JsRuntime::init_platform(None);
     });
 }

@@ -363,6 +363,8 @@ pub(super) struct MigrationEnvelope {
     cron_jobs: Vec<CronJob>,
 }
 
+// SAFETY: every Flora runtime uses a SharedIsolate, and migration transfers
+// exclusive ownership only after the source worker has quiesced it.
 unsafe impl Send for MigrationEnvelope {}
 
 impl MigrationEnvelope {
@@ -412,11 +414,17 @@ impl Drop for JsRuntimeState {
 }
 
 impl JsRuntimeState {
-    pub(super) fn runtime(&self) -> &JsRuntime {
-        &self.runtime
-    }
-
     pub(super) fn runtime_mut(&mut self) -> &mut JsRuntime {
         &mut self.runtime
+    }
+
+    pub(super) fn clone_dispatch_fn(&mut self) -> Option<Global<v8::Function>> {
+        let Self {
+            runtime,
+            dispatch_fn,
+            ..
+        } = self;
+        let _guard = runtime.v8_guard();
+        dispatch_fn.as_ref().cloned()
     }
 }

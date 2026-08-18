@@ -1,6 +1,6 @@
 use super::message::{
     RawAllowedMentions, RawAttachment, RawEmbed, build_allowed_mentions, build_attachment,
-    build_embed,
+    build_embed, parse_message_flags,
 };
 use super::{
     authz::{ensure_thread_scope, ensure_webhook_scope, runtime_guild_id_from_state},
@@ -11,6 +11,7 @@ use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 use flora_macros::expose_input;
 use serenity::{
+    all::AttachmentData,
     builder::ExecuteWebhook,
     model::id::{ThreadId, WebhookId},
 };
@@ -54,7 +55,7 @@ pub struct RawExecuteWebhook {
     pub thread_name: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_execute_webhook(
     state: Rc<RefCell<OpState>>,
@@ -117,21 +118,21 @@ pub async fn op_execute_webhook(
         message = message.allowed_mentions(build_allowed_mentions(mentions));
     }
     if let Some(flags) = args.flags {
-        message = message.flags(serenity::model::channel::MessageFlags::from_bits_truncate(
-            flags,
-        ));
+        message = message.flags(parse_message_flags(flags)?);
     }
     if let Some(thread_name) = args.thread_name {
         message = message.thread_name(thread_name.into());
     }
 
-    let mut files = Vec::new();
+    let mut files: Vec<AttachmentData<'static>> = Vec::new();
     if let Some(attachments) = args.attachments {
+        let mut create_attachments = Vec::with_capacity(attachments.len());
         for attachment in attachments {
-            files.push(build_attachment(rest.http(), attachment).await?);
+            create_attachments.push(build_attachment(rest.http(), attachment).await?);
         }
-        has_attachments = !files.is_empty();
-        message = message.files(files.clone());
+        has_attachments = !create_attachments.is_empty();
+        files = create_attachments.iter().cloned().map(Into::into).collect();
+        message = message.files(create_attachments);
     }
 
     if !has_content && !has_embeds && !has_attachments && !has_components {
@@ -184,7 +185,7 @@ pub struct RawEditWebhook {
     pub reason: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_edit_webhook(
     state: Rc<RefCell<OpState>>,
@@ -238,7 +239,7 @@ pub struct RawDeleteWebhook {
     pub reason: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_delete_webhook(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawDeleteWebhook,

@@ -1,6 +1,32 @@
+use std::{
+    collections::HashMap,
+    net::TcpListener,
+    path::PathBuf,
+    sync::{Arc, mpsc},
+    thread,
+    time::Duration,
+};
+
+use chrono::Utc;
+use deno_core::{PollEventLoopOptions, v8};
+use fred::prelude::Builder;
+use parking_lot::Mutex;
+use pg_embed::{
+    pg_access::PgAccess,
+    pg_enums::PgAuthMethod,
+    pg_errors::Error as PgEmbedError,
+    pg_fetch::{PG_V13, PgFetchSettings},
+    postgres::{PgEmbed, PgSettings},
+};
+use serde_json::json;
+use serenity::{http::Http, secrets::Token};
+use sqlx::postgres::PgPoolOptions;
+use uuid::Uuid;
+
 use super::{
+    js::new_js_runtime,
     limits::RuntimeLimits,
-    types::JsRuntimeState,
+    types::{JsRuntimeState, MigrationEnvelope},
     worker::{deploy_guild_to_worker, dispatch_into_runtime, drop_runtime_state},
 };
 use crate::{
@@ -10,24 +36,8 @@ use crate::{
         discord_rest::{DiscordRest, RestConfig},
         kv::KvService,
         scope_cache::ScopeCache,
-        secrets::SecretService,
+        secrets::{SecretService, SecretsRuntimeData},
     },
-};
-use chrono::Utc;
-use fred::prelude::Builder;
-use parking_lot::Mutex;
-use serde_json::json;
-use serenity::{http::Http, secrets::Token};
-use sqlx::postgres::PgPoolOptions;
-use std::{collections::HashMap, net::TcpListener, path::PathBuf, sync::Arc, time::Duration};
-use uuid::Uuid;
-
-use pg_embed::{
-    pg_access::PgAccess,
-    pg_enums::PgAuthMethod,
-    pg_errors::PgEmbedErrorType,
-    pg_fetch::{PG_V13, PgFetchSettings},
-    postgres::{PgEmbed, PgSettings},
 };
 
 const GUILD_ID: &str = "guild-redeploy";
@@ -75,15 +85,15 @@ async fn create_embedded_postgres() -> PgEmbed {
         .await
         .expect("create embedded postgres");
     if let Err(err) = pg.setup().await {
-        match err.error_type {
-            PgEmbedErrorType::ReadFileError => {
+        match err {
+            PgEmbedError::ReadFileError(_) => {
                 PgAccess::purge().await.expect("purge pg-embed cache");
                 pg.setup()
                     .await
                     .expect("setup embedded postgres after purge");
             }
-            _ => {
-                panic!("setup embedded postgres: {err}");
+            other => {
+                panic!("setup embedded postgres: {other}");
             }
         }
     }
@@ -129,6 +139,135 @@ fn test_discord_rest(http: Arc<Http>) -> Arc<DiscordRest> {
         .expect("create cache pool");
     let scope_cache = ScopeCache::new(http.clone(), cache_pool);
     Arc::new(DiscordRest::new(http, scope_cache, RestConfig::default()))
+}
+
+fn test_locker_runtime() -> JsRuntimeState {
+    let db = PgPoolOptions::new()
+        .connect_lazy("postgres://flora:flora@localhost/flora")
+        .expect("create lazy database pool");
+    let kv_path = std::env::temp_dir().join(format!("flora-kv-{}", Uuid::new_v4()));
+    let kv = KvService::new(db, kv_path);
+    let http = Arc::new(Http::new(
+        Token::try_from("Bot locker.test.token").expect("token"),
+    ));
+    let rest = test_discord_rest(http);
+    let secrets = Arc::new(SecretsRuntimeData::default());
+    let cron_registry = Arc::new(Mutex::new(CronRegistry::new(4)));
+
+    new_js_runtime(
+        rest,
+        kv,
+        secrets,
+        Some("locker-test".to_string()),
+        cron_registry,
+    )
+}
+
+#[test]
+fn locker_runtime_constructs_with_flora_extensions() {
+    crate::v8_init::init();
+
+    thread::spawn(|| {
+        let tokio_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("create Tokio runtime");
+        tokio_runtime.block_on(async {
+            let mut runtime = test_locker_runtime();
+            let result = runtime
+                .runtime_mut()
+                .execute_script("flora:locker_test", "globalThis.__lockerTest = true;")
+                .expect("execute script in Locker runtime");
+            drop(result);
+            assert!(runtime.runtime_mut().is_idle_for_migration());
+            drop_runtime_state(runtime);
+        });
+    })
+    .join()
+    .expect("Locker runtime thread panicked");
+}
+
+#[test]
+fn migration_envelope_moves_runtime_between_os_threads() {
+    crate::v8_init::init();
+
+    let (sender, receiver) = mpsc::sync_channel(1);
+    let (done_sender, done_receiver) = mpsc::sync_channel(0);
+    let source = thread::spawn(move || {
+        let tokio_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("create source Tokio runtime");
+        tokio_runtime.block_on(async move {
+            let mut runtime = test_locker_runtime();
+            let result = runtime
+                .runtime_mut()
+                .execute_script(
+                    "flora:migration_source",
+                    "globalThis.__migrationValue = 41;",
+                )
+                .expect("initialize migration state");
+            drop(result);
+            assert!(runtime.runtime_mut().is_idle_for_migration());
+
+            let envelope = MigrationEnvelope::new(runtime, Vec::new());
+            match sender.send(envelope) {
+                Ok(()) => {}
+                Err(error) => {
+                    drop(error);
+                    panic!("destination migration thread stopped");
+                }
+            }
+
+            done_receiver
+                .recv()
+                .expect("destination migration thread stopped");
+        });
+    });
+
+    let destination = thread::spawn(move || {
+        let tokio_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("create destination Tokio runtime");
+        tokio_runtime.block_on(async move {
+            let envelope = receiver.recv().expect("receive migration envelope");
+            let (mut runtime, cron_jobs) = envelope.into_parts();
+            assert!(cron_jobs.is_empty());
+
+            runtime
+                .runtime_mut()
+                .run_event_loop(PollEventLoopOptions::default())
+                .await
+                .expect("run event loop after migration");
+            let result = runtime
+                .runtime_mut()
+                .execute_script(
+                    "flora:migration_destination",
+                    "globalThis.__migrationValue + 1",
+                )
+                .expect("execute after migration");
+            let context = runtime.runtime_mut().main_context();
+            let value = {
+                let mut v8_guard = runtime.runtime_mut().v8_guard();
+                v8::scope_with_context!(scope, v8_guard.isolate(), &context);
+                let local = v8::Local::new(scope, &result);
+                let value = local.int32_value(scope).expect("read migration value");
+                drop(result);
+                value
+            };
+            assert_eq!(value, 42);
+            drop_runtime_state(runtime);
+            done_sender
+                .send(())
+                .expect("source migration thread stopped");
+        });
+    });
+
+    source.join().expect("source migration thread panicked");
+    destination
+        .join()
+        .expect("destination migration thread panicked");
 }
 
 fn make_deployment(iteration: usize) -> Deployment {

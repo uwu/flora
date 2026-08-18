@@ -677,7 +677,7 @@ impl KvService {
             return Ok(());
         }
 
-        backups.sort_by(|(left, _), (right, _)| left.cmp(right));
+        backups.sort_by_key(|(created_at, _)| *created_at);
         let remove_count = backups.len().saturating_sub(keep);
         for (_, path) in backups.into_iter().take(remove_count) {
             fs::remove_dir_all(path)?;

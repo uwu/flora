@@ -24,7 +24,7 @@ pub struct RawCreateGuildCommand {
     pub command: RawSlashCommand,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_create_guild_command(
     state: Rc<RefCell<OpState>>,
@@ -61,7 +61,7 @@ pub struct RawEditGuildCommand {
     pub command: RawSlashCommand,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_edit_guild_command(
     state: Rc<RefCell<OpState>>,
@@ -104,7 +104,7 @@ pub struct RawDeleteGuildCommand {
     pub command_id: String,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_delete_guild_command(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawDeleteGuildCommand,
@@ -140,7 +140,7 @@ pub struct RawGetGuildCommand {
     pub command_id: String,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_get_guild_commands(
     state: Rc<RefCell<OpState>>,
@@ -170,7 +170,7 @@ pub async fn op_get_guild_commands(
         .collect()
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_get_guild_command(
     state: Rc<RefCell<OpState>>,
@@ -213,7 +213,7 @@ pub struct RawCommandPermissions {
     pub permissions: serde_json::Value,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_edit_guild_command_permissions(
     state: Rc<RefCell<OpState>>,
@@ -254,7 +254,7 @@ pub struct RawGuildId {
     pub guild_id: String,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_get_guild_command_permissions(
     state: Rc<RefCell<OpState>>,
@@ -289,7 +289,7 @@ pub async fn op_get_guild_command_permissions(
     serde_json::to_value(permissions).map_err(|err| JsErrorBox::generic(err.to_string()))
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_get_guild_commands_permissions(
     state: Rc<RefCell<OpState>>,

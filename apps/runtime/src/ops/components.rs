@@ -6,10 +6,10 @@ use serenity::builder::{
     CreateFile, CreateFileUpload, CreateInputText, CreateLabel, CreateMediaGallery,
     CreateMediaGalleryItem, CreateSection, CreateSectionAccessory, CreateSectionComponent,
     CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, CreateSeparator,
-    CreateTextDisplay, CreateThumbnail, CreateUnfurledMediaItem, Spacing,
+    CreateTextDisplay, CreateThumbnail, CreateUnfurledMediaItem,
 };
 use serenity::model::Colour;
-use serenity::model::application::{ButtonStyle, InputTextStyle};
+use serenity::model::application::{ButtonStyle, InputTextStyle, SeparatorSpacingSize};
 use serenity::model::channel::ChannelType;
 use serenity::model::id::{GenericChannelId, RoleId, SkuId, UserId};
 use serenity::model::prelude::ReactionType;
@@ -479,15 +479,15 @@ enum RawSpacing {
 fn parse_separator(value: Value) -> Result<CreateSeparator, JsErrorBox> {
     let raw: RawSeparator =
         serde_json::from_value(value).map_err(|err| JsErrorBox::generic(err.to_string()))?;
-    let mut separator = CreateSeparator::new(raw.divider);
+    let mut separator = CreateSeparator::new().divider(raw.divider);
     if let Some(spacing) = raw.spacing {
         let spacing = match spacing {
-            RawSpacing::Number(1) => Spacing::Small,
-            RawSpacing::Number(2) => Spacing::Large,
-            RawSpacing::Number(other) => Spacing::Unknown(other),
+            RawSpacing::Number(1) => SeparatorSpacingSize::Small,
+            RawSpacing::Number(2) => SeparatorSpacingSize::Large,
+            RawSpacing::Number(other) => SeparatorSpacingSize::Unknown(other),
             RawSpacing::Text(text) => match text.as_str() {
-                "small" => Spacing::Small,
-                "large" => Spacing::Large,
+                "small" => SeparatorSpacingSize::Small,
+                "large" => SeparatorSpacingSize::Large,
                 _ => return Err(JsErrorBox::generic("Invalid separator spacing")),
             },
         };

@@ -363,9 +363,7 @@ impl EventHandler for DiscordHandler {
             FullEvent::ThreadDelete { thread, .. } => {
                 self.rest.scope_cache().invalidate_thread(thread.id).await;
             }
-            FullEvent::GuildCreate {
-                guild, is_new: _, ..
-            } => {
+            FullEvent::GuildCreate { guild, .. } => {
                 // Bootstrap a starter script when the bot joins a guild and no deployment exists yet.
                 if self.custom_bot_id.is_none()
                     && self.bound_guild_id.is_none()

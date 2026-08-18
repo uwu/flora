@@ -7,8 +7,8 @@ use fred::{
     prelude::*,
     types::{ConnectHandle, Expiration},
 };
-use hmac::{Hmac, Mac};
-use rand::{Rng, distributions::Alphanumeric};
+use hmac::{Hmac, KeyInit, Mac};
+use rand::distr::{Alphanumeric, SampleString};
 use reqwest::Client as HttpClient;
 use sha2::Sha256;
 use std::sync::Arc;
@@ -388,11 +388,7 @@ impl AuthService {
     }
 
     fn random_token(&self, len: usize) -> String {
-        rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(len)
-            .map(char::from)
-            .collect()
+        Alphanumeric.sample_string(&mut rand::rng(), len)
     }
 
     fn sign_session_token(&self, session_id: &str) -> Result<String> {

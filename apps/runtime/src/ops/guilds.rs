@@ -21,7 +21,7 @@ pub struct RawGuildUser {
     pub reason: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_kick_member(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawGuildUser,
@@ -63,7 +63,7 @@ pub struct RawBanMember {
     pub reason: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_ban_member(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawBanMember,
@@ -92,7 +92,7 @@ pub async fn op_ban_member(
     Ok(())
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_unban_member(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawGuildUser,
@@ -130,7 +130,7 @@ pub struct RawMemberRole {
     pub reason: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_add_member_role(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawMemberRole,
@@ -164,7 +164,7 @@ pub async fn op_add_member_role(
     Ok(())
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_remove_member_role(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawMemberRole,
@@ -211,7 +211,7 @@ pub struct RawEditMember {
     pub reason: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_edit_member(
     state: Rc<RefCell<OpState>>,
@@ -254,7 +254,7 @@ pub struct RawEditCurrentMember {
     pub reason: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_edit_current_member(
     state: Rc<RefCell<OpState>>,
@@ -277,7 +277,7 @@ pub async fn op_edit_current_member(
             let payload = payload.clone();
             let reason = reason.clone();
             async move {
-                http.edit_member_me(guild_id, &payload, reason.as_deref())
+                http.edit_current_member(guild_id, &payload, reason.as_deref())
                     .await
             }
         })

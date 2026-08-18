@@ -4,9 +4,10 @@ use flora_config::RuntimeConfig;
 use oxc::{
     allocator::Allocator,
     ast::ast::{
-        BindingPattern, BindingPatternKind, Declaration, ExportAllDeclaration,
-        ExportDefaultDeclaration, ExportDefaultDeclarationKind, ExportNamedDeclaration,
-        ImportDeclaration, ImportDeclarationSpecifier, ImportOrExportKind, Statement,
+        BindingPattern, Declaration, ExportAllDeclaration, ExportDeclaration,
+        ExportDefaultDeclaration, ExportDefaultDeclarationKind, ExportFromDeclaration,
+        ExportNamedDeclaration, ImportDeclaration, ImportDeclarationSpecifier, ImportOrExportKind,
+        Statement,
     },
     codegen::{Codegen, Context, Gen},
     parser::Parser,
@@ -159,9 +160,9 @@ pub fn bundle_files_with_sourcemap_mode(
 
     let mut sourcemap = SourceMapBuilder::default();
     sourcemap.set_file(bundle_name);
-    for id in module_ids {
-        let module = modules.get(&id).expect("module missing");
-        sourcemap.add_source_and_content(&id, &module.source);
+    for id in &module_ids {
+        let module = modules.get(id).expect("module missing");
+        sourcemap.add_source_and_content(id, &module.source);
     }
     let sm = sourcemap.into_sourcemap();
     let source_map_path = format!("{bundle_name}.map");
@@ -246,9 +247,9 @@ fn transform_module(
     source_type = source_type.with_module(true);
     let parser = Parser::new(&allocator, source, source_type);
     let parsed = parser.parse();
-    if !parsed.errors.is_empty() {
+    if !parsed.diagnostics.is_empty() {
         let message = parsed
-            .errors
+            .diagnostics
             .iter()
             .map(|err| err.to_string())
             .collect::<Vec<_>>()
@@ -276,7 +277,13 @@ fn transform_module(
                 output.push_str(&render_import(decl, &resolved, counter));
             }
             Statement::ExportNamedDeclaration(decl) => {
-                output.push_str(&render_export_named(
+                output.push_str(&render_export_named(decl));
+            }
+            Statement::ExportDeclaration(decl) => {
+                output.push_str(&render_export_declaration(decl));
+            }
+            Statement::ExportFromDeclaration(decl) => {
+                output.push_str(&render_export_from(
                     decl,
                     path,
                     file_map,
@@ -380,8 +387,34 @@ fn render_import(decl: &ImportDeclaration<'_>, spec: &str, counter: usize) -> St
     out
 }
 
-fn render_export_named(
-    decl: &ExportNamedDeclaration<'_>,
+fn render_export_named(decl: &ExportNamedDeclaration<'_>) -> String {
+    if decl.export_kind == ImportOrExportKind::Type {
+        return String::new();
+    }
+
+    let mut out = String::new();
+    for specifier in &decl.specifiers {
+        if specifier.export_kind == ImportOrExportKind::Type {
+            continue;
+        }
+        let local = module_export_name(&specifier.local);
+        let exported = module_export_name(&specifier.exported);
+        out.push_str(&format!("exports.{exported} = {local};\n"));
+    }
+    out
+}
+
+fn render_export_declaration(decl: &ExportDeclaration<'_>) -> String {
+    let declaration = &decl.declaration;
+    let mut out = render_declaration(declaration);
+    for name in collect_declaration_names(declaration) {
+        out.push_str(&format!("exports.{name} = {name};\n"));
+    }
+    out
+}
+
+fn render_export_from(
+    decl: &ExportFromDeclaration<'_>,
     path: &str,
     file_map: &HashMap<String, String>,
     deps: &mut Vec<String>,
@@ -391,43 +424,19 @@ fn render_export_named(
         return Ok(String::new());
     }
 
-    let mut out = String::new();
-    if let Some(declaration) = &decl.declaration {
-        out.push_str(&render_declaration(declaration));
-        for name in collect_declaration_names(declaration) {
-            out.push_str(&format!("exports.{name} = {name};\n"));
-        }
-        return Ok(out);
-    }
-
-    if let Some(source) = &decl.source {
-        let spec = source.value.as_str().to_string();
-        let resolved = resolve_specifier(path, &spec, file_map)?;
-        deps.push(resolved.clone());
-        *counter += 1;
-        let module_ident = format!("__mod{counter}");
-        out.push_str(&format!(
-            "const {module_ident} = __require({});\n",
-            quote(&resolved)
-        ));
-        for specifier in &decl.specifiers {
-            if specifier.export_kind == ImportOrExportKind::Type {
-                continue;
-            }
-            let local = module_export_name(&specifier.local);
-            let exported = module_export_name(&specifier.exported);
-            out.push_str(&format!("exports.{exported} = {module_ident}.{local};\n"));
-        }
-        return Ok(out);
-    }
-
+    let spec = decl.source.value.as_str().to_string();
+    let resolved = resolve_specifier(path, &spec, file_map)?;
+    deps.push(resolved.clone());
+    *counter += 1;
+    let module_ident = format!("__mod{counter}");
+    let mut out = format!("const {module_ident} = __require({});\n", quote(&resolved));
     for specifier in &decl.specifiers {
         if specifier.export_kind == ImportOrExportKind::Type {
             continue;
         }
         let local = module_export_name(&specifier.local);
         let exported = module_export_name(&specifier.exported);
-        out.push_str(&format!("exports.{exported} = {local};\n"));
+        out.push_str(&format!("exports.{exported} = {module_ident}.{local};\n"));
     }
     Ok(out)
 }
@@ -527,11 +536,11 @@ fn collect_declaration_names(declaration: &Declaration<'_>) -> Vec<String> {
 }
 
 fn collect_binding_names(pattern: &BindingPattern<'_>, out: &mut Vec<String>) {
-    match &pattern.kind {
-        BindingPatternKind::BindingIdentifier(ident) => {
+    match pattern {
+        BindingPattern::BindingIdentifier(ident) => {
             out.push(ident.name.as_str().to_string());
         }
-        BindingPatternKind::ObjectPattern(obj) => {
+        BindingPattern::ObjectPattern(obj) => {
             for prop in obj.properties.iter() {
                 collect_binding_names(&prop.value, out);
             }
@@ -539,7 +548,7 @@ fn collect_binding_names(pattern: &BindingPattern<'_>, out: &mut Vec<String>) {
                 collect_binding_names(&rest.argument, out);
             }
         }
-        BindingPatternKind::ArrayPattern(arr) => {
+        BindingPattern::ArrayPattern(arr) => {
             for pat in arr.elements.iter().flatten() {
                 collect_binding_names(pat, out);
             }
@@ -547,7 +556,7 @@ fn collect_binding_names(pattern: &BindingPattern<'_>, out: &mut Vec<String>) {
                 collect_binding_names(&rest.argument, out);
             }
         }
-        BindingPatternKind::AssignmentPattern(assign) => {
+        BindingPattern::AssignmentPattern(assign) => {
             collect_binding_names(&assign.left, out);
         }
     }

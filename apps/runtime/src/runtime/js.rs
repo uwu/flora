@@ -243,8 +243,8 @@ pub(super) async fn terminate_runtime(
     worker_id: usize,
     stage: &'static str,
 ) {
-    let isolate = runtime.v8_isolate();
-    let ok = isolate.terminate_execution();
+    let isolate_handle = runtime.thread_safe_handle();
+    let ok = isolate_handle.terminate_execution();
     if !ok {
         error!(
             target: "flora:runtime",
@@ -261,7 +261,7 @@ pub(super) async fn terminate_runtime(
     )
     .await;
 
-    let ok = runtime.v8_isolate().cancel_terminate_execution();
+    let ok = isolate_handle.cancel_terminate_execution();
     if !ok {
         error!(
             target: "flora:runtime",
@@ -331,7 +331,6 @@ fn new_js_runtime_inner(
     cron_registry: SharedCronRegistry,
 ) -> JsRuntimeState {
     metrics().isolate_created();
-    let use_v8_locker = guild_id.is_some();
     let blob_store = Arc::new(deno_web::BlobStore::default());
     let broadcast_channel = deno_web::InMemoryBroadcastChannel::default();
     let descriptor_parser = Arc::new(RuntimePermissionDescriptorParser::new(RealSys));
@@ -351,7 +350,7 @@ fn new_js_runtime_inner(
         extensions: vec![
             deno_telemetry::deno_telemetry::init(),
             deno_webidl::deno_webidl::init(),
-            deno_web::deno_web::init(blob_store, None, broadcast_channel),
+            deno_web::deno_web::init(blob_store, None, false, broadcast_channel),
             deno_fetch::deno_fetch::init(deno_fetch::Options {
                 request_builder_hook: Some(secret_request_builder_hook),
                 ..Default::default()
@@ -368,7 +367,7 @@ fn new_js_runtime_inner(
             }
         })),
         module_loader: Some(Rc::new(FsModuleLoader)),
-        use_v8_locker,
+        use_v8_locker: true,
         ..Default::default()
     });
     runtime.op_state().borrow_mut().put(permissions);

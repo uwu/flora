@@ -205,7 +205,7 @@ pub fn op_log(state: &mut OpState, #[serde] args: Vec<serde_json::Value>) {
     );
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_send_message(
     state: Rc<RefCell<OpState>>,
@@ -262,7 +262,7 @@ pub async fn op_send_message(
     }
 
     if let Some(flags) = args.flags {
-        message = message.flags(MessageFlags::from_bits_truncate(flags));
+        message = message.flags(parse_message_flags(flags)?);
     }
 
     if let Some(message_id) = reply_to {
@@ -300,7 +300,7 @@ pub async fn op_send_message(
     to_json_value(created).map_err(Into::into)
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_edit_message(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawEditMessage,
@@ -348,7 +348,7 @@ pub async fn op_edit_message(
     }
 
     if let Some(flags) = args.flags {
-        message = message.flags(MessageFlags::from_bits_truncate(flags));
+        message = message.flags(parse_message_flags(flags)?);
         has_payload = true;
     }
 
@@ -388,7 +388,7 @@ pub struct RawDeleteMessage {
     pub message_id: String,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_delete_message(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawDeleteMessage,
@@ -435,7 +435,7 @@ pub struct RawBulkDeleteMessages {
     pub message_ids: Vec<String>,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_bulk_delete_messages(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawBulkDeleteMessages,
@@ -480,7 +480,7 @@ pub struct RawPinMessage {
     pub message_id: String,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_pin_message(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawPinMessage,
@@ -513,7 +513,7 @@ pub async fn op_pin_message(
     Ok(())
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_unpin_message(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawPinMessage,
@@ -555,7 +555,7 @@ pub struct RawCrosspostMessage {
     pub message_id: String,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_crosspost_message(
     state: Rc<RefCell<OpState>>,
@@ -599,7 +599,7 @@ pub struct RawFetchMessage {
     pub message_id: String,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_fetch_message(
     state: Rc<RefCell<OpState>>,
@@ -649,7 +649,7 @@ pub struct RawFetchMessages {
     pub around: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_fetch_messages(
     state: Rc<RefCell<OpState>>,
@@ -706,7 +706,7 @@ pub struct RawReaction {
     pub user_id: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_add_reaction(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawReaction,
@@ -743,7 +743,7 @@ pub async fn op_add_reaction(
     Ok(())
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_remove_reaction(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawReaction,
@@ -796,7 +796,7 @@ pub struct RawClearReactions {
     pub emoji: Option<String>,
 }
 
-#[op2(async)]
+#[op2]
 pub async fn op_clear_reactions(
     state: Rc<RefCell<OpState>>,
     #[serde] args: RawClearReactions,
@@ -887,6 +887,13 @@ pub(crate) fn build_allowed_mentions(input: RawAllowedMentions) -> CreateAllowed
     allowed
 }
 
+pub(crate) fn parse_message_flags(flags: u64) -> Result<MessageFlags, FloraError> {
+    let flags = u16::try_from(flags).map_err(|_| {
+        FloraError::invalid_input("flags", "must fit in an unsigned 16-bit integer")
+    })?;
+    Ok(MessageFlags::from_bits_truncate(flags))
+}
+
 pub(crate) fn build_embed(input: RawEmbed) -> Result<CreateEmbed<'static>, FloraError> {
     let mut embed = CreateEmbed::new();
 
@@ -926,13 +933,13 @@ pub(crate) fn build_embed(input: RawEmbed) -> Result<CreateEmbed<'static>, Flora
     if let Some(image) = input.image
         && let Some(url) = image.url
     {
-        embed = embed.image(url);
+        embed = embed.image(url, None);
     }
 
     if let Some(thumbnail) = input.thumbnail
         && let Some(url) = thumbnail.url
     {
-        embed = embed.thumbnail(url);
+        embed = embed.thumbnail(url, None);
     }
 
     if let Some(author) = input.author
@@ -958,7 +965,7 @@ pub(crate) fn build_embed(input: RawEmbed) -> Result<CreateEmbed<'static>, Flora
 }
 
 pub(crate) async fn build_attachment(
-    http: &Arc<Http>,
+    _http: &Arc<Http>,
     attachment: RawAttachment,
 ) -> Result<CreateAttachment<'static>, FloraError> {
     match attachment {
@@ -978,14 +985,9 @@ pub(crate) async fn build_attachment(
                     .filter(|name| !name.is_empty())
                     .unwrap_or_else(|| "attachment".to_string())
             });
-            let mut attachment =
-                serenity::builder::CreateAttachment::url(http, &url, resolved_name)
-                    .await
-                    .map_err(|err| FloraError::invalid_input("attachments", err.to_string()))?;
-
-            if let Some(filename) = filename {
-                attachment.filename = filename.into();
-            }
+            let mut attachment = serenity::builder::CreateAttachment::url(url, resolved_name)
+                .await
+                .map_err(|err| FloraError::invalid_input("attachments", err.to_string()))?;
             if let Some(description) = description {
                 attachment = attachment.description(description);
             }

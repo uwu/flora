@@ -168,10 +168,9 @@ async fn main() -> Result<()> {
     if let Some(orchestrator) = deployment_service
         .get_persisted_deployment(ORCHESTRATOR_DEPLOYMENT_ID)
         .await?
+        && let Err(err) = runtime.deploy_orchestrator_script(orchestrator).await
     {
-        if let Err(err) = runtime.deploy_orchestrator_script(orchestrator).await {
-            error!("Failed to load orchestrator deployment: {:?}", err);
-        }
+        error!("Failed to load orchestrator deployment: {:?}", err);
     }
 
     let custom_bot_gateway = CustomBotGatewayManager::new(

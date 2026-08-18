@@ -4,7 +4,6 @@ use chacha20poly1305::{
 };
 use color_eyre::eyre::{Context, Result};
 use hmac::{Hmac, Mac};
-use rand::{RngCore, rngs::OsRng};
 use serde::Serialize;
 use sha2::Sha256;
 use sqlx::{FromRow, Pool, Postgres};
@@ -66,10 +65,10 @@ impl SecretService {
     ) -> Result<SecretMetadata> {
         let cipher = XChaCha20Poly1305::new(&self.key_bytes.into());
         let mut nonce_bytes = [0u8; 24];
-        OsRng.fill_bytes(&mut nonce_bytes);
-        let nonce = XNonce::from_slice(&nonce_bytes);
+        rand::fill(&mut nonce_bytes);
+        let nonce = XNonce::from(nonce_bytes);
         let ciphertext = cipher
-            .encrypt(nonce, value.as_bytes())
+            .encrypt(&nonce, value.as_bytes())
             .context("encrypt secret")?;
 
         let id = Uuid::new_v4();
@@ -159,8 +158,8 @@ impl SecretService {
                 warn!(target: "flora:secrets", guild_id, name = row.name, "invalid nonce length");
                 continue;
             };
-            let nonce = XNonce::from_slice(&nonce_bytes);
-            let Ok(plaintext) = cipher.decrypt(nonce, row.ciphertext.as_ref()) else {
+            let nonce = XNonce::from(nonce_bytes);
+            let Ok(plaintext) = cipher.decrypt(&nonce, row.ciphertext.as_ref()) else {
                 warn!(target: "flora:secrets", guild_id, name = row.name, "failed to decrypt secret");
                 continue;
             };
@@ -189,7 +188,7 @@ impl SecretService {
 }
 
 pub fn build_placeholder(id: Uuid, key_bytes: &[u8; 32]) -> String {
-    let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(key_bytes).expect("hmac key");
+    let mut mac = <Hmac<Sha256> as hmac::KeyInit>::new_from_slice(key_bytes).expect("hmac key");
     mac.update(id.as_bytes());
     let tag = mac.finalize().into_bytes();
     let short = hex::encode(tag)[0..12].to_string();

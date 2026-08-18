@@ -1,5 +1,5 @@
 use color_eyre::eyre::Result;
-use rand::{Rng, distributions::Alphanumeric};
+use rand::distr::{Alphanumeric, SampleString};
 use sha2::{Digest, Sha256};
 use sqlx::{Pool, Postgres};
 
@@ -86,11 +86,7 @@ impl TokenService {
     }
 
     fn random_token(len: usize) -> String {
-        rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(len)
-            .map(char::from)
-            .collect()
+        Alphanumeric.sample_string(&mut rand::rng(), len)
     }
 
     fn hash(token: &str) -> Result<String> {

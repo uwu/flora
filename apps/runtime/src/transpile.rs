@@ -3,7 +3,7 @@ use deno_error::JsErrorBox;
 use oxc::{
     CompilerInterface,
     codegen::{CodegenOptions, CodegenReturn},
-    diagnostics::OxcDiagnostic,
+    diagnostics::Diagnostics,
     span::SourceType,
     transformer::TransformOptions,
 };
@@ -58,8 +58,8 @@ fn is_typescript_specifier(specifier: &str) -> bool {
 #[derive(Default)]
 struct TsCompiler {
     output: String,
-    source_map: Option<oxc_sourcemap::SourceMap>,
-    errors: Vec<OxcDiagnostic>,
+    source_map: Option<oxc_sourcemap::SourceMap<'static>>,
+    errors: Diagnostics,
     options: TransformOptions,
 }
 
@@ -81,7 +81,7 @@ impl TsCompiler {
 }
 
 impl CompilerInterface for TsCompiler {
-    fn handle_errors(&mut self, errors: Vec<OxcDiagnostic>) {
+    fn handle_errors(&mut self, errors: Diagnostics) {
         self.errors.extend(errors);
     }
 
@@ -97,8 +97,8 @@ impl CompilerInterface for TsCompiler {
         Some(CodegenOptions::default())
     }
 
-    fn after_codegen(&mut self, ret: CodegenReturn) {
+    fn after_codegen(&mut self, ret: CodegenReturn<'_>) {
         self.output = ret.code;
-        self.source_map = ret.map;
+        self.source_map = ret.map.map(|map| map.into_owned());
     }
 }

@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-flora = { path = "../../apps/runtime" }
-t0x.workspace = true
+flora.workspace = true
+t0x = { workspace = true, features = ["serde-json-impl"] }
