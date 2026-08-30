@@ -1,11 +1,93 @@
 import tag from './tag'
 
+/// Only on the official @flora bot
+const emojis = {
+  logo: '<:gh_github:1543528080424046663>',
+  star: '<:gh_star:1543528122719273083>',
+  fork: '<:gh_fork:1543528074526720062>',
+  issue: '<:gh_issue_open:1543528089626091561>',
+  issueClosed: '<:gh_issue_closed:1543528083649331250>',
+  skipped: '<:gh_issue_notplanned:1543528086451261470>',
+  pullRequest: '<:gh_pr_open:1543528120047378482>',
+  pullRequestClosed: '<:gh_pr_closed:1543528110916509736>',
+  draft: '<:gh_pr_draft:1543528114578006036>',
+  merged: '<:gh_pr_merged:1543528117245706331>',
+  comment: '<:gh_comment:1543528071422939258>',
+  label: '<:gh_label:1543528093858271302>'
+}
+
+const COLORS = {
+  repo: 0x2f81f7,
+  open: 0x3fb950,
+  closed: 0xa371f7,
+  notPlanned: 0x59636e,
+  merged: 0xa371f7,
+  closedPr: 0xf85149,
+  draft: 0x6e7681
+}
+
+// what comes after 6
+const MAX_LINKS = 6
+
+/// TODO: This is dumb as fuck AND I HATE MYSELF FUCKKKKKKKKKKKKKKKKKKK
+const addParts = <T>(parent: T, ...items: ComponentLike[]): T => {
+  const add = (parent as { addComponents?: unknown }).addComponents as
+    | ((...items: ComponentLike[]) => unknown)
+    | undefined
+  if (!add) throw new TypeError('Component does not support addComponents LOL!')
+  add.call(parent, ...items)
+  return parent
+}
+
 const githubUrlRegex =
   /(?:https?:\/\/)?(?:www\.)?github\.com\/(?<owner>[A-Za-z\d-]+)\/(?<repo>[\w.-]+)(?<rest>\/[^\s]*)?/gi
 const repoRefRegex =
   /\b(?<owner>[A-Za-z\d-]+)\/(?<repo>[\w.-]+)(?:(?:#|\/(?:issues|pull)\/)(?<issue>\d+)(?:#issuecomment-(?<comment>\d+))?)?\b/g
 
 const allowed = ['981306328930713661', '886194087072510012']
+
+type IssueState = {
+  emoji: string
+  label: string
+  color: number
+}
+
+const issueState = (
+  isPr: boolean,
+  state: string | undefined,
+  merged: boolean,
+  draft: boolean,
+  reason: string | undefined
+): IssueState => {
+  if (!isPr) {
+    if (state === 'open') return { emoji: emojis.issue, label: 'Open', color: COLORS.open }
+    if (reason === 'not_planned')
+      return { emoji: emojis.skipped, label: 'Closed (not planned)', color: COLORS.notPlanned }
+    return { emoji: emojis.issueClosed, label: 'Closed', color: COLORS.closed }
+  }
+  if (merged) return { emoji: emojis.merged, label: 'Merged', color: COLORS.merged }
+  if (draft) return { emoji: emojis.draft, label: 'Draft', color: COLORS.draft }
+  if (state === 'open') return { emoji: emojis.pullRequest, label: 'Open', color: COLORS.open }
+  return { emoji: emojis.pullRequestClosed, label: 'Closed', color: COLORS.closedPr }
+}
+
+const formatCount = (n: number): string => {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}m`
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`
+  return `${n}`
+}
+
+const unixTimestamp = (iso: string | undefined): string => {
+  const seconds = iso ? Math.floor(Date.parse(iso) / 1000) : Number.NaN
+  return Number.isNaN(seconds) ? 'unknown' : `<t:${seconds}:R>`
+}
+
+const excerptOf = (body: string | undefined): string | undefined => {
+  if (!body) return undefined
+  const flat = body.replace(/\r/g, '').trim()
+  if (!flat) return undefined
+  return `${flat.slice(0, 300)}${flat.length > 300 ? '…' : ''}`
+}
 
 on('messageCreate', async (ctx) => {
   const msg = ctx.msg
@@ -68,24 +150,11 @@ on('messageCreate', async (ctx) => {
   }
 
   if (links.length === 0) return
-  const embeds: Array<{
-    title?: string
-    description?: string
-    url?: string
-    footer?: { text: string }
-    author?: { name?: string; iconUrl?: string }
-  }> = []
 
-  for (const link of links) {
+  const components: ComponentJson[] = []
+
+  for (const link of links.slice(0, MAX_LINKS)) {
     const { owner, repo, issue, comment } = link
-
-    let embed: {
-      title?: string
-      description?: string
-      url?: string
-      footer?: { text: string }
-      author?: { name?: string; iconUrl?: string }
-    } = {}
 
     if (issue !== undefined) {
       let user: { login: string; avatar_url: string } | undefined
@@ -93,8 +162,12 @@ on('messageCreate', async (ctx) => {
       let url: string | undefined
       let title: string | undefined
       let state: string | undefined
+      let stateReason: string | undefined
+      let merged = false
+      let draft = false
       let labels: string[] = []
       let comments: number | undefined
+      let createdAt: string | undefined
       let isPr = false
 
       if (comment !== undefined) {
@@ -121,60 +194,112 @@ on('messageCreate', async (ctx) => {
       url ??= json.html_url
       title = json.title
       state = json.state
+      stateReason = json.state_reason
       labels = Array.isArray(json.labels)
         ? json.labels.map((label: any) => label?.name).filter(Boolean)
         : []
       comments = typeof json.comments === 'number' ? json.comments : undefined
+      createdAt = json.created_at
       isPr = !!json.pull_request
+      merged = !!json.pull_request?.merged_at
+      draft = !!json.pull_request?.draft
 
-      const titlePrefix = isPr ? '[PR] ' : ''
-      const baseTitle = `${owner}/${repo}#${issue}`
-      embed.title = title ? `${titlePrefix}${baseTitle}: ${title}` : `${titlePrefix}${baseTitle}`
-      embed.footer = {
-        text: `${owner}/${repo}#${issue}${comment !== undefined ? ` (comment ${comment})` : ''}`
-      }
-      embed.author = {
-        name: user?.login,
-        iconUrl: user?.avatar_url
-      }
+      const status = issueState(isPr, state, merged, draft, stateReason)
+      const ref = `${owner}/${repo}#${issue}`
+      const excerpt = excerptOf(body)
+
+      const card = container().setAccentColor(status.color)
+      addParts(
+        card,
+        addParts(
+          section(),
+          textDisplay(
+            [
+              `### ${status.emoji} ${title ? `[${title}](${url ?? ''})` : `[${ref}](${url ?? ''})`}`,
+              `-# ${ref}${comment !== undefined ? ` (comment ${comment})` : ''} · by **${user?.login ?? 'unknown'}** · created ${unixTimestamp(createdAt)}`
+            ].join('\n')
+          )
+        ).setAccessory(thumbnail(user?.avatar_url ?? `https://github.com/${owner}.png`))
+      )
+
+      if (excerpt) addParts(card, textDisplay(excerpt))
+
+      addParts(card, separator())
+
       const metaBits = [
-        state ? `state: ${state}` : null,
-        comments !== undefined ? `comments: ${comments}` : null,
-        labels.length > 0 ? `labels: ${labels.slice(0, 5).join(', ')}` : null
+        comments !== undefined ? `${emojis.comment} ${formatCount(comments)}` : null,
+        labels.length > 0 ? `${emojis.label} ${labels.slice(0, 5).join(', ')}` : null
       ].filter(Boolean)
-      const metaLine = metaBits.length > 0 ? `${metaBits.join(' | ')}` : undefined
-      const excerpt = body ? `${body.slice(0, 200)}${body.length > 200 ? '...' : ''}` : undefined
-      embed.description = [metaLine, excerpt].filter(Boolean).join('\n\n') || undefined
-      embed.url = url
+      if (metaBits.length > 0) addParts(card, textDisplay(metaBits.join('   ')))
+
+      if (url) {
+        addParts(card, addParts(actionRow(), button().setLabel('View on GitHub').setUrl(url)))
+      }
+
+      components.push(card.toJSON())
     } else {
       const req = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers })
       if (!req.ok) continue
       const json = (await req.json()) as any
 
-      embed.title = `${owner}/${repo}`
-      embed.description = json.description ?? undefined
-      embed.footer = {
-        text: `stars: ${json.stargazers_count ?? 0} | forks: ${
-          json.forks_count ?? 0
-        } | open issues: ${json.open_issues_count ?? 0}`
+      const description = typeof json.description === 'string' ? json.description : ''
+      const fullName = json.full_name ?? `${owner}/${repo}`
+
+      const card = container().setAccentColor(COLORS.repo)
+      addParts(
+        card,
+        addParts(
+          section(),
+          textDisplay(
+            [`### ${emojis.logo} **[${fullName}](${json.html_url})**`, description]
+              .filter(Boolean)
+              .join('\n')
+          )
+        ).setAccessory(thumbnail(json.owner?.avatar_url ?? `https://github.com/${owner}.png`))
+      )
+
+      addParts(
+        card,
+        textDisplay(
+          [
+            `${emojis.star} **${formatCount(json.stargazers_count ?? 0)}**   ${emojis.fork} **${formatCount(
+              json.forks_count ?? 0
+            )}**   ${emojis.issue} **${formatCount(json.open_issues_count ?? 0)}**`,
+            `-# ${[
+              json.language,
+              json.license?.spdx_id !== 'NOASSERTION' ? json.license?.spdx_id : null,
+              `active ${unixTimestamp(json.pushed_at)}`
+            ]
+              .filter(Boolean)
+              .join(' · ')}`
+          ].join('\n')
+        )
+      )
+
+      if (json.html_url) {
+        addParts(
+          card,
+          addParts(actionRow(), button().setLabel('View on GitHub').setUrl(json.html_url))
+        )
       }
-      embed.author = {
-        name: json.owner?.login,
-        iconUrl: json.owner?.avatar_url
-      }
-      embed.url = json.html_url
+
+      components.push(card.toJSON())
     }
-
-    embeds.push(embed)
   }
 
-  if (embeds.length > 0) {
-    const limited = embeds.slice(0, 10)
-    const content =
-      embeds.length > 10 ? `Showing ${limited.length} of ${embeds.length} GitHub links.` : undefined
-    await ctx.reply({ embeds: limited, content })
-    await ctx.edit({ flags: MessageFlags.SUPPRESS_EMBEDS })
+  if (components.length === 0) return
+
+  if (links.length > MAX_LINKS) {
+    components.push(
+      textDisplay(`-# Showing ${MAX_LINKS} of ${links.length} GitHub links.`).toJSON()
+    )
   }
+
+  await ctx.reply({
+    components,
+    flags: MessageFlags.IS_COMPONENTS_V2 | MessageFlags.SUPPRESS_EMBEDS
+  })
+  await ctx.edit({ flags: MessageFlags.SUPPRESS_EMBEDS })
 })
 
 createBot({
