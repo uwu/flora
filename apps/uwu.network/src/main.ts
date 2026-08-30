@@ -18,6 +18,7 @@ const emojis = {
 
 const COLORS = {
   repo: 0x2f81f7,
+  commit: 0xdbab09,
   open: 0x3fb950,
   closed: 0xa371f7,
   notPlanned: 0x59636e,
@@ -43,6 +44,9 @@ const githubUrlRegex =
   /(?:https?:\/\/)?(?:www\.)?github\.com\/(?<owner>[A-Za-z\d-]+)\/(?<repo>[\w.-]+)(?<rest>\/[^\s]*)?/gi
 const repoRefRegex =
   /\b(?<owner>[A-Za-z\d-]+)\/(?<repo>[\w.-]+)(?:(?:#|\/(?:issues|pull)\/)(?<issue>\d+)(?:#issuecomment-(?<comment>\d+))?)?\b/g
+
+const commitPathRegex = /\/commits?\/([0-9a-f]{7,40})/i
+const blobPathRegex = /\/(?:blob|raw)\/([^/\s#]+)\/([^#\s]+)?(?:\?[^#\s]*)?(?:#L(\d+)(?:-L(\d+))?)?/i
 
 const allowed = ['981306328930713661', '886194087072510012']
 
@@ -89,6 +93,54 @@ const excerptOf = (body: string | undefined): string | undefined => {
   return `${flat.slice(0, 300)}${flat.length > 300 ? '…' : ''}`
 }
 
+const CODE_LANGS: Record<string, string> = {
+  ts: 'typescript',
+  tsx: 'tsx',
+  mjs: 'javascript',
+  cjs: 'javascript',
+  js: 'javascript',
+  jsx: 'jsx',
+  py: 'python',
+  rs: 'rust',
+  go: 'go',
+  rb: 'ruby',
+  java: 'java',
+  kt: 'kotlin',
+  swift: 'swift',
+  c: 'c',
+  h: 'c',
+  cpp: 'cpp',
+  cc: 'cpp',
+  hpp: 'cpp',
+  cs: 'csharp',
+  php: 'php',
+  sh: 'bash',
+  bash: 'bash',
+  zsh: 'bash',
+  lua: 'lua',
+  zig: 'zig',
+  ex: 'elixir',
+  exs: 'elixir',
+  hs: 'haskell',
+  dart: 'dart',
+  vue: 'vue',
+  svelte: 'svelte',
+  html: 'html',
+  css: 'css',
+  scss: 'scss',
+  json: 'json',
+  yml: 'yaml',
+  yaml: 'yaml',
+  toml: 'toml',
+  sql: 'sql',
+  md: 'markdown'
+}
+
+const codeLangOf = (path: string): string => {
+  const ext = path.slice(path.lastIndexOf('.') + 1).toLowerCase()
+  return CODE_LANGS[ext] ?? ''
+}
+
 on('messageCreate', async (ctx) => {
   const msg = ctx.msg
   if (!msg.member?.roles?.some((r: string) => allowed.includes(r))) return
@@ -103,12 +155,19 @@ on('messageCreate', async (ctx) => {
     'User-Agent': 'flora-uwu.network',
     Accept: 'application/vnd.github+json'
   }
-  const links: Array<{
+  type ParsedLink = {
+    kind: 'issue' | 'commit' | 'blob' | 'repo'
     owner: string
     repo: string
     issue?: string
     comment?: string
-  }> = []
+    commit?: string
+    ref?: string
+    path?: string
+    start?: number
+    end?: number
+  }
+  const links: ParsedLink[] = []
   const seen = new Set<string>()
 
   const urlMatches = parseContent.matchAll(githubUrlRegex)
@@ -116,20 +175,36 @@ on('messageCreate', async (ctx) => {
     const { owner, repo, rest } = match.groups ?? {}
     if (!owner || !repo) continue
 
-    let issue: string | undefined
-    let comment: string | undefined
-    if (rest) {
-      const issueMatch = rest.match(
-        /\/(?:issues|pull)\/(?<issue>\d+)(?:#issuecomment-(?<comment>\d+))?/i
-      )
-      issue = issueMatch?.groups?.issue
-      comment = issueMatch?.groups?.comment
+    const issueMatch = rest?.match(/(?:issues?|pulls?)\/(?<issue>\d+)(?:#issuecomment-(?<comment>\d+))?/i)
+    const commitMatch = rest?.match(commitPathRegex)
+    const blobMatch = rest?.match(blobPathRegex)
+    const link: ParsedLink = {
+      kind: issueMatch ? 'issue' : commitMatch ? 'commit' : blobMatch ? 'blob' : 'repo',
+      owner,
+      repo,
+      issue: issueMatch?.[1],
+      comment: issueMatch?.[2],
+      commit: commitMatch?.[1],
+      ref: blobMatch?.[1],
+      path: blobMatch?.[2],
+      start: blobMatch?.[3] !== undefined ? parseInt(blobMatch[3], 10) : undefined,
+      end: blobMatch?.[4] !== undefined ? parseInt(blobMatch[4], 10) : undefined
     }
-
-    const key = `${owner}/${repo}#${issue ?? ''}#${comment ?? ''}`
+    const key = [
+      link.kind,
+      owner,
+      repo,
+      link.issue ?? '',
+      link.comment ?? '',
+      link.commit ?? '',
+      link.ref ?? '',
+      link.path ?? '',
+      link.start ?? '',
+      link.end ?? ''
+    ].join('#')
     if (seen.has(key)) continue
     seen.add(key)
-    links.push({ owner, repo, issue, comment })
+    links.push(link)
   }
 
   const repoMatches = parseContent.matchAll(repoRefRegex)
@@ -143,18 +218,117 @@ on('messageCreate', async (ctx) => {
       continue
     }
 
-    const key = `${owner}/${repo}#${issue ?? ''}#${comment ?? ''}`
+    const key = [
+      issue !== undefined ? 'issue' : 'repo',
+      owner,
+      repo,
+      issue ?? '',
+      comment ?? ''
+    ].join('#')
     if (seen.has(key)) continue
     seen.add(key)
-    links.push({ owner, repo, issue, comment })
+    links.push({ kind: issue !== undefined ? 'issue' : 'repo', owner, repo, issue, comment })
   }
 
   if (links.length === 0) return
 
   const components: ComponentJson[] = []
 
+  let textBudget = 4000 // Discord caps components-v2 text per message
+  const addText = (card: { addComponents?: unknown }, text: string): boolean => {
+    if (text.length > textBudget) return false
+    textBudget -= text.length
+    addParts(card as never, textDisplay(text))
+    return true
+  }
+
   for (const link of links.slice(0, MAX_LINKS)) {
-    const { owner, repo, issue, comment } = link
+    const { owner, repo } = link
+
+    if (link.kind === 'commit') {
+      const req = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/commits/${link.commit ?? ''}`,
+        { headers }
+      )
+      if (!req.ok) continue
+
+      const json = (await req.json()) as any
+      const sha: string = json.sha ?? link.commit ?? ''
+      const short = sha.slice(0, 7)
+      const message = typeof json.commit?.message === 'string' ? json.commit.message : ''
+      const detail = excerptOf(message)
+      const login: string | undefined = json.author?.login
+      const date: string | undefined = json.commit?.author?.date
+      const stats = json.stats as { additions?: number; deletions?: number } | undefined
+
+      const card = container().setAccentColor(COLORS.commit)
+      if (
+        !addText(
+          card,
+          `### ${emojis.logo} Commit [\`${short}\`](https://github.com/${owner}/${repo}/commit/${sha})`
+        )
+      ) {
+        continue
+      }
+      if (detail) addText(card, detail)
+
+      const bits = [
+        login ? `by **${login}**` : null,
+        unixTimestamp(date),
+        stats ? `+${stats.additions ?? 0} -${stats.deletions ?? 0}` : null
+      ].filter(Boolean)
+      const meta = `-# ${owner}/${repo}${bits.length ? ` · ${bits.join(' · ')}` : ''}`
+
+      addText(card, meta)
+
+      components.push(card.toJSON())
+      continue
+    }
+
+    if (link.kind === 'blob' && link.ref && link.path && link.start !== undefined) {
+      const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(
+        link.ref
+      )}/${link.path
+        .split('/')
+        .map(encodeURIComponent)
+        .join('/')}`
+      const raw = await fetch(rawUrl, { headers })
+      if (!raw.ok) continue
+
+      const source = await raw.text()
+      const allLines = source.split('\n')
+      const from = Math.max(1, link.start)
+      const to = Math.max(from, Math.min(allLines.length, link.end ?? from))
+      let code = allLines.slice(from - 1, to).join('\n')
+      const lang = codeLangOf(link.path)
+
+      const card = container().setAccentColor(COLORS.repo)
+      if (
+        !addText(
+          card,
+          `### ${emojis.logo} [${link.path} @ ${link.ref}](https://github.com/${owner}/${repo}/blob/${encodeURIComponent(link.ref)}/${link.path
+            .split('/')
+            .map(encodeURIComponent)
+            .join('/')})`
+        )) {
+      continue
+      }
+
+      const maxCode = textBudget - 9 - lang.length
+      if (code && maxCode > 20) {
+        if (code.length > maxCode) code = `${code.slice(0, maxCode)}…`
+        addText(card, `\`\`\`${lang}\n${code}\n\`\`\``)
+      }
+
+      addText(
+        card,
+        `-# ${owner}/${repo} · ${link.ref} · lines ${from === to ? `${from}` : `${from}-${to}`}`
+      )
+      components.push(card.toJSON())
+      continue
+    }
+
+    const { issue, comment } = link
 
     if (issue !== undefined) {
       let user: { login: string; avatar_url: string } | undefined
@@ -209,32 +383,26 @@ on('messageCreate', async (ctx) => {
       const excerpt = excerptOf(body)
 
       const card = container().setAccentColor(status.color)
-      addParts(
-        card,
-        addParts(
-          section(),
-          textDisplay(
-            [
-              `### ${status.emoji} ${title ? `[${title}](${url ?? ''})` : `[${ref}](${url ?? ''})`}`,
-              `-# ${ref}${comment !== undefined ? ` (comment ${comment})` : ''} · by **${user?.login ?? 'unknown'}** · created ${unixTimestamp(createdAt)}`
-            ].join('\n')
-          )
-        ).setAccessory(thumbnail(user?.avatar_url ?? `https://github.com/${owner}.png`))
-      )
+      if (
+        !addText(
+          card,
+          `### ${status.emoji} ${title ? `[${title}](${url ?? ''})` : `[${ref}](${url ?? ''})`}`
+        )
+      ) {
+        continue
+      }
 
-      if (excerpt) addParts(card, textDisplay(excerpt))
-
-      addParts(card, separator())
+      if (excerpt) addText(card, excerpt)
 
       const metaBits = [
         comments !== undefined ? `${emojis.comment} ${formatCount(comments)}` : null,
         labels.length > 0 ? `${emojis.label} ${labels.slice(0, 5).join(', ')}` : null
       ].filter(Boolean)
-      if (metaBits.length > 0) addParts(card, textDisplay(metaBits.join('   ')))
+      const metaText =
+        `-# ${ref}${comment !== undefined ? ` (comment ${comment})` : ''} · by **${user?.login ?? 'unknown'}** · created ${unixTimestamp(createdAt)}` +
+        (metaBits.length > 0 ? `   ${metaBits.join('   ')}` : '')
 
-      if (url) {
-        addParts(card, addParts(actionRow(), button().setLabel('View on GitHub').setUrl(url)))
-      }
+      addText(card, metaText)
 
       components.push(card.toJSON())
     } else {
@@ -246,42 +414,21 @@ on('messageCreate', async (ctx) => {
       const fullName = json.full_name ?? `${owner}/${repo}`
 
       const card = container().setAccentColor(COLORS.repo)
-      addParts(
+      if (!addText(card, `### ${emojis.logo} **[${fullName}](${json.html_url})**`)) continue
+      if (description) addText(card, description)
+      addText(
         card,
-        addParts(
-          section(),
-          textDisplay(
-            [`### ${emojis.logo} **[${fullName}](${json.html_url})**`, description]
-              .filter(Boolean)
-              .join('\n')
-          )
-        ).setAccessory(thumbnail(json.owner?.avatar_url ?? `https://github.com/${owner}.png`))
+        `-# ${[
+          `${emojis.star} ${formatCount(json.stargazers_count ?? 0)}`,
+          `${emojis.fork} ${formatCount(json.forks_count ?? 0)}`,
+          `${emojis.issue} ${formatCount(json.open_issues_count ?? 0)}`,
+          json.language,
+          json.license?.spdx_id !== 'NOASSERTION' ? json.license?.spdx_id : null,
+          `active ${unixTimestamp(json.pushed_at)}`
+        ]
+          .filter(Boolean)
+          .join(' · ')}`
       )
-
-      addParts(
-        card,
-        textDisplay(
-          [
-            `${emojis.star} **${formatCount(json.stargazers_count ?? 0)}**   ${emojis.fork} **${formatCount(
-              json.forks_count ?? 0
-            )}**   ${emojis.issue} **${formatCount(json.open_issues_count ?? 0)}**`,
-            `-# ${[
-              json.language,
-              json.license?.spdx_id !== 'NOASSERTION' ? json.license?.spdx_id : null,
-              `active ${unixTimestamp(json.pushed_at)}`
-            ]
-              .filter(Boolean)
-              .join(' · ')}`
-          ].join('\n')
-        )
-      )
-
-      if (json.html_url) {
-        addParts(
-          card,
-          addParts(actionRow(), button().setLabel('View on GitHub').setUrl(json.html_url))
-        )
-      }
 
       components.push(card.toJSON())
     }
