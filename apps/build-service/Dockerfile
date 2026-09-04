@@ -11,6 +11,9 @@ FROM base AS build
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/build-service/package.json apps/build-service/
 COPY apps/build-service/tsconfig.json apps/build-service/vite.config.ts apps/build-service/
+# Create workspace dirs declared in pnpm-workspace.yaml but not copied here,
+# so pnpm's workspace walk doesn't fail on the missing paths.
+RUN mkdir -p examples packages
 RUN pnpm install --frozen-lockfile --ignore-scripts --filter @flora-internal/build-service...
 COPY apps/build-service/src apps/build-service/src
 WORKDIR /app/apps/build-service
@@ -19,6 +22,7 @@ RUN pnpm run build
 FROM base AS runtime
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/build-service/package.json apps/build-service/
+RUN mkdir -p examples packages
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts --filter @flora-internal/build-service...
 COPY --from=build /app/apps/build-service/dist /app/apps/build-service/dist
 WORKDIR /app/apps/build-service
