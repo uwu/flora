@@ -1984,7 +1984,7 @@ dependencies = [
 
 [[package]]
 name = "flora"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "axum 0.8.8",
  "base64 0.22.1",
@@ -2052,7 +2052,7 @@ dependencies = [
 
 [[package]]
 name = "flora_config"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "chrono",
  "confique",
@@ -2063,7 +2063,7 @@ dependencies = [
 
 [[package]]
 name = "flora_macros"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2074,7 +2074,7 @@ dependencies = [
 
 [[package]]
 name = "flora_typegen"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "flora",
  "t0x",

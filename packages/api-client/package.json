@@ -1,6 +1,6 @@
 {
   "name": "@uwu/flora-api-client",
-  "version": "0.0.0",
+  "version": "0.2.1",
   "private": false,
   "description": "Flora OpenAPI API client.",
   "homepage": "https://github.com/uwu/flora/#readme",
