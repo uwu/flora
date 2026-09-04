@@ -30,7 +30,7 @@ services:
     restart: unless-stopped
 
   runtime:
-    image: ghcr.io/uwu/flora:0.2.0@sha256:8170318a83ce73aed977eb13c67067985351bbd24d1e9630d7d607c714046c9e
+    image: ghcr.io/uwu/flora:0.2.1@sha256:cad3296b05f8b06bec1f226801f133fdcccc1b46529d55ad3358f16f82a53ce0
     ports:
       - '3000:3000'
     volumes:
@@ -47,7 +47,7 @@ services:
     restart: unless-stopped
 
   build-service:
-    image: ghcr.io/uwu/flora-build-service:0.2.0@sha256:c383a68aca6286bbf9280b1d840c372ec286c940254fc48b6fb8cd49896759dc
+    image: ghcr.io/uwu/flora-build-service:0.2.1@sha256:ccd7fba181a6db2199d15310bf033199cb7701adaa555d062c4ae3e7742d3cfd
     ports:
       - '3001:3001'
     environment:
