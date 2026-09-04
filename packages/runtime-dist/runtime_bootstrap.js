@@ -13,7 +13,7 @@ import 'ext:deno_web/03_abort_signal.js'
 import 'ext:deno_web/04_global_interfaces.js'
 import 'ext:deno_web/05_base64.js'
 import 'ext:deno_web/06_streams.js'
-import 'ext:deno_web/08_text_encoding.js'
+import * as textEncoding from 'ext:deno_web/08_text_encoding.js'
 import 'ext:deno_web/09_file.js'
 import 'ext:deno_web/10_filereader.js'
 import 'ext:deno_web/12_location.js'
@@ -69,6 +69,34 @@ Object.defineProperty(globalThis, 'Headers', {
 
 Object.defineProperty(globalThis, 'FormData', {
   value: formData.FormData,
+  enumerable: false,
+  configurable: true,
+  writable: true
+})
+
+Object.defineProperty(globalThis, 'TextEncoder', {
+  value: textEncoding.TextEncoder,
+  enumerable: false,
+  configurable: true,
+  writable: true
+})
+
+Object.defineProperty(globalThis, 'TextDecoder', {
+  value: textEncoding.TextDecoder,
+  enumerable: false,
+  configurable: true,
+  writable: true
+})
+
+Object.defineProperty(globalThis, 'TextEncoderStream', {
+  value: textEncoding.TextEncoderStream,
+  enumerable: false,
+  configurable: true,
+  writable: true
+})
+
+Object.defineProperty(globalThis, 'TextDecoderStream', {
+  value: textEncoding.TextDecoderStream,
   enumerable: false,
   configurable: true,
   writable: true

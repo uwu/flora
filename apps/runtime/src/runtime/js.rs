@@ -370,8 +370,9 @@ pub(super) fn new_js_runtime(
 
 #[cfg(test)]
 mod tests {
-    use super::{inject_inline_source_map, rewrite_source_map_sources};
-    use deno_core::ModuleSpecifier;
+    use super::{bootstrap_extension, inject_inline_source_map, rewrite_source_map_sources};
+    use deno_core::{JsRuntime, ModuleSpecifier, RuntimeOptions, v8};
+    use std::{rc::Rc, sync::Arc};
 
     #[test]
     fn rewrite_source_map_sources_makes_relative_paths_absolute() {
@@ -395,5 +396,91 @@ mod tests {
 
         assert!(!output.contains("old.map"));
         assert!(output.contains("//# sourceMappingURL=data:application/json;base64,"));
+    }
+
+    #[tokio::test]
+    async fn bootstrap_attaches_text_encoding_globals() {
+        use crate::{
+            ops,
+            services::{
+                discord_rest::{DiscordRest, RestConfig},
+                kv::KvService,
+                scope_cache::ScopeCache,
+            },
+        };
+        use fred::{prelude::Builder, types::config::Config};
+        use serenity::{http::Http, secrets::Token};
+        use sqlx::postgres::PgPoolOptions;
+
+        crate::v8_init::init();
+
+        let http = Arc::new(Http::new(
+            Token::try_from("Bot test.test.token").expect("token"),
+        ));
+        let cache_pool =
+            Builder::from_config(Config::from_url("redis://localhost:6379").expect("cache url"))
+                .build_pool(1)
+                .expect("cache pool");
+        let rest = Arc::new(DiscordRest::new(
+            http.clone(),
+            ScopeCache::new(http.clone(), cache_pool),
+            RestConfig::default(),
+        ));
+        let kv = KvService::new(
+            PgPoolOptions::new()
+                .max_connections(1)
+                .connect_lazy("postgres://invalid:invalid@localhost:1/none")
+                .expect("kv pool"),
+            std::env::temp_dir().join("flora-text-encoding-test"),
+        );
+        let cron_registry = Arc::new(parking_lot::Mutex::new(crate::ops::CronRegistry::new(4)));
+
+        let mut runtime = JsRuntime::new(RuntimeOptions {
+            extensions: vec![
+                deno_telemetry::deno_telemetry::init(),
+                deno_webidl::deno_webidl::init(),
+                deno_web::deno_web::init(
+                    Arc::new(deno_web::BlobStore::default()),
+                    None,
+                    deno_web::InMemoryBroadcastChannel::default(),
+                ),
+                deno_fetch::deno_fetch::init(deno_fetch::Options::default()),
+                deno_net::deno_net::init(None, None),
+                deno_tls::deno_tls::init(),
+                bootstrap_extension(),
+                ops::extension(rest, kv, cron_registry),
+            ],
+            extension_transpiler: Some(Rc::new(|specifier, source| {
+                match crate::transpile::transpile_if_typescript(&specifier, source.as_str())? {
+                    Some(result) => Ok((result.code, result.source_map)),
+                    None => Ok((source, None)),
+                }
+            })),
+            ..Default::default()
+        });
+
+        let result = runtime
+            .execute_script(
+                "flora:text_encoding_test",
+                r#"
+                const encoded = new TextEncoder().encode('héllo 🌸');
+                if (!(encoded instanceof Uint8Array)) throw new Error('TextEncoder must return Uint8Array');
+                if (encoded.length !== 11) throw new Error(`unexpected byte length: ${encoded.length}`);
+                if (new TextDecoder().decode(encoded) !== 'héllo 🌸') throw new Error('TextDecoder round-trip failed');
+                if (new TextDecoder('utf-16le').decode(new TextEncoder().encode('ab')) === undefined) throw new Error('TextDecoder encoding option failed');
+                if (typeof TextEncoderStream !== 'function') throw new Error('TextEncoderStream missing');
+                if (typeof TextDecoderStream !== 'function') throw new Error('TextDecoderStream missing');
+                'ok'
+                "#,
+            )
+            .expect("text encoding globals should be available after bootstrap");
+
+        let context = runtime.main_context();
+        let mut v8_guard = runtime.v8_guard();
+        v8::scope_with_context!(scope, v8_guard.isolate(), &context);
+
+        let value = v8::Local::new(scope, result);
+        let output = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
+        assert_eq!(output, "ok");
     }
 }
