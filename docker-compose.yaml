@@ -30,7 +30,7 @@ services:
     restart: unless-stopped
 
   runtime:
-    image: ghcr.io/uwu/flora:0.2.1@sha256:cad3296b05f8b06bec1f226801f133fdcccc1b46529d55ad3358f16f82a53ce0
+    image: ghcr.io/uwu/flora:0.2.2@sha256:2a59c5494a19d1910f0e435bf907d547005cd7029be94679d9403d89d9d62880
     ports:
       - '3000:3000'
     volumes:
