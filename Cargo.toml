@@ -97,6 +97,8 @@ utoipa = { version = "5.4.0", features = [
 utoipa-scalar = { version = "0.3.0", features = ["axum"] }
 static-serve = { version = "0.6", features = [] }
 uuid = { version = "1.21.0", features = ["v4"] }
+rustls-webpki = ">=0.103.16"
+webpki-roots = ">=1.0.10"
 
 [patch.crates-io]
 # Use Deno fork aligned with rusty_v8 locker support.
